@@ -1,0 +1,64 @@
+// Prisma schema for Hermes Forge - Phase 1: Business Discovery
+// Source of truth: Structured Business Knowledge Graph
+
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id          String   @id @default(cuid())
+  name        String
+  industry    String?
+  description String?
+  teamSize    Int?
+  website     String?
+  goals       String?
+  constraints String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  processes Process[]
+  memories  Memory[]
+}
+
+model Process {
+  id                 String   @id @default(cuid())
+  businessId         String
+  business           Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name               String
+  description        String
+  department         String   // Sales | Marketing | Operations | Finance | Support | HR | Custom
+  trigger            String?
+  inputs             String?
+  outputs            String?
+  manualSteps        String?
+
+  // Automation scoring (0-100)
+  automationScore    Int      @default(0)
+  estimatedTimeSaved Int?     // hours/week
+  repetition         Int?     // 1-10
+  businessValue      Int?     // 1-10
+  complexity         Int?     // 1-10
+
+  status             String   @default("discovered") // discovered | reviewed | approved
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Memory {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  fact        String
+  confidence  Float    @default(0.8)
+  source      String?  // e.g. "interview-turn-3"
+  lastUpdated DateTime @default(now())
+}

@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  font-family: var(--font-geist-sans);
+}
+
+/* Hermes Forge - Professional dark business theme */
+.card {
+  @apply bg-zinc-900 border border-zinc-800 rounded-xl;
+}
+
+.btn-primary {
+  @apply bg-white text-black hover:bg-zinc-200 transition-colors font-medium px-5 py-2.5 rounded-lg flex items-center gap-2 disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg transition-colors;
+}
+
+.input {
+  @apply bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600;
+}
+
+.chat-message {
+  @apply max-w-[85%] rounded-2xl px-4 py-3;
+}
+
+.score-bar {
+  @apply h-2 bg-zinc-800 rounded-full overflow-hidden;
+}
+
+.score-fill {
+  @apply h-full bg-emerald-500 transition-all;
+}
