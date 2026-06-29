@@ -10,7 +10,8 @@ export const SITE = {
   /** Point to GitHub Releases when desktop builds are ready */
   downloadUrl: "https://github.com/karmsheel/hermes-forge/releases",
   downloadLabel: "Download desktop",
-  downloadComingSoon: true,
+  downloadComingSoon: false,
+  downloadHint: "Run npm run desktop:dev locally, or npm run desktop:build for an installer",
   /** Optional hosted web app — leave empty until deployed */
   appUrl: "",
 };

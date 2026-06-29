@@ -226,7 +226,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
               />
               <button 
                 onClick={sendMessage}
-                disabled={!input.trim() || isLoading}
+                disabled={!input.trim() || isLoading || !isConnected}
                 className="btn-primary"
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
