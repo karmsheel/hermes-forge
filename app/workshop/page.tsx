@@ -7,7 +7,10 @@ import { Building2, LayoutDashboard, RefreshCw } from "lucide-react";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
-import type { HermesConfig, ProcessSummary, ProcessWithMessages } from "@/lib/types";
+import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
+import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import type { ProcessSummary, ProcessWithMessages } from "@/lib/types";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
@@ -19,19 +22,10 @@ export default function WorkshopPage() {
   const [creating, setCreating] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [agentsRunning, setAgentsRunning] = useState(false);
-  const [hermesConfig, setHermesConfig] = useState<HermesConfig | null>(null);
+  const [connectionOpen, setConnectionOpen] = useState(false);
+  const { config: hermesConfig } = useHermesConnection();
 
   useEffect(() => {
-    const saved = localStorage.getItem("hermesConfig");
-    if (saved) {
-      setHermesConfig(JSON.parse(saved));
-    } else {
-      setHermesConfig({
-        baseUrl: "http://localhost:8642",
-        apiKey: "change-me-local-dev",
-      });
-    }
-
     const savedProcessId = localStorage.getItem("activeProcessId");
     if (savedProcessId) setActiveId(savedProcessId);
   }, []);
@@ -111,12 +105,6 @@ export default function WorkshopPage() {
   function handleSelectProcess(id: string) {
     if (id === activeId) return;
     setActiveId(id);
-  }
-
-  function saveHermesConfig(config: HermesConfig) {
-    localStorage.setItem("hermesConfig", JSON.stringify(config));
-    setHermesConfig(config);
-    toast.success("Hermes connection saved");
   }
 
   const runBackgroundAgents = useCallback(
@@ -240,12 +228,7 @@ export default function WorkshopPage() {
           Left: processes · Center: live diagram · Right: chat
         </div>
         <div className="flex items-center gap-2">
-          {hermesConfig && (
-            <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 mr-2">
-              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-              Hermes
-            </div>
-          )}
+          <HermesStatusBadge onClick={() => setConnectionOpen(true)} />
           <button
             onClick={() => {
               loadProcessList();
@@ -337,9 +320,8 @@ export default function WorkshopPage() {
             messages={activeProcess.messages}
             processName={activeProcess.name}
             isLoading={chatLoading}
-            hermesConfig={hermesConfig}
             onSend={handleSendMessage}
-            onSaveConfig={saveHermesConfig}
+            onOpenConnection={() => setConnectionOpen(true)}
           />
         ) : (
           <div className="w-[380px] shrink-0 border-l border-zinc-800 bg-zinc-950 flex items-center justify-center p-6">
@@ -349,6 +331,8 @@ export default function WorkshopPage() {
           </div>
         )}
       </div>
+
+      <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
     </div>
   );
 }

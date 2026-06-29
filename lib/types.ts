@@ -95,6 +95,32 @@ export interface HermesConfig {
   apiKey: string;
 }
 
+export type HermesConnectionState =
+  | 'idle'
+  | 'discovering'
+  | 'testing'
+  | 'connected'
+  | 'error';
+
+export type HermesConnectionKind =
+  | 'reachable'
+  | 'auth_failed'
+  | 'not_running'
+  | 'timeout'
+  | 'misconfigured';
+
+export interface HermesConnectionStatus {
+  state: HermesConnectionState;
+  baseUrl?: string;
+  latencyMs?: number;
+  model?: string;
+  features?: string[];
+  error?: string;
+  kind?: HermesConnectionKind;
+  source?: 'auto' | 'manual' | 'saved';
+  checkedAt?: string;
+}
+
 export type Department = 
   | 'Sales' 
   | 'Marketing' 

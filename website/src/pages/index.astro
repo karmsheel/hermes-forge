@@ -1,0 +1,259 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SITE } from "../config";
+
+const features = [
+  {
+    title: "Live process diagrams",
+    body: "Chat with Hermes while Mermaid flowcharts build in the center. Correct the model as you go — no whiteboard required.",
+  },
+  {
+    title: "Multi-project workspace",
+    body: "One account, many projects. Each keeps its own workflows, chat history, and diagrams — fully isolated.",
+  },
+  {
+    title: "Hermes Agent native",
+    body: "Plug in your local Hermes instance. Background subagents handle diagramming and naming so conversation stays fast.",
+  },
+];
+
+const steps = [
+  { n: "01", title: "Create a project", body: "Start blank — name and details emerge from conversation." },
+  { n: "02", title: "Chat the process", body: "Describe triggers, steps, actors, and tools with Hermes." },
+  { n: "03", title: "Watch the diagram", body: "A flowchart updates in the background as you answer." },
+  { n: "04", title: "Refine & export", body: "Rename workflows, score automation potential, export knowledge." },
+];
+
+const faqs = [
+  {
+    q: "What is Hermes Forge?",
+    a: "An open-source app for mapping business processes through conversation. Hermes Agent extracts structure; you get live diagrams and a typed process model — not just chat logs.",
+  },
+  {
+    q: "Do I need Hermes Agent?",
+    a: "Yes for AI features. Run Hermes locally (default port 8642) and point the app at your instance. The app proxies chat and subagent calls.",
+  },
+  {
+    q: "Is there a desktop app?",
+    a: "Yes — Electron packaging is in the app repo (`npm run desktop:build`). Installers will ship on GitHub Releases; until then, clone the repo and run locally.",
+  },
+  {
+    q: "Where is the source code?",
+    a: `Everything is on GitHub at ${SITE.githubUrl}. Fork it, self-host, or contribute.`,
+  },
+];
+---
+
+<Layout>
+  <header class="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur">
+    <nav class="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <a href="/" class="flex items-center gap-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+          <span class="text-lg font-bold text-black">H</span>
+        </div>
+        <div>
+          <div class="text-sm font-semibold tracking-tight">{SITE.name}</div>
+          <div class="text-[10px] uppercase tracking-widest text-zinc-500">Open source</div>
+        </div>
+      </a>
+      <div class="flex items-center gap-2 sm:gap-4">
+        <a href="#features" class="btn-ghost hidden sm:inline-flex">Features</a>
+        <a href="#how" class="btn-ghost hidden sm:inline-flex">How it works</a>
+        <a href={SITE.githubUrl} target="_blank" rel="noopener noreferrer" class="btn-ghost">
+          GitHub
+        </a>
+        <a href={SITE.githubUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary text-sm py-2 px-4">
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+          </svg>
+          Star on GitHub
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="relative overflow-hidden border-b border-zinc-800">
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:28px_28px] opacity-40" />
+      <div class="relative mx-auto max-w-6xl px-6 pb-20 pt-16 text-center md:pt-24">
+        <p class="mb-6 inline-flex rounded-full border border-zinc-800 px-4 py-1 text-xs tracking-[0.2em] text-zinc-400">
+          LOCAL-FIRST · HERMES AGENT · OPEN SOURCE
+        </p>
+        <h1 class="mx-auto max-w-4xl text-5xl font-semibold leading-[1.05] tracking-tighter md:text-7xl">
+          {SITE.tagline}
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-lg text-zinc-400 md:text-xl">
+          {SITE.description}
+        </p>
+        <div class="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <a
+            href={SITE.downloadUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-primary min-w-[200px]"
+          >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {SITE.downloadLabel}
+            {SITE.downloadComingSoon && (
+              <span class="rounded-md bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
+                Soon
+              </span>
+            )}
+          </a>
+          <a
+            href={SITE.githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn-secondary min-w-[200px]"
+          >
+            <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+            </svg>
+            View on GitHub
+          </a>
+        </div>
+        {SITE.appUrl && (
+          <p class="mt-4 text-sm text-zinc-500">
+            Or <a href={SITE.appUrl} class="text-emerald-400 hover:underline">open the web app</a>
+          </p>
+        )}
+      </div>
+
+      <!-- Product preview mock -->
+      <div class="relative mx-auto max-w-5xl px-6 pb-16">
+        <div class="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl shadow-black/50">
+          <div class="flex items-center gap-2 border-b border-zinc-800 px-4 py-3">
+            <div class="h-3 w-3 rounded-full bg-zinc-700" />
+            <div class="h-3 w-3 rounded-full bg-zinc-700" />
+            <div class="h-3 w-3 rounded-full bg-zinc-700" />
+            <span class="ml-2 text-xs text-zinc-500">Hermes Forge — Workshop</span>
+          </div>
+          <div class="grid min-h-[280px] grid-cols-12 gap-px bg-zinc-800 md:min-h-[360px]">
+            <div class="col-span-3 bg-zinc-950 p-4">
+              <div class="mb-3 h-2 w-16 rounded bg-zinc-800" />
+              <div class="space-y-2">
+                <div class="h-8 rounded-lg bg-zinc-800/80" />
+                <div class="h-8 rounded-lg border border-emerald-500/30 bg-zinc-800" />
+                <div class="h-8 rounded-lg bg-zinc-800/50" />
+              </div>
+            </div>
+            <div class="col-span-5 flex flex-col items-center justify-center bg-zinc-950 p-6">
+              <div class="text-[10px] uppercase tracking-widest text-zinc-600 mb-4">Process diagram</div>
+              <div class="flex flex-col items-center gap-3 text-xs text-zinc-500">
+                <div class="rounded-lg border border-zinc-700 px-4 py-2">Trigger</div>
+                <div class="h-4 w-px bg-zinc-700" />
+                <div class="rounded-lg border border-zinc-700 px-4 py-2">Step 1</div>
+                <div class="h-4 w-px bg-zinc-700" />
+                <div class="rounded-lg border border-dashed border-zinc-700 px-4 py-2">…</div>
+              </div>
+            </div>
+            <div class="col-span-4 bg-zinc-950 p-4">
+              <div class="mb-3 h-2 w-12 rounded bg-zinc-800" />
+              <div class="space-y-2">
+                <div class="ml-auto max-w-[85%] rounded-2xl bg-white px-3 py-2 text-[11px] text-black">We onboard via Stripe…</div>
+                <div class="max-w-[85%] rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-[11px] text-zinc-400">What happens after payment?</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why -->
+    <section id="features" class="border-b border-zinc-800 bg-zinc-900/30 py-20">
+      <div class="mx-auto max-w-6xl px-6">
+        <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">Why Hermes Forge</p>
+        <h2 class="mt-2 max-w-2xl text-3xl font-semibold tracking-tight md:text-4xl">
+          Conversation becomes a visual operating model — not another doc.
+        </h2>
+        <div class="mt-12 grid gap-8 md:grid-cols-3">
+          {features.map((f) => (
+            <div class="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
+              <h3 class="text-lg font-semibold">{f.title}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-zinc-400">{f.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- How -->
+    <section id="how" class="border-b border-zinc-800 py-20">
+      <div class="mx-auto max-w-6xl px-6">
+        <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">How it works</p>
+        <h2 class="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">From chat to diagram in four steps</h2>
+        <ol class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((s) => (
+            <li class="rounded-2xl border border-zinc-800 p-6">
+              <span class="text-2xl font-semibold text-emerald-400/80">{s.n}</span>
+              <h3 class="mt-3 font-semibold">{s.title}</h3>
+              <p class="mt-2 text-sm text-zinc-400">{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <!-- Stats / GitHub -->
+    <section class="border-b border-zinc-800 py-20">
+      <div class="mx-auto max-w-6xl px-6 text-center">
+        <h2 class="text-3xl font-semibold tracking-tight">Open source on GitHub</h2>
+        <p class="mx-auto mt-4 max-w-xl text-zinc-400">
+          Clone the repo, run locally with Hermes Agent, and map your business processes today. Desktop installer coming to Releases.
+        </p>
+        <div class="mt-8 flex flex-wrap justify-center gap-4">
+          <a href={SITE.githubUrl} target="_blank" rel="noopener noreferrer" class="btn-primary">
+            Star on GitHub
+          </a>
+          <a href={`${SITE.githubUrl}#readme`} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            Read the docs
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="py-20">
+      <div class="mx-auto max-w-3xl px-6">
+        <h2 class="text-center text-3xl font-semibold tracking-tight">FAQ</h2>
+        <dl class="mt-12 space-y-6">
+          {faqs.map((item, i) => (
+            <div class="rounded-2xl border border-zinc-800 p-6">
+              <dt class="flex gap-3 font-medium">
+                <span class="text-zinc-600">{String(i + 1).padStart(2, "0")}</span>
+                {item.q}
+              </dt>
+              <dd class="mt-3 pl-9 text-sm leading-relaxed text-zinc-400">{item.a}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="border-t border-zinc-800 bg-zinc-900/50 py-20">
+      <div class="mx-auto max-w-3xl px-6 text-center">
+        <h2 class="text-3xl font-semibold tracking-tight">Bring process clarity to your desk</h2>
+        <p class="mt-4 text-zinc-400">Open · Local · Hermes-native</p>
+        <div class="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <a href={SITE.downloadUrl} target="_blank" rel="noopener noreferrer" class="btn-primary">
+            {SITE.downloadLabel}
+          </a>
+          <a href={SITE.githubUrl} target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            Star on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-zinc-800 py-8 text-center text-xs text-zinc-600">
+    <p>{SITE.name} — built for teams mapping how work actually gets done.</p>
+    <p class="mt-2">
+      <a href={SITE.githubUrl} class="hover:text-zinc-400">Source on GitHub</a>
+    </p>
+  </footer>
+</Layout>

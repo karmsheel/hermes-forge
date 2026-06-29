@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FolderKanban, Plus, ArrowRight, Loader2, LogOut, User, Pencil, Check, X } from "lucide-react";
+import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
+import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import type { BusinessSummary, UserProfile } from "@/lib/types";
 
 export default function BusinessesPage() {
@@ -17,6 +19,7 @@ export default function BusinessesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [connectionOpen, setConnectionOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,6 +141,7 @@ export default function BusinessesPage() {
             <span className="font-semibold">Hermes Forge</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <HermesStatusBadge onClick={() => setConnectionOpen(true)} />
             <Link href="/profile" className="text-zinc-400 hover:text-white flex items-center gap-1">
               <User className="w-4 h-4" />
               {user?.name || user?.email}
@@ -277,6 +281,8 @@ export default function BusinessesPage() {
           </ul>
         )}
       </main>
+
+      <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { AppProviders } from "@/components/providers/AppProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Hermes Forge",
-  description: "Describe your business. Discover intelligent workflows.",
+  description: "Process workshop — map workflows with Hermes Agent and live diagrams.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -32,7 +33,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-200">
-        {children}
+        <AppProviders>{children}</AppProviders>
         <Toaster position="top-center" richColors closeButton />
       </body>
     </html>

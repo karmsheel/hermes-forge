@@ -4,15 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Send, Loader2, Database, Target } from 'lucide-react';
 import { toast } from 'sonner';
+import { HermesConnectionPanel } from '@/components/hermes/HermesConnectionPanel';
+import { HermesStatusBadge } from '@/components/hermes/HermesStatusBadge';
+import { useHermesConnection } from '@/components/hermes/HermesConnectionProvider';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-}
-
-interface HermesConfig {
-  baseUrl: string;
-  apiKey: string;
 }
 
 export default function InterviewPage() {
@@ -24,25 +22,13 @@ export default function InterviewPage() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [hermesConfig, setHermesConfig] = useState<HermesConfig | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<any>(null);
+  const { config: hermesConfig, isConnected } = useHermesConnection();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load Hermes config + business from localStorage on mount
   useEffect(() => {
-    const savedConfig = localStorage.getItem('hermesConfig');
-    if (savedConfig) {
-      setHermesConfig(JSON.parse(savedConfig));
-    } else {
-      // Default suggestion for local Hermes
-      setHermesConfig({
-        baseUrl: 'http://localhost:8642',
-        apiKey: 'change-me-local-dev'
-      });
-    }
-
     const savedBiz = localStorage.getItem('currentBusinessId');
     if (savedBiz) setBusinessId(savedBiz);
   }, []);
@@ -50,12 +36,6 @@ export default function InterviewPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  const saveHermesConfig = (config: HermesConfig) => {
-    localStorage.setItem('hermesConfig', JSON.stringify(config));
-    setHermesConfig(config);
-    toast.success('Hermes connection saved');
-  };
 
   async function createBusinessIfNeeded() {
     if (businessId) return businessId;
@@ -183,8 +163,6 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
     }
   };
 
-  const isConnected = !!hermesConfig;
-
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950">
       {/* Top bar */}
@@ -200,13 +178,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
         </div>
 
         <div className="flex items-center gap-3 text-sm">
-          {isConnected ? (
-            <div className="flex items-center gap-2 text-emerald-400 text-xs">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> Hermes connected
-            </div>
-          ) : (
-            <Link href="#connect" className="text-amber-400 hover:underline">Connect Hermes →</Link>
-          )}
+          <HermesStatusBadge />
           <Link href="/dashboard" className="btn-secondary text-xs px-3 py-1.5">View Dashboard</Link>
         </div>
       </div>
@@ -268,25 +240,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
 
         {/* Side panel: Live knowledge + connection */}
         <div className="w-80 flex flex-col p-5 gap-5 overflow-y-auto">
-          <div>
-            <div className="flex items-center justify-between text-xs uppercase tracking-widest text-zinc-500 mb-2">
-              <div>HERMES CONNECTION</div>
-              <button 
-                onClick={() => {
-                  const url = prompt("Hermes API base URL", hermesConfig?.baseUrl || "http://localhost:8642");
-                  const key = prompt("API Key", hermesConfig?.apiKey || "change-me-local-dev");
-                  if (url && key) saveHermesConfig({ baseUrl: url, apiKey: key });
-                }}
-                className="text-emerald-400 hover:underline"
-              >
-                EDIT
-              </button>
-            </div>
-            <div className="card p-3 text-xs font-mono space-y-1">
-              <div>URL: <span className="text-emerald-400">{hermesConfig?.baseUrl || 'not set'}</span></div>
-              <div>Key: <span className="text-zinc-400">{hermesConfig?.apiKey ? '••••••••' : 'not set'}</span></div>
-            </div>
-          </div>
+          <HermesConnectionPanel compact />
 
           <div>
             <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-zinc-500 mb-2">

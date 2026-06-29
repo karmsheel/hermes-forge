@@ -1,33 +1,28 @@
 # Hermes Forge
 
-**Describe your business. Deploy intelligent workflows.** (Phase 1: Business Discovery)
+**Map how your business actually works** — open-source process discovery with Hermes Agent.
 
 Built for the **Hermes Agent Accelerated Business Hackathon** (NVIDIA × Stripe × Nous Research).
 
-## Core Thesis (per PRD)
+## Repository layout
 
-The defensible IP is **structured business discovery**, not the workflow builder.
+This repo contains two products:
 
-Hermes Forge uses Hermes Agent to conduct a natural business interview, then extracts and scores real operational processes into a typed knowledge graph (Business + Processes + Automation Scores).
+| Path | What it is | Run locally | Deploy |
+|------|------------|-------------|--------|
+| **Root** (`/`) | **Desktop / local app** — Next.js, auth, projects, process workshop, live Mermaid diagrams | `npm run dev` → http://localhost:3000 | Self-host or package as desktop exe (future) |
+| **`website/`** | **Public marketing site** — landing page, GitHub link, desktop download CTA | `cd website && npm run dev` → http://localhost:4321 | Static `website/dist/` to your domain |
 
-Workflow generation is intentionally **out of scope** for this phase.
+The app entry (`/`) redirects to `/login` or `/projects`. Marketing lives only in `website/`.
 
-## Current State (Hackathon MVP)
+See [`website/README.md`](website/README.md) for site config and deployment.
 
-**Phase 1 Complete:**
-- Landing page with strong positioning
-- Conversational Interview powered by real Hermes Agent
-- Structured extraction into SQLite (Prisma)
-- Live Dashboard with automation scores (0-100)
-- Export Business Knowledge Graph (JSON)
-
-## Quickstart (for Demo Video)
+## Quickstart (app)
 
 1. Run Hermes Agent with API server:
    ```bash
-   # In your Hermes terminal
    hermes gateway
-   # Make sure API_SERVER_ENABLED + CORS for localhost:3000
+   # API_SERVER_ENABLED + CORS for localhost:3000
    ```
 
 2. In this repo:
@@ -37,57 +32,45 @@ Workflow generation is intentionally **out of scope** for this phase.
    npm run dev
    ```
 
-3. Go to http://localhost:3000
-4. Click "Start Business Interview"
-5. Make sure Hermes connection points to your running instance
-6. Talk through your business (or a demo business)
+3. Open http://localhost:3000 — sign up, create a project, open the workshop.
 
-Recommended demo flow:
-- Connect Hermes
-- Do a 60-90 second interview covering offering, customers, delivery, tools, pain
-- Watch structured data populate on the right
-- Go to Dashboard → see scored processes
-- Export the JSON artifact
-
-## Hermes Connection
+## Hermes connection
 
 - Default: `http://localhost:8642`
-- Key: whatever you set in `~/.hermes/.env` (`API_SERVER_KEY`)
+- Key: from `~/.hermes/.env` (`API_SERVER_KEY`)
+- CORS: `API_SERVER_CORS_ORIGINS=http://localhost:3000`
 
-Set CORS if calling from browser:
-```
-API_SERVER_CORS_ORIGINS=http://localhost:3000
-```
+The app proxies chat at `/api/hermes/chat` and runs background subagents for diagrams and workflow naming.
 
-The app also has a proxy at `/api/hermes/chat` that can help avoid some CORS pain.
+## Core thesis
 
-## Architecture Decisions (Opinionated)
+Structured business discovery is the defensible IP — not the workflow builder. Hermes Forge turns conversation into a typed process model (projects, workflows, automation scores) with live diagrams, not chat logs alone.
 
-- All business knowledge lives in structured tables, **not** chat logs.
-- Hermes is used for two things:
-  1. Natural language interview (chat)
-  2. Structured JSON extraction (Business Analyst + Process Analyst + Automation Architect roles)
-- Human always in the loop.
-- n8n and deployment deliberately not built yet.
-
-## Tech
+## Tech (app)
 
 - Next.js 16 + TypeScript
-- Prisma + SQLite (easy to upgrade)
-- Direct Hermes OpenAI-compatible API
-- shadcn-ready styling (clean dark UI)
+- Prisma + SQLite
+- Hermes OpenAI-compatible API
+- Mermaid 11 for live process diagrams
 
-## Next Phases (Future)
+## Desktop app
 
-- Process refinement editor
-- Workflow graph generation from Process model
-- n8n JSON export
-- Direct deployment + observability
+The app ships as an Electron wrapper around the Next.js standalone server. Data and SQLite DB live in the OS user-data folder.
 
-## Submission Notes
+```bash
+npm run desktop:dev     # dev: Electron + Next on port 3847
+npm run desktop:build   # production installer → dist/desktop/
+```
 
-- 1-3 min video of the interview + dashboard
-- Tag @NousResearch
-- Drop in Discord + Typeform
+Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forge/releases), then set `downloadComingSoon: false` in `website/src/config.ts`.
 
-Good luck!
+## Marketing site
+
+```bash
+cd website
+npm install
+npm run dev    # http://localhost:4321
+npm run build  # output → website/dist/
+```
+
+Update `website/src/config.ts` before deploy: `appUrl` (optional hosted web app), `downloadUrl`, and `astro.config.mjs` `site` for your domain.
