@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { LayoutDashboard, RefreshCw } from "lucide-react";
+import { Building2, LayoutDashboard, RefreshCw } from "lucide-react";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
@@ -18,6 +18,7 @@ export default function WorkshopPage() {
   const [loadingProcess, setLoadingProcess] = useState(false);
   const [creating, setCreating] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [agentsRunning, setAgentsRunning] = useState(false);
   const [hermesConfig, setHermesConfig] = useState<HermesConfig | null>(null);
 
   useEffect(() => {
@@ -39,7 +40,15 @@ export default function WorkshopPage() {
     setLoadingList(true);
     try {
       const res = await fetch("/api/processes");
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
       const data = await res.json();
+      if (!data.business) {
+        window.location.href = "/projects";
+        return;
+      }
       setProcesses(data.processes || []);
       setBusinessName(data.business?.name || null);
     } catch {
@@ -110,6 +119,68 @@ export default function WorkshopPage() {
     toast.success("Hermes connection saved");
   }
 
+  const runBackgroundAgents = useCallback(
+    async (processId: string) => {
+      if (!hermesConfig) return;
+      setAgentsRunning(true);
+
+      const agentBody = JSON.stringify({
+        baseUrl: hermesConfig.baseUrl,
+        apiKey: hermesConfig.apiKey,
+      });
+
+      try {
+        const [diagramResult, nameResult] = await Promise.allSettled([
+          fetch(`/api/processes/${processId}/diagram`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: agentBody,
+          }),
+          fetch(`/api/processes/${processId}/suggest-name`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: agentBody,
+          }),
+        ]);
+
+        if (diagramResult.status === "rejected") {
+          toast.warning("Diagram subagent failed");
+        } else if (!diagramResult.value.ok) {
+          toast.warning("Diagram could not be updated");
+        }
+
+        if (nameResult.status === "fulfilled" && nameResult.value.ok) {
+          const nameData = await nameResult.value.json();
+          if (nameData.updated && nameData.process) {
+            setActiveProcess(nameData.process);
+            toast.success(`Named workflow: ${nameData.name}`);
+          }
+        }
+
+        await loadProcess(processId);
+        await loadProcessList();
+      } finally {
+        setAgentsRunning(false);
+      }
+    },
+    [hermesConfig, loadProcess, loadProcessList]
+  );
+
+  async function handleRenameProcess(id: string, name: string) {
+    const res = await fetch(`/api/processes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) throw new Error("Rename failed");
+    const updated = await res.json();
+    if (activeId === id) {
+      setActiveProcess((prev) => (prev ? { ...prev, name: updated.name, nameStatus: "confirmed" } : prev));
+    }
+    await loadProcessList();
+    toast.success("Workflow renamed");
+  }
+
   async function handleSendMessage(content: string) {
     if (!activeId || !hermesConfig) return;
 
@@ -145,15 +216,16 @@ export default function WorkshopPage() {
 
       const data = await res.json();
       setActiveProcess(data.process);
-      await loadProcessList();
+      setChatLoading(false);
 
-      if (data.diagramError) {
-        toast.warning("Chat saved but diagram update failed");
+      if (data.runBackgroundAgents) {
+        void runBackgroundAgents(activeId);
+      } else {
+        await loadProcessList();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
       if (activeId) await loadProcess(activeId);
-    } finally {
       setChatLoading(false);
     }
   }
@@ -183,6 +255,9 @@ export default function WorkshopPage() {
           >
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
+          <Link href="/projects" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
+            <Building2 className="w-3 h-3" /> Projects
+          </Link>
           <Link href="/dashboard" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
             <LayoutDashboard className="w-3 h-3" /> Dashboard
           </Link>
@@ -198,6 +273,7 @@ export default function WorkshopPage() {
           creating={creating}
           onSelect={handleSelectProcess}
           onCreate={handleCreateProcess}
+          onRename={handleRenameProcess}
         />
 
         <main className="flex-1 flex flex-col min-w-0 bg-zinc-950">
@@ -210,11 +286,19 @@ export default function WorkshopPage() {
                 {loadingProcess ? "Loading..." : processName}
               </h1>
             </div>
-            {activeProcess?.diagramUpdatedAt && (
-              <div className="text-[10px] text-zinc-600">
-                Updated {new Date(activeProcess.diagramUpdatedAt).toLocaleTimeString()}
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {agentsRunning && (
+                <div className="text-[10px] text-emerald-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                  Updating diagram…
+                </div>
+              )}
+              {activeProcess?.diagramUpdatedAt && !agentsRunning && (
+                <div className="text-[10px] text-zinc-600">
+                  Updated {new Date(activeProcess.diagramUpdatedAt).toLocaleTimeString()}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 min-h-0 relative bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:24px_24px]">
@@ -232,7 +316,7 @@ export default function WorkshopPage() {
                 Loading process...
               </div>
             ) : (
-              <MermaidDiagram chart={diagramChart} className="absolute inset-0" />
+              <MermaidDiagram chart={diagramChart} className="absolute inset-0 z-0" />
             )}
           </div>
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
-import { generateDiagramMermaid, PROCESS_CHAT_SYSTEM_PROMPT } from '@/lib/diagram';
+import { buildChatSystemPrompt } from '@/lib/diagram';
+import { requireProcessAccess } from '@/lib/auth';
 
 const ChatSchema = z.object({
   content: z.string().min(1),
@@ -17,14 +18,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const body = ChatSchema.parse(await request.json());
 
-    const process = await prisma.process.findUnique({
-      where: { id },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
-    });
-
-    if (!process) {
-      return NextResponse.json({ error: 'Process not found' }, { status: 404 });
-    }
+    const result = await requireProcessAccess(request, id);
+    if ('error' in result) return result.error;
+    const process = result.process;
 
     await prisma.chatMessage.create({
       data: { processId: id, role: 'user', content: body.content },
@@ -38,10 +34,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey },
       [
-        { role: 'system', content: PROCESS_CHAT_SYSTEM_PROMPT },
         {
           role: 'system',
-          content: `Current process: "${process.name}" — ${process.description || 'No description yet'}`,
+          content: buildChatSystemPrompt({
+            processName: process.name,
+            description: process.description,
+            nameStatus: process.nameStatus,
+          }),
+        },
+        {
+          role: 'system',
+          content: `Current workflow: "${process.name}" — ${process.description || 'Not yet described'}`,
         },
         ...allMessages,
       ]
@@ -53,34 +56,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: { processId: id, role: 'assistant', content: assistantMessage },
     });
 
-    let diagramMermaid = process.diagramMermaid;
-    let diagramError: string | null = null;
-
-    try {
-      const updatedDiagram = await generateDiagramMermaid(
-        { baseUrl: body.baseUrl, apiKey: body.apiKey },
-        process.name,
-        process.description,
-        [
-          ...allMessages,
-          { role: 'assistant', content: assistantMessage },
-        ],
-        process.diagramMermaid
-      );
-
-      if (updatedDiagram) {
-        diagramMermaid = updatedDiagram;
+    // User replied after a pending auto-name — treat as acknowledged unless they asked to rename
+    if (process.nameStatus === 'pending' && !/^untitled/i.test(process.name)) {
+      const renameIntent = /rename|call it|instead|different name|change (the )?name/i.test(body.content);
+      if (renameIntent) {
+        const match = body.content.match(/(?:call it|rename (?:it )?(?:to )?|name it)\s+["']?([^"'\n.]+)/i);
+        if (match?.[1]?.trim()) {
+          await prisma.process.update({
+            where: { id },
+            data: { name: match[1].trim(), nameStatus: 'confirmed' },
+          });
+        }
+      } else {
         await prisma.process.update({
           where: { id },
-          data: {
-            diagramMermaid: updatedDiagram,
-            diagramUpdatedAt: new Date(),
-          },
+          data: { nameStatus: 'confirmed' },
         });
       }
-    } catch (err) {
-      diagramError = err instanceof Error ? err.message : 'Diagram update failed';
-      console.warn('Diagram generation failed', err);
     }
 
     const updated = await prisma.process.findUnique({
@@ -93,8 +85,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       process: updated,
-      diagramMermaid,
-      diagramError,
+      runBackgroundAgents: true,
     });
   } catch (error) {
     console.error('Process chat error', error);

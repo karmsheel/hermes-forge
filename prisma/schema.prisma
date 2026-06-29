@@ -11,8 +11,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  businesses Business[]
+}
+
 model Business {
   id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   name        String
   industry    String?
   description String?
@@ -48,6 +62,7 @@ model Process {
   complexity         Int?     // 1-10
 
   status             String   @default("discovered") // discovered | reviewed | approved
+  nameStatus         String   @default("pending")    // pending | confirmed — auto-name awaiting user OK
 
   // Live process diagram (Mermaid source) — updated as the user chats
   diagramMermaid     String?

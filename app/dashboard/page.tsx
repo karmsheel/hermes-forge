@@ -40,27 +40,17 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/business');
+      if (res.status === 401) {
+        window.location.href = '/login';
+        return;
+      }
       const data = await res.json();
 
       if (data && data.id) {
         setBusiness(data);
         setProcesses(data.processes || []);
       } else {
-        // Create a demo business if none
-        const created = await fetch('/api/business', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'Acme Consulting',
-            industry: 'Professional Services',
-            description: 'Boutique strategy and implementation firm for mid-market SaaS.',
-            teamSize: 7,
-            goals: 'Double revenue in 18 months while reducing delivery time.'
-          })
-        });
-        const newBiz = await created.json();
-        localStorage.setItem('currentBusinessId', newBiz.id);
-        setBusiness(newBiz);
+        setBusiness(null);
         setProcesses([]);
       }
     } catch (e) {
@@ -131,6 +121,7 @@ export default function DashboardPage() {
             <button onClick={exportKnowledge} className="btn-primary text-sm flex items-center gap-2">
               <Download className="w-4 h-4" /> Export Knowledge Graph
             </button>
+            <Link href="/projects" className="btn-secondary text-sm">Projects</Link>
             <Link href="/workshop" className="btn-secondary text-sm">Open Workshop</Link>
           </div>
         </div>
@@ -140,8 +131,9 @@ export default function DashboardPage() {
         {loading ? (
           <div className="text-center py-20 text-zinc-400">Loading business model...</div>
         ) : !business ? (
-          <div>
-            No business yet. <Link href="/interview" className="text-white underline">Start the interview</Link>.
+          <div className="text-center py-16">
+            <p className="text-zinc-400 mb-4">No active project. Select or create one to view the dashboard.</p>
+            <Link href="/projects" className="btn-primary inline-flex">Go to Projects</Link>
           </div>
         ) : (
           <>

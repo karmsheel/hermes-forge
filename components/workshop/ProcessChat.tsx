@@ -100,7 +100,7 @@ export function ProcessChat({
         {isLoading && (
           <div className="flex justify-start">
             <div className="chat-message bg-zinc-900 border border-zinc-800 flex items-center gap-2 text-sm text-zinc-400">
-              <Loader2 className="w-4 h-4 animate-spin" /> Updating diagram...
+              <Loader2 className="w-4 h-4 animate-spin" /> Hermes is thinking...
             </div>
           </div>
         )}

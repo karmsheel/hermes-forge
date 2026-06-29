@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ArrowRight, MessageCircle, Database, Target } from "lucide-react";
+import type { UserProfile } from "@/lib/types";
 
 export default function Landing() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => setUser(data.user))
+      .finally(() => setChecked(true));
+  }, []);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Nav */}
       <nav className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -19,19 +30,32 @@ export default function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/workshop" className="text-zinc-400 hover:text-white transition-colors">Workshop</Link>
-            <Link 
-              href="/workshop" 
-              className="btn-primary text-sm"
-            >
-              Open Workshop <ArrowRight className="w-4 h-4" />
-            </Link>
+            {checked && user ? (
+              <>
+                <Link href="/projects" className="text-zinc-400 hover:text-white transition-colors">
+                  Projects
+                </Link>
+                <Link href="/workshop" className="text-zinc-400 hover:text-white transition-colors">
+                  Workshop
+                </Link>
+                <Link href="/projects" className="btn-primary text-sm">
+                  Open App <ArrowRight className="w-4 h-4" />
+                </Link>
+              </>
+            ) : checked ? (
+              <>
+                <Link href="/login" className="text-zinc-400 hover:text-white transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/signup" className="btn-primary text-sm">
+                  Get started <ArrowRight className="w-4 h-4" />
+                </Link>
+              </>
+            ) : null}
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
       <div className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-zinc-800 px-4 py-1 text-xs tracking-[2px] text-zinc-400 mb-6">
           HERMES AGENT ACCELERATED BUSINESS HACKATHON
@@ -40,33 +64,28 @@ export default function Landing() {
         <h1 className="text-6xl font-semibold tracking-tighter leading-none mb-6">
           Describe your business.<br />Discover how it actually works.
         </h1>
-        
+
         <p className="text-xl text-zinc-400 max-w-xl mx-auto mb-10">
-          Hermes Forge turns conversation into a structured model of your business — 
-          departments, processes, and clear automation opportunities.
+          Organize businesses as projects, map workflows with live diagrams, and chat with Hermes to build your operating model.
         </p>
 
         <div className="flex items-center justify-center gap-4">
-          <Link 
-            href="/workshop" 
+          <Link
+            href={user ? "/projects" : "/signup"}
             className="btn-primary text-base px-8 py-3 rounded-xl flex items-center gap-3"
           >
-            Open Process Workshop <ArrowRight className="w-5 h-5" />
+            {user ? "Your Projects" : "Get Started"} <ArrowRight className="w-5 h-5" />
           </Link>
-          <Link 
-            href="/dashboard" 
-            className="btn-secondary text-base px-6 py-3"
-          >
-            View Demo Dashboard
+          <Link href={user ? "/workshop" : "/login"} className="btn-secondary text-base px-6 py-3">
+            {user ? "Open Workshop" : "Sign in"}
           </Link>
         </div>
 
         <p className="mt-4 text-xs text-zinc-500">
-          Phase 1: Pure discovery. No workflows yet. Structured knowledge is the foundation.
+          Each account can own multiple projects — each with its own workflows and diagrams.
         </p>
       </div>
 
-      {/* Value props */}
       <div className="border-t border-zinc-800 bg-zinc-900/50">
         <div className="max-w-5xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-8">
           <div className="space-y-3">
@@ -82,10 +101,9 @@ export default function Landing() {
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
               <Database className="w-5 h-5 text-emerald-400" />
             </div>
-            <div className="font-semibold text-lg">Structured Knowledge</div>
+            <div className="font-semibold text-lg">Multi-Project Workspace</div>
             <div className="text-zinc-400 text-sm leading-relaxed">
-              Every insight becomes typed data: Business profile + Processes with triggers, steps, and inputs/outputs.
-              Not just chat history.
+              One login, many projects. Each keeps its own workflows, chat history, and diagrams.
             </div>
           </div>
           <div className="space-y-3">
@@ -95,25 +113,11 @@ export default function Landing() {
             <div className="font-semibold text-lg">Automation Scoring</div>
             <div className="text-zinc-400 text-sm leading-relaxed">
               Every process gets a 0-100 automation score based on repetition, effort, business value, and complexity.
-              Human approves everything.
             </div>
           </div>
         </div>
       </div>
 
-      {/* Principles */}
-      <div className="max-w-5xl mx-auto px-6 py-12 border-t border-zinc-800">
-        <div className="text-xs tracking-[2px] text-zinc-500 mb-4">CORE PRINCIPLES</div>
-        <div className="grid md:grid-cols-5 gap-x-8 gap-y-6 text-sm text-zinc-400">
-          <div><span className="text-white font-medium">AI First</span> — Conversation, not drag-and-drop.</div>
-          <div><span className="text-white font-medium">Human Approval</span> — Never auto-deploys.</div>
-          <div><span className="text-white font-medium">Structured Memory</span> — DB is source of truth.</div>
-          <div><span className="text-white font-medium">Incremental</span> — Every chat improves the model.</div>
-          <div><span className="text-white font-medium">Execution Separation</span> — Hermes reasons. n8n executes (Phase 4+).</div>
-        </div>
-      </div>
-
-      {/* Footer */}
       <div className="border-t border-zinc-800 py-8 text-center text-xs text-zinc-500">
         Built for the Hermes Agent + NVIDIA + Stripe Hackathon • Phase 1: Business Discovery Engine
       </div>

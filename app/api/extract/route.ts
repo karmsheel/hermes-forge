@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { requireBusinessAccess } from '@/lib/auth';
 
 const ExtractSchema = z.object({
   businessId: z.string(),
@@ -55,6 +56,9 @@ export async function POST(request: NextRequest) {
     const parsed = ExtractSchema.parse(body);
 
     const { businessId, baseUrl, apiKey, conversation } = parsed;
+
+    const session = await requireBusinessAccess(request, businessId);
+    if (session instanceof NextResponse) return session;
 
     const url = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
 

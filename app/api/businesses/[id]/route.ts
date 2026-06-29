@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { requireBusinessAccess } from '@/lib/auth';
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+const UpdateBusinessSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  description: z.string().max(500).optional(),
+  industry: z.string().max(100).optional(),
+  teamSize: z.number().int().positive().optional(),
+  goals: z.string().max(500).optional(),
+});
+
+export async function GET(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const session = await requireBusinessAccess(request, id);
+    if (session instanceof NextResponse) return session;
+
+    const business = await prisma.business.findUnique({
+      where: { id },
+      include: {
+        processes: { orderBy: { automationScore: 'desc' } },
+        memories: { orderBy: { lastUpdated: 'desc' }, take: 12 },
+      },
+    });
+
+    return NextResponse.json(business);
+  } catch (error) {
+    console.error('Get business error', error);
+    return NextResponse.json({ error: 'Failed to load business' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const session = await requireBusinessAccess(request, id);
+    if (session instanceof NextResponse) return session;
+
+    const body = UpdateBusinessSchema.parse(await request.json());
+
+    const business = await prisma.business.update({
+      where: { id },
+      data: body,
+    });
+
+    return NextResponse.json(business);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+    console.error('Update business error', error);
+    return NextResponse.json({ error: 'Failed to update business' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const session = await requireBusinessAccess(request, id);
+    if (session instanceof NextResponse) return session;
+
+    await prisma.business.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete business error', error);
+    return NextResponse.json({ error: 'Failed to delete business' }, { status: 500 });
+  }
+}

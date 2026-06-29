@@ -1,29 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { PROCESS_CHAT_SYSTEM_PROMPT } from '@/lib/diagram';
+import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 
 const WELCOME_MESSAGE =
   "Hi! I'm Hermes. Let's map out a business process together — you'll see the diagram build live in the center as we talk.\n\nWhat process would you like to document? Start with what triggers it and who is involved.";
 
-async function getOrCreateBusiness() {
-  let business = await prisma.business.findFirst({ orderBy: { createdAt: 'desc' } });
-  if (!business) {
-    business = await prisma.business.create({
-      data: {
-        name: 'My Business',
-        description: 'Discovered via process workshop',
-      },
-    });
-  }
-  return business;
-}
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const business = await prisma.business.findFirst({
-      orderBy: { createdAt: 'desc' },
-    });
+    const session = await requireSession(request);
+    if (session instanceof NextResponse) return session;
 
+    const business = await getActiveBusinessForUser(session.userId, request);
     if (!business) {
       return NextResponse.json({ processes: [], business: null });
     }
@@ -37,6 +24,7 @@ export async function GET() {
         description: true,
         department: true,
         status: true,
+        nameStatus: true,
         diagramMermaid: true,
         diagramUpdatedAt: true,
         updatedAt: true,
@@ -45,7 +33,10 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ processes, business });
+    return NextResponse.json({
+      processes,
+      business: { id: business.id, name: business.name },
+    });
   } catch (error) {
     console.error('List processes error', error);
     return NextResponse.json({ error: 'Failed to list processes' }, { status: 500 });
@@ -54,14 +45,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const business = body.businessId
-      ? await prisma.business.findUnique({ where: { id: body.businessId } })
-      : await getOrCreateBusiness();
+    const session = await requireSession(request);
+    if (session instanceof NextResponse) return session;
 
+    const business = await getActiveBusinessForUser(session.userId, request);
     if (!business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 });
+      return NextResponse.json({ error: 'No active business. Create or select one first.' }, { status: 400 });
     }
+
+    const body = await request.json().catch(() => ({}));
 
     const process = await prisma.process.create({
       data: {
@@ -96,4 +88,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export { PROCESS_CHAT_SYSTEM_PROMPT, WELCOME_MESSAGE };
+export { WELCOME_MESSAGE };

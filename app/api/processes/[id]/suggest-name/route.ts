@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { isUntitledProcessName, suggestProcessName } from '@/lib/naming';
+import { requireProcessAccess } from '@/lib/auth';
+
+const AgentSchema = z.object({
+  baseUrl: z.string(),
+  apiKey: z.string(),
+});
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+/** Naming subagent — proposes a workflow name after the first user answers */
+export async function POST(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const body = AgentSchema.parse(await request.json());
+
+    const result = await requireProcessAccess(request, id);
+    if ('error' in result) return result.error;
+    const process = result.process;
+
+    if (!isUntitledProcessName(process.name)) {
+      return NextResponse.json({ updated: false, name: process.name });
+    }
+
+    const conversation = process.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const userMessageCount = conversation.filter((m) => m.role === 'user').length;
+    if (userMessageCount < 1) {
+      return NextResponse.json({ updated: false, reason: 'no_user_messages' });
+    }
+
+    const suggestedName = await suggestProcessName(
+      { baseUrl: body.baseUrl, apiKey: body.apiKey },
+      conversation
+    );
+
+    await prisma.process.update({
+      where: { id },
+      data: {
+        name: suggestedName,
+        nameStatus: 'pending',
+      },
+    });
+
+    const confirmationMessage = `I've named this workflow **${suggestedName}** based on what you've shared — does that work, or would you like to call it something else?`;
+
+    const lastMessage = process.messages[process.messages.length - 1];
+    const alreadyAsked =
+      lastMessage?.role === 'assistant' &&
+      lastMessage.content.includes('named this workflow');
+
+    if (!alreadyAsked) {
+      await prisma.chatMessage.create({
+        data: {
+          processId: id,
+          role: 'assistant',
+          content: confirmationMessage,
+        },
+      });
+    }
+
+    const updated = await prisma.process.findUnique({
+      where: { id },
+      include: {
+        messages: { orderBy: { createdAt: 'asc' } },
+        business: { select: { id: true, name: true } },
+      },
+    });
+
+    return NextResponse.json({
+      updated: true,
+      name: suggestedName,
+      process: updated,
+    });
+  } catch (error) {
+    console.error('Naming subagent error', error);
+    const message = error instanceof Error ? error.message : 'Naming failed';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

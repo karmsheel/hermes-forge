@@ -1,5 +1,15 @@
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { businesses: number };
+}
+
 export interface Business {
   id: string;
+  userId?: string;
   name: string;
   industry: string | null;
   description: string | null;
@@ -9,6 +19,16 @@ export interface Business {
   constraints: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BusinessSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  industry: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count: { processes: number };
 }
 
 export interface Process {
@@ -27,6 +47,7 @@ export interface Process {
   businessValue: number | null;
   complexity: number | null;
   status: string;
+  nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
   createdAt: string;
@@ -47,6 +68,7 @@ export interface ProcessSummary {
   description: string;
   department: string;
   status: string;
+  nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
   updatedAt: string;

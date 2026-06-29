@@ -61,7 +61,7 @@ export default function InterviewPage() {
     if (businessId) return businessId;
 
     // Create a placeholder business
-    const res = await fetch('/api/business', {
+    const res = await fetch('/api/businesses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -70,7 +70,6 @@ export default function InterviewPage() {
       })
     });
     const biz = await res.json();
-    localStorage.setItem('currentBusinessId', biz.id);
     setBusinessId(biz.id);
     return biz.id;
   }

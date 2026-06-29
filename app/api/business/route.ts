@@ -1,39 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
+    const session = await requireSession(request);
+    if (session instanceof NextResponse) return session;
 
-    const business = await prisma.business.create({
-      data: {
-        name: body.name || 'Untitled Business',
-        industry: body.industry || null,
-        description: body.description || null,
-        teamSize: body.teamSize || null,
-        website: body.website || null,
-        goals: body.goals || null,
-        constraints: body.constraints || null,
+    const business = await getActiveBusinessForUser(session.userId, request);
+    if (!business) {
+      return NextResponse.json(null);
+    }
+
+    const full = await prisma.business.findUnique({
+      where: { id: business.id },
+      include: {
+        processes: { orderBy: { automationScore: 'desc' } },
+        memories: { orderBy: { lastUpdated: 'desc' }, take: 12 },
       },
     });
 
-    return NextResponse.json(business);
-  } catch (error) {
-    console.error('Create business error', error);
-    return NextResponse.json({ error: 'Failed to create business' }, { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const business = await prisma.business.findFirst({
-      orderBy: { createdAt: 'desc' },
-      include: { 
-        processes: { orderBy: { automationScore: 'desc' } }, 
-        memories: { orderBy: { lastUpdated: 'desc' }, take: 12 } 
-      },
-    });
-    return NextResponse.json(business || null);
+    return NextResponse.json(full);
   } catch (error) {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
