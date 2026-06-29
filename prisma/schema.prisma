@@ -48,8 +48,24 @@ model Process {
   complexity         Int?     // 1-10
 
   status             String   @default("discovered") // discovered | reviewed | approved
+
+  // Live process diagram (Mermaid source) — updated as the user chats
+  diagramMermaid     String?
+  diagramUpdatedAt   DateTime?
+
+  messages           ChatMessage[]
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  processId String
+  process   Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  role      String   // user | assistant
+  content   String
+  createdAt DateTime @default(now())
 }
 
 model Memory {

@@ -20,12 +20,12 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             <Link href="/dashboard" className="text-zinc-400 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/interview" className="text-zinc-400 hover:text-white transition-colors">Interview</Link>
+            <Link href="/workshop" className="text-zinc-400 hover:text-white transition-colors">Workshop</Link>
             <Link 
-              href="/interview" 
+              href="/workshop" 
               className="btn-primary text-sm"
             >
-              Start Interview <ArrowRight className="w-4 h-4" />
+              Open Workshop <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -48,10 +48,10 @@ export default function Landing() {
 
         <div className="flex items-center justify-center gap-4">
           <Link 
-            href="/interview" 
+            href="/workshop" 
             className="btn-primary text-base px-8 py-3 rounded-xl flex items-center gap-3"
           >
-            Start Business Interview <ArrowRight className="w-5 h-5" />
+            Open Process Workshop <ArrowRight className="w-5 h-5" />
           </Link>
           <Link 
             href="/dashboard" 
@@ -73,9 +73,9 @@ export default function Landing() {
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-emerald-400" />
             </div>
-            <div className="font-semibold text-lg">AI-First Interview</div>
+            <div className="font-semibold text-lg">Live Process Diagrams</div>
             <div className="text-zinc-400 text-sm leading-relaxed">
-              Talk naturally. Hermes extracts goals, customers, delivery, tools, and repetitive work — no forms.
+              Chat with Hermes on the right while a Mermaid diagram builds in the center — correct it as you go.
             </div>
           </div>
           <div className="space-y-3">

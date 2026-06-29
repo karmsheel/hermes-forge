@@ -27,8 +27,36 @@ export interface Process {
   businessValue: number | null;
   complexity: number | null;
   status: string;
+  diagramMermaid: string | null;
+  diagramUpdatedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  processId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+export interface ProcessSummary {
+  id: string;
+  name: string;
+  description: string;
+  department: string;
+  status: string;
+  diagramMermaid: string | null;
+  diagramUpdatedAt: string | null;
+  updatedAt: string;
+  createdAt: string;
+  _count: { messages: number };
+}
+
+export interface ProcessWithMessages extends Process {
+  messages: ChatMessage[];
+  business?: { id: string; name: string };
 }
 
 export interface Memory {

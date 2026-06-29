@@ -53,6 +53,30 @@ export async function POST() {
     },
   ];
 
+  const demoDiagrams: Record<string, string> = {
+    "New customer onboarding": `flowchart TD
+  trigger([Stripe payment received]) --> check[Review customer details]
+  check --> notion[Create Notion workspace]
+  notion --> email[Send welcome email]
+  email --> cal[Book intro call via Calendly]
+  cal --> done([Onboarding complete])`,
+    "Monthly churn survey follow-up": `flowchart TD
+  trigger([Cancellation in Stripe]) --> lookup[Look up usage history]
+  lookup --> craft[Craft personalized offer]
+  craft --> send[Send via Gmail]
+  send --> log[Log in CRM]
+  log --> done([Follow-up complete])`,
+    "Content repurposing": `flowchart TD
+  trigger([Episode published]) --> listen[Review episode highlights]
+  listen --> twitter[Draft Twitter thread]
+  listen --> linkedin[Draft LinkedIn post]
+  listen --> newsletter[Draft newsletter section]
+  twitter --> schedule[Schedule posts]
+  linkedin --> schedule
+  newsletter --> schedule
+  schedule --> done([Content live])`,
+  };
+
   for (const p of demoProcesses) {
     const score = Math.round((p.repetition! * 0.4 + p.businessValue! * 0.5 - p.complexity! * 0.25) * 6.5);
 
@@ -63,6 +87,8 @@ export async function POST() {
         automationScore: Math.max(35, Math.min(92, score)),
         estimatedTimeSaved: Math.round((p.repetition! + p.businessValue!) / 1.8),
         status: "discovered",
+        diagramMermaid: demoDiagrams[p.name] ?? null,
+        diagramUpdatedAt: demoDiagrams[p.name] ? new Date() : null,
       },
     });
   }

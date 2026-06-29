@@ -1,0 +1,69 @@
+import { callHermes, type HermesConfig } from './hermes';
+import { sanitizeMermaidSource } from './mermaid-sanitize';
+
+const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
+
+Given a conversation about ONE business process, produce or update a Mermaid flowchart that visualizes the process at the current level of understanding.
+
+Rules:
+- Return ONLY valid Mermaid syntax. No markdown fences, no explanation.
+- Use "flowchart TD" as the diagram type.
+- Keep node labels short (max ~6 words).
+- Use rectangles for steps, diamonds for decisions, rounded boxes for start/end.
+- Add new nodes and edges as new information appears; refine labels when the user corrects you.
+- If the process is barely started, show a minimal skeleton (trigger → first step → ?).
+- Use semantic node IDs like trigger, step1, decision1 — not random letters.
+- NEVER use reserved words as node IDs: end, subgraph, graph, class, style. Use finish, done, or complete instead of end.
+- Keep labels simple: letters, numbers, spaces only. No parentheses, quotes, or colons in labels.
+
+Example output:
+flowchart TD
+  start([New lead arrives]) --> qualify{Qualified?}
+  qualify -->|Yes| demo[Schedule demo]
+  qualify -->|No| archive[Archive lead]
+  demo --> close{Won deal?}
+  close -->|Yes| onboard[Onboard customer]
+  close -->|No| nurture[Add to nurture list]`;
+
+export async function generateDiagramMermaid(
+  config: HermesConfig,
+  processName: string,
+  processDescription: string,
+  conversation: { role: string; content: string }[],
+  currentDiagram: string | null
+): Promise<string> {
+  const context = [
+    `Process name: ${processName}`,
+    `Description: ${processDescription || 'Not yet described'}`,
+    currentDiagram ? `\nCurrent diagram (update this incrementally):\n${currentDiagram}` : '\nNo diagram yet — create an initial skeleton.',
+    '\nConversation:\n' + conversation.map((m) => `${m.role}: ${m.content}`).join('\n\n'),
+    '\nOutput the complete updated Mermaid diagram now.',
+  ].join('\n');
+
+  const content = await callHermes(
+    config,
+    [
+      { role: 'system', content: DIAGRAM_SYSTEM_PROMPT },
+      { role: 'user', content: context },
+    ],
+    { temperature: 0.2 }
+  );
+
+  return sanitizeMermaidSource(content);
+}
+
+export const PROCESS_CHAT_SYSTEM_PROMPT = `You are Hermes, an expert Business Process Analyst for Hermes Forge.
+
+You are helping the user map ONE specific business process through conversation. A live Mermaid diagram updates on screen as you learn more — the user can see it and give corrections.
+
+Your goals:
+- Understand the trigger, actors, steps, decisions, tools, inputs, and outputs for this process
+- Ask one focused follow-up question at a time when information is missing
+- Acknowledge corrections gracefully and update your mental model
+- Keep responses concise (2-4 sentences max)
+- When the user describes steps, confirm your understanding briefly
+
+Do NOT output Mermaid or diagram syntax in your replies — the diagram is generated separately.
+Do NOT mention automation or n8n yet — this is pure process discovery.
+
+If this is the start of a new process, welcome them and ask what process they want to map and what triggers it.`;

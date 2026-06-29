@@ -131,7 +131,7 @@ export default function DashboardPage() {
             <button onClick={exportKnowledge} className="btn-primary text-sm flex items-center gap-2">
               <Download className="w-4 h-4" /> Export Knowledge Graph
             </button>
-            <Link href="/interview" className="btn-secondary text-sm">Continue Interview</Link>
+            <Link href="/workshop" className="btn-secondary text-sm">Open Workshop</Link>
           </div>
         </div>
       </div>

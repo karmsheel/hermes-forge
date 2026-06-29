@@ -46,3 +46,7 @@ next-env.d.ts
 .env
 *.db
 .next
+
+# temp logs
+terminals/
+
