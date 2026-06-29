@@ -6,16 +6,21 @@ Built for the **Hermes Agent Accelerated Business Hackathon** (NVIDIA × Stripe 
 
 ## Repository layout
 
-This repo contains two products:
-
-| Path | What it is | Run locally | Deploy |
+| Repo | What it is | Run locally | Deploy |
 |------|------------|-------------|--------|
-| **Root** (`/`) | **Desktop / local app** — Next.js, auth, projects, process workshop, live Mermaid diagrams | `npm run dev` → http://localhost:3000 | Self-host or package as desktop exe (future) |
-| **`website/`** | **Public marketing site** — landing page, GitHub link, desktop download CTA | `cd website && npm run dev` → http://localhost:4321 | Static `website/dist/` to your domain |
+| **[hermes-forge](https://github.com/karmsheel/hermes-forge)** (this repo) | **Desktop / local app** — Next.js, auth, projects, process workshop, live Mermaid diagrams | `npm run dev` → http://localhost:3000 | Self-host or `npm run desktop:build` |
+| **[hermes-forge-website](https://github.com/karmsheel/hermes-forge-website)** (`website/` submodule) | **Public marketing site** — landing page, GitHub link, desktop download CTA | `npm run dev:website` → http://localhost:4321 | Static `website/dist/` to your domain |
 
-The app entry (`/`) redirects to `/login` or `/projects`. Marketing lives only in `website/`.
+The app entry (`/`) redirects to `/login` or `/projects`. Marketing lives in the separate website repo.
 
-See [`website/README.md`](website/README.md) for site config and deployment.
+**Clone with the marketing site:**
+```bash
+git clone --recurse-submodules https://github.com/karmsheel/hermes-forge.git
+# or after a plain clone:
+git submodule update --init --recursive
+```
+
+See [`website/README.md`](website/README.md) (in the submodule) for site config and deployment.
 
 ## Quickstart (app)
 
@@ -25,8 +30,10 @@ See [`website/README.md`](website/README.md) for site config and deployment.
    # API_SERVER_ENABLED + CORS for localhost:3000
    ```
 
-2. In this repo:
+2. Clone and install (include submodule if you need the marketing site):
    ```bash
+   git clone --recurse-submodules https://github.com/karmsheel/hermes-forge.git
+   cd hermes-forge
    npm install
    npx prisma migrate dev
    npm run dev
@@ -66,11 +73,13 @@ Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forg
 
 ## Marketing site
 
+Lives in [hermes-forge-website](https://github.com/karmsheel/hermes-forge-website), vendored here as `website/`:
+
 ```bash
-cd website
-npm install
-npm run dev    # http://localhost:4321
-npm run build  # output → website/dist/
+git submodule update --init website   # if not cloned with --recurse-submodules
+cd website && npm install
+npm run dev:website    # from repo root → http://localhost:4321
+npm run build:website  # output → website/dist/
 ```
 
 Update `website/src/config.ts` before deploy: `appUrl` (optional hosted web app), `downloadUrl`, and `astro.config.mjs` `site` for your domain.

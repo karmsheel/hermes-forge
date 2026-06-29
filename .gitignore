@@ -48,11 +48,6 @@ next-env.d.ts
 *.db
 .next
 
-# marketing site (website/ has its own .gitignore too)
-website/node_modules/
-website/dist/
-website/.astro/
-
 # temp logs
 terminals/
 
