@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "reinstall": "node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\" && npm install"
   },
   "dependencies": {
     "astro": "^5.7.10"
