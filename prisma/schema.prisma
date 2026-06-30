@@ -61,7 +61,8 @@ model Process {
   businessValue      Int?     // 1-10
   complexity         Int?     // 1-10
 
-  status             String   @default("discovered") // discovered | reviewed | approved
+  status             String   @default("mapping") // mapping | reviewed | approved
+  approvedAt         DateTime?
   nameStatus         String   @default("pending")    // pending | confirmed — auto-name awaiting user OK
 
   // Live process diagram (Mermaid source) — updated as the user chats
@@ -69,8 +70,38 @@ model Process {
   diagramUpdatedAt   DateTime?
 
   messages           ChatMessage[]
+  automation         Automation?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model Automation {
+  id                String   @id @default(cuid())
+  processId         String   @unique
+  process           Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+
+  type              String?  // hermes_cron | n8n_workflow (set on deploy — Sprint 3)
+  status            String   @default("designing") // designing | ready_to_deploy | deployed | needs_credentials | active | paused | failed
+  planJson          String?
+  integrationsJson  String?
+  credentialMapJson String?
+  externalId        String?
+  externalUrl       String?
+  deployedAt        DateTime?
+
+  messages          AutomationMessage[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AutomationMessage {
+  id           String     @id @default(cuid())
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  role         String     // user | assistant
+  content      String
+  createdAt    DateTime   @default(now())
 }
 
 model ChatMessage {

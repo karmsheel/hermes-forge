@@ -15,8 +15,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ processes: [], business: null });
     }
 
+    const statusFilter = request.nextUrl.searchParams.get('status');
+
     const processes = await prisma.process.findMany({
-      where: { businessId: business.id },
+      where: {
+        businessId: business.id,
+        ...(statusFilter ? { status: statusFilter } : {}),
+      },
       orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
@@ -24,6 +29,7 @@ export async function GET(request: NextRequest) {
         description: true,
         department: true,
         status: true,
+        approvedAt: true,
         nameStatus: true,
         diagramMermaid: true,
         diagramUpdatedAt: true,

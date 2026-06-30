@@ -1,0 +1,154 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import {
+  buildAutomationStudioData,
+  getOrCreateAutomation,
+  requireApprovedProcessAccess,
+} from '@/lib/automation-access';
+import {
+  buildCronPrompt,
+  defaultCronDeliver,
+  defaultCronSchedule,
+  slugifyJobName,
+} from '@/lib/automation-deploy';
+import { createHermesJob } from '@/lib/hermes-jobs';
+import { createN8nWorkflow } from '@/lib/n8n-client';
+import { generateN8nWorkflow } from '@/lib/n8n-workflow-gen';
+import { parseAutomationPlan, parseCredentialMap, parseIntegrations } from '@/lib/automation-types';
+
+const DeploySchema = z.object({
+  type: z.enum(['hermes_cron', 'n8n_workflow']),
+  hermesBaseUrl: z.string(),
+  hermesApiKey: z.string(),
+  n8nBaseUrl: z.string().optional(),
+  n8nApiKey: z.string().optional(),
+  schedule: z.string().optional(),
+  deliver: z.string().optional(),
+  credentialMap: z.record(z.string(), z.object({ id: z.string(), name: z.string(), type: z.string().optional() })).optional(),
+});
+
+type RouteContext = { params: Promise<{ id: string }> };
+
+export async function POST(request: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const body = DeploySchema.parse(await request.json());
+
+    const result = await requireApprovedProcessAccess(request, id);
+    if ('error' in result) return result.error;
+    const process = result.process;
+
+    const automation = await getOrCreateAutomation(id);
+    const plan = parseAutomationPlan(automation.planJson);
+    if (!plan?.summary) {
+      return NextResponse.json(
+        { error: 'Design the automation in chat before deploying' },
+        { status: 400 }
+      );
+    }
+
+    if (automation.externalId) {
+      return NextResponse.json(
+        { error: 'Automation already deployed. Open the external link to manage it.' },
+        { status: 409 }
+      );
+    }
+
+    const integrations = parseIntegrations(automation.integrationsJson);
+    const credentialMap = body.credentialMap ?? parseCredentialMap(automation.credentialMapJson);
+
+    if (body.type === 'n8n_workflow') {
+      if (!body.n8nBaseUrl || !body.n8nApiKey) {
+        return NextResponse.json({ error: 'n8n connection required' }, { status: 400 });
+      }
+
+      const unmapped = integrations.filter((i) => !credentialMap[i.name]?.id);
+      if (integrations.length > 0 && unmapped.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Map credentials for: ${unmapped.map((i) => i.name).join(', ')}`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const generated = await generateN8nWorkflow(
+        { baseUrl: body.hermesBaseUrl, apiKey: body.hermesApiKey },
+        {
+          processName: process.name,
+          description: process.description,
+          trigger: process.trigger,
+          diagramMermaid: process.diagramMermaid,
+          plan,
+          integrations,
+          credentialMap,
+        }
+      );
+
+      const { workflowId, editorUrl } = await createN8nWorkflow(body.n8nBaseUrl, body.n8nApiKey, {
+        name: generated.name,
+        nodes: generated.nodes,
+        connections: generated.connections,
+        settings: generated.settings,
+        active: false,
+      });
+
+      const updated = await prisma.automation.update({
+        where: { id: automation.id },
+        data: {
+          type: 'n8n_workflow',
+          status: 'needs_credentials',
+          credentialMapJson: JSON.stringify(credentialMap),
+          externalId: workflowId,
+          externalUrl: editorUrl,
+          deployedAt: new Date(),
+        },
+        include: { messages: { orderBy: { createdAt: 'asc' } } },
+      });
+
+      return NextResponse.json({
+        studio: buildAutomationStudioData(process, updated),
+        deploy: { type: 'n8n_workflow', workflowId, editorUrl },
+      });
+    }
+
+    const schedule = body.schedule ?? defaultCronSchedule(plan);
+    const deliver = body.deliver ?? defaultCronDeliver(plan);
+    const prompt = buildCronPrompt(process, plan);
+    const jobName = `forge-${slugifyJobName(process.name)}`;
+
+    const { jobId } = await createHermesJob(body.hermesBaseUrl, body.hermesApiKey, {
+      schedule,
+      prompt,
+      name: jobName,
+      deliver,
+    });
+
+    const updated = await prisma.automation.update({
+      where: { id: automation.id },
+      data: {
+        type: 'hermes_cron',
+        status: 'active',
+        externalId: jobId,
+        externalUrl: null,
+        deployedAt: new Date(),
+      },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    return NextResponse.json({
+      studio: buildAutomationStudioData(process, updated),
+      deploy: { type: 'hermes_cron', jobId, schedule, deliver },
+    });
+  } catch (error) {
+    console.error('Automation deploy error', error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Deploy failed' },
+      { status: 502 }
+    );
+  }
+}

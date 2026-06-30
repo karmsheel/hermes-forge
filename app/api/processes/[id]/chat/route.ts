@@ -4,6 +4,12 @@ import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
 import { buildChatSystemPrompt } from '@/lib/diagram';
 import { requireProcessAccess } from '@/lib/auth';
+import { buildApprovalUpdate } from '@/lib/process-approve';
+import {
+  assistantAskedAccuracyQuestion,
+  shouldPromptForAccuracy,
+  userConfirmsAccuracy,
+} from '@/lib/process-approval';
 
 const ChatSchema = z.object({
   content: z.string().min(1),
@@ -26,10 +32,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: { processId: id, role: 'user', content: body.content },
     });
 
-    const allMessages = [
-      ...process.messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user', content: body.content },
-    ];
+    const priorMessages = process.messages.map((m) => ({ role: m.role, content: m.content }));
+    const lastAssistant = [...priorMessages].reverse().find((m) => m.role === 'assistant');
+
+    let approvedFromChat = false;
+    if (
+      process.status !== 'approved' &&
+      lastAssistant &&
+      assistantAskedAccuracyQuestion(lastAssistant.content) &&
+      userConfirmsAccuracy(body.content)
+    ) {
+      approvedFromChat = true;
+      await prisma.process.update({
+        where: { id },
+        data: buildApprovalUpdate('approved'),
+      });
+    }
+
+    const allMessages = [...priorMessages, { role: 'user', content: body.content }];
+
+    const messageCount = allMessages.length;
+    const hasDiagram = Boolean(process.diagramMermaid?.trim());
+    const recentAccuracyAsk = priorMessages
+      .slice(-4)
+      .some((m) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
 
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey },
@@ -40,6 +66,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
             processName: process.name,
             description: process.description,
             nameStatus: process.nameStatus,
+            status: approvedFromChat ? 'approved' : process.status,
+            hasDiagram,
+            shouldAskAccuracy:
+              !approvedFromChat &&
+              process.status !== 'approved' &&
+              !recentAccuracyAsk &&
+              shouldPromptForAccuracy({
+                status: process.status,
+                diagramMermaid: process.diagramMermaid,
+                messageCount,
+              }),
           }),
         },
         {
@@ -86,6 +123,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       process: updated,
       runBackgroundAgents: true,
+      approved: approvedFromChat,
     });
   } catch (error) {
     console.error('Process chat error', error);

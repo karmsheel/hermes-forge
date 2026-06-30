@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, RefreshCw, Download, Target } from 'lucide-react';
+import { AppNav } from '@/components/shell/AppNav';
 import { toast } from 'sonner';
 
 interface Process {
@@ -121,8 +122,7 @@ export default function DashboardPage() {
             <button onClick={exportKnowledge} className="btn-primary text-sm flex items-center gap-2">
               <Download className="w-4 h-4" /> Export Knowledge Graph
             </button>
-            <Link href="/projects" className="btn-secondary text-sm">Projects</Link>
-            <Link href="/workshop" className="btn-secondary text-sm">Open Workshop</Link>
+            <AppNav current="dashboard" />
           </div>
         </div>
       </div>

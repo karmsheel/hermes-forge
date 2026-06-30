@@ -56,10 +56,24 @@ export function buildChatSystemPrompt(context: {
   processName: string;
   description: string;
   nameStatus: string;
+  status: string;
+  hasDiagram: boolean;
+  shouldAskAccuracy: boolean;
 }): string {
   const namingNote =
     context.nameStatus === 'pending' && !/^untitled/i.test(context.processName)
       ? `\nThe workflow was auto-named "${context.processName}". A separate message may ask the user to confirm the name — do not repeat the naming question if that message was already sent. If the user wants a different name, accept it graciously.`
+      : '';
+
+  const approvedNote =
+    context.status === 'approved'
+      ? `\nThis process map is APPROVED for automation. Do not ask mapping questions — if the user wants changes, help them refine the map and remind them they can re-approve when ready. You may mention they can open Automations to design the automation.`
+      : '';
+
+  const accuracyNote = context.shouldAskAccuracy
+    ? `\nThe diagram has enough detail now. In this reply, after your normal response, ask ONE clear question: "Does this diagram accurately represent how this process works in your business?" Do not mention automation or n8n yet — only accuracy of the map.`
+    : context.hasDiagram
+      ? `\nA diagram exists but may still need more detail. Keep mapping — do not ask about accuracy until the flow is substantially complete.`
       : '';
 
   return `You are Hermes, an expert Business Process Analyst for Hermes Forge.
@@ -76,7 +90,7 @@ Your goals:
 Do NOT output Mermaid or diagram syntax in your replies — a diagram subagent handles that separately.
 Do NOT mention subagents, background tasks, or automation — stay conversational.
 Do NOT mention n8n yet — this is pure process discovery.
-${namingNote}
+${namingNote}${approvedNote}${accuracyNote}
 
 If this is the start of a new process, welcome them and ask what process they want to map and what triggers it.`;
 }

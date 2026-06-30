@@ -1,3 +1,5 @@
+import type { AutomationDeployStatus } from './process-status';
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -47,6 +49,7 @@ export interface Process {
   businessValue: number | null;
   complexity: number | null;
   status: string;
+  approvedAt: string | null;
   nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
@@ -68,12 +71,17 @@ export interface ProcessSummary {
   description: string;
   department: string;
   status: string;
+  approvedAt: string | null;
   nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
   updatedAt: string;
   createdAt: string;
   _count: { messages: number };
+}
+
+export interface ApprovedProcessSummary extends ProcessSummary {
+  automationStatus: AutomationDeployStatus;
 }
 
 export interface ProcessWithMessages extends Process {
@@ -93,6 +101,23 @@ export interface Memory {
 export interface HermesConfig {
   baseUrl: string; // e.g. http://localhost:8642
   apiKey: string;
+}
+
+export interface N8nConfig {
+  baseUrl: string; // e.g. http://127.0.0.1:5678
+  apiKey: string;
+}
+
+export interface N8nConnectionStatus {
+  state: 'idle' | 'testing' | 'connected' | 'error';
+  latencyMs?: number;
+  error?: string;
+}
+
+export interface N8nCredentialSummary {
+  id: string;
+  name: string;
+  type: string;
 }
 
 export type HermesConnectionState =

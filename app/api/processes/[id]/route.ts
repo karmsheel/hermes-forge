@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
+import { buildApprovalUpdate } from '@/lib/process-approve';
+import { canApproveForAutomation, isProcessStatus } from '@/lib/process-status';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -25,6 +27,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const body = await request.json();
 
+    if (body.status !== undefined) {
+      if (!isProcessStatus(body.status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+      if (body.status === 'approved' && !canApproveForAutomation(result.process)) {
+        return NextResponse.json(
+          { error: 'Process needs a diagram before it can be approved for automation' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const approvalPatch =
+      body.status !== undefined ? buildApprovalUpdate(body.status) : {};
+
     const process = await prisma.process.update({
       where: { id },
       data: {
@@ -34,6 +51,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         diagramMermaid: body.diagramMermaid,
         diagramUpdatedAt: body.diagramMermaid ? new Date() : undefined,
         nameStatus: body.name !== undefined ? 'confirmed' : undefined,
+        ...approvalPatch,
       },
     });
 

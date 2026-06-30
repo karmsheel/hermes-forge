@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Plus, GitBranch, Loader2, Building2, Pencil, Check, X } from "lucide-react";
 import type { ProcessSummary } from "@/lib/types";
+import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
 
 interface ProcessSidebarProps {
   processes: ProcessSummary[];
@@ -190,10 +191,15 @@ export function ProcessSidebar({
                               {proc.description}
                             </div>
                           )}
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-[10px] px-1.5 py-px rounded bg-zinc-800 text-zinc-400">
                               {proc.department}
                             </span>
+                            {proc.status === "approved" && (
+                              <span className="text-[10px] px-1.5 py-px rounded bg-emerald-500/10 text-emerald-400">
+                                {PROCESS_STATUS_LABELS.approved}
+                              </span>
+                            )}
                             <span className="text-[10px] text-zinc-600">
                               {proc._count.messages} msgs
                             </span>

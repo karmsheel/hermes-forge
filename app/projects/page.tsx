@@ -8,6 +8,7 @@ import { FolderKanban, Plus, ArrowRight, Loader2, LogOut, User, Pencil, Check, X
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { AppNav } from "@/components/shell/AppNav";
 import { clearLegacyActiveProcessId } from "@/lib/workshop-storage";
 import type { BusinessSummary, UserProfile } from "@/lib/types";
 
@@ -147,6 +148,7 @@ export default function BusinessesPage() {
             <span className="font-semibold">Hermes Forge</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
+            <AppNav current="projects" />
             <HermesStatusBadge onClick={() => setConnectionOpen(true)} />
             <Link href="/profile" className="text-zinc-400 hover:text-white flex items-center gap-1">
               <User className="w-4 h-4" />

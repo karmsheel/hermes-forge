@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Building2, LayoutDashboard, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
+import { AppNav } from "@/components/shell/AppNav";
+import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
@@ -29,6 +31,7 @@ export default function WorkshopPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [agentsRunning, setAgentsRunning] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
+  const [approving, setApproving] = useState(false);
   const { config: hermesConfig } = useHermesConnection();
 
   const loadProcessList = useCallback(async () => {
@@ -177,6 +180,30 @@ export default function WorkshopPage() {
     [businessId, hermesConfig, loadProcess, loadProcessList]
   );
 
+  async function handleApproveForAutomation() {
+    if (!activeId || !activeProcess) return;
+    setApproving(true);
+    try {
+      const res = await fetch(`/api/processes/${activeId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "approved" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Approval failed");
+      }
+      const updated = await res.json();
+      setActiveProcess((prev) => (prev ? { ...prev, ...updated } : prev));
+      await loadProcessList();
+      toast.success("Process approved for automation");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not approve process");
+    } finally {
+      setApproving(false);
+    }
+  }
+
   async function handleRenameProcess(id: string, name: string) {
     const res = await fetch(`/api/processes/${id}`, {
       method: "PATCH",
@@ -229,6 +256,11 @@ export default function WorkshopPage() {
       setActiveProcess(data.process);
       setChatLoading(false);
 
+      if (data.approved) {
+        toast.success("Process approved for automation");
+        await loadProcessList();
+      }
+
       if (data.runBackgroundAgents) {
         void runBackgroundAgents(activeId);
       } else {
@@ -243,6 +275,9 @@ export default function WorkshopPage() {
 
   const diagramChart = activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
+  const isApproved = activeProcess?.status === "approved";
+  const canApprove =
+    activeProcess && canApproveForAutomation(activeProcess) && !approving;
 
   return (
     <div className="h-screen flex flex-col bg-zinc-950 overflow-hidden">
@@ -261,12 +296,7 @@ export default function WorkshopPage() {
           >
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
-          <Link href="/projects" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> Projects
-          </Link>
-          <Link href="/dashboard" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
-            <LayoutDashboard className="w-3 h-3" /> Dashboard
-          </Link>
+          <AppNav current="workshop" />
         </div>
       </header>
 
@@ -293,6 +323,39 @@ export default function WorkshopPage() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
+              {activeProcess && (
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                    isApproved
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                      : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                  }`}
+                >
+                  {isApproved
+                    ? PROCESS_STATUS_LABELS.approved
+                    : PROCESS_STATUS_LABELS.mapping}
+                </span>
+              )}
+              {canApprove && (
+                <button
+                  type="button"
+                  onClick={handleApproveForAutomation}
+                  disabled={approving}
+                  className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Approve for automation
+                </button>
+              )}
+              {isApproved && (
+                <Link
+                  href="/automations"
+                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-emerald-400 border-emerald-500/30"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  Open in Automations
+                </Link>
+              )}
               {agentsRunning && (
                 <div className="text-[10px] text-emerald-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
