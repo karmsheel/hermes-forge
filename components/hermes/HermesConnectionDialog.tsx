@@ -33,7 +33,7 @@ export function HermesConnectionDialog({ open, onClose }: HermesConnectionDialog
         <button
           type="button"
           onClick={onClose}
-          className="absolute -top-2 -right-2 z-10 p-2 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white"
+          className="absolute -top-2 -right-2 z-10 p-2 rounded-full bg-bg-muted border border-border-strong text-text hover:text-text-strong"
         >
           <X className="w-4 h-4" />
         </button>

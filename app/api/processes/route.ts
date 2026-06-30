@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
-
-const WELCOME_MESSAGE =
-  "Hi! I'm Hermes. Let's map out a business process together — you'll see the diagram build live in the center as we talk.\n\nWhat process would you like to document? Start with what triggers it and who is involved.";
+import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,6 +53,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
 
+    const diagramMermaid =
+      typeof body.diagramMermaid === 'string' && body.diagramMermaid.trim()
+        ? body.diagramMermaid.trim()
+        : null;
+
     const process = await prisma.process.create({
       data: {
         businessId: business.id,
@@ -62,6 +65,8 @@ export async function POST(request: NextRequest) {
         description: body.description || '',
         department: body.department || 'Operations',
         status: 'mapping',
+        diagramMermaid,
+        diagramUpdatedAt: diagramMermaid ? new Date() : null,
       },
     });
 
@@ -88,4 +93,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export { WELCOME_MESSAGE };

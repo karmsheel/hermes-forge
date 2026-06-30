@@ -6,7 +6,7 @@ import { getSession } from "@/lib/auth";
 /** App entry — welcome sign-in / sign-up for first launch */
 export default async function WelcomePage() {
   const session = await getSession();
-  if (session) redirect("/projects");
+  if (session) redirect("/home");
 
   return (
     <Suspense>

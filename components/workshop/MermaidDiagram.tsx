@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Loader2, GitBranch, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 
 interface MermaidDiagramProps {
@@ -14,7 +15,7 @@ const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
 const VIEWPORT_PADDING = 40;
 
-let mermaidInitialized = false;
+
 
 function getSvgDimensions(svg: SVGSVGElement): { width: number; height: number } {
   const viewBox = svg.viewBox?.baseVal;
@@ -29,6 +30,7 @@ function getSvgDimensions(svg: SVGSVGElement): { width: number; height: number }
 }
 
 export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
+  const { resolved } = useTheme();
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const renderId = useId().replace(/:/g, "");
@@ -97,32 +99,41 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
       try {
         const mermaid = (await import("mermaid")).default;
 
-        if (!mermaidInitialized) {
-          mermaid.initialize({
-            startOnLoad: false,
-            securityLevel: "loose",
-            theme: "dark",
-            themeVariables: {
-              darkMode: true,
-              background: "#09090b",
-              primaryColor: "#27272a",
-              primaryTextColor: "#fafafa",
-              primaryBorderColor: "#52525b",
-              lineColor: "#a1a1aa",
-              secondaryColor: "#18181b",
-              tertiaryColor: "#3f3f46",
-              fontFamily: "system-ui, sans-serif",
-            },
-            flowchart: {
-              htmlLabels: false,
-              curve: "basis",
-              padding: 12,
-              nodeSpacing: 40,
-              rankSpacing: 50,
-            },
-          });
-          mermaidInitialized = true;
-        }
+        const isDark = resolved === "dark";
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: isDark ? "dark" : "neutral",
+          themeVariables: isDark
+            ? {
+                darkMode: true,
+                background: "#1a1917",
+                primaryColor: "#2a2825",
+                primaryTextColor: "#e8e4dc",
+                primaryBorderColor: "#46433c",
+                lineColor: "#9a9690",
+                secondaryColor: "#222120",
+                tertiaryColor: "#333128",
+                fontFamily: "system-ui, sans-serif",
+              }
+            : {
+                background: "#faf9f7",
+                primaryColor: "#fffefc",
+                primaryTextColor: "#1a1916",
+                primaryBorderColor: "#c9d0da",
+                lineColor: "#74716b",
+                secondaryColor: "#f4f5f7",
+                tertiaryColor: "#e1e5eb",
+                fontFamily: "system-ui, sans-serif",
+              },
+          flowchart: {
+            htmlLabels: false,
+            curve: "basis",
+            padding: 12,
+            nodeSpacing: 40,
+            rankSpacing: 50,
+          },
+        });
 
         await mermaid.parse(source);
         const { svg } = await mermaid.render(`mermaid-${renderId}-${Date.now()}`, source);
@@ -158,7 +169,7 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
     return () => {
       cancelled = true;
     };
-  }, [chart, renderId, applyScale]);
+  }, [chart, renderId, applyScale, resolved]);
 
   useEffect(() => {
     if (!naturalSize) return;
@@ -193,13 +204,13 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
   if (!chart?.trim()) {
     return (
       <div className={`flex flex-col items-center justify-center h-full text-center p-8 ${className}`}>
-        <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-          <GitBranch className="w-7 h-7 text-zinc-600" />
+        <div className="w-14 h-14 rounded-2xl bg-bg-panel border border-border flex items-center justify-center mb-4">
+          <GitBranch className="w-7 h-7 text-text-soft" />
         </div>
-        <p className="text-zinc-400 text-sm max-w-xs">
+        <p className="text-text-muted text-sm max-w-xs">
           Your process diagram will appear here as you chat with Hermes.
         </p>
-        <p className="text-zinc-600 text-xs mt-2">Describe triggers, steps, and decisions on the right.</p>
+        <p className="text-text-soft text-xs mt-2">Describe triggers, steps, and decisions on the right.</p>
       </div>
     );
   }
@@ -211,15 +222,15 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
         className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-5"
       >
         {rendering && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 z-10">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+          <div className="absolute inset-0 flex items-center justify-center bg-bg/60 z-10">
+            <Loader2 className="w-6 h-6 animate-spin text-green" />
           </div>
         )}
 
         {error ? (
           <div className="p-6 space-y-3 max-w-full">
             <p className="text-amber-400 text-sm">Diagram could not be rendered. Raw source shown below.</p>
-            <pre className="text-xs text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-xl p-4 overflow-auto font-mono whitespace-pre-wrap">
+            <pre className="text-xs text-text-muted bg-bg-panel border border-border rounded-xl p-4 overflow-auto font-mono whitespace-pre-wrap">
               {sanitizedChart || chart}
             </pre>
           </div>
@@ -229,34 +240,34 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
       </div>
 
       {!error && naturalSize && (
-        <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/90 px-4 py-2 flex items-center justify-center gap-2">
+        <div className="shrink-0 border-t border-border bg-bg/90 px-4 py-2 flex items-center justify-center gap-2">
           <button
             onClick={zoomOut}
             disabled={zoom <= MIN_ZOOM}
-            className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
             title="Zoom out"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
 
-          <span className="text-xs text-zinc-500 tabular-nums min-w-[3.5rem] text-center">
+          <span className="text-xs text-text-muted tabular-nums min-w-[3.5rem] text-center">
             {displayPercent}%
           </span>
 
           <button
             onClick={zoomIn}
             disabled={zoom >= MAX_ZOOM}
-            className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 disabled:opacity-40 transition-colors"
+            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
             title="Zoom in"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
 
-          <div className="w-px h-5 bg-zinc-800 mx-1" />
+          <div className="w-px h-5 bg-bg-muted mx-1" />
 
           <button
             onClick={resetZoom}
-            className="p-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-colors flex items-center gap-1.5 text-xs px-3"
+            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text transition-colors flex items-center gap-1.5 text-xs px-3"
             title="Fit to screen"
           >
             <Maximize2 className="w-3.5 h-3.5" />

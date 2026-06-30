@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Building2, LayoutDashboard, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { useShell } from "@/components/shell/ShellContext";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
-import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import {
   clearActiveProcessId,
+  consumePendingHermesReply,
   getActiveProcessId,
   setActiveProcessId,
 } from "@/lib/workshop-storage";
@@ -28,8 +28,14 @@ export default function WorkshopPage() {
   const [creating, setCreating] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [agentsRunning, setAgentsRunning] = useState(false);
-  const [connectionOpen, setConnectionOpen] = useState(false);
-  const { config: hermesConfig } = useHermesConnection();
+  const { openHermesConnection } = useShell();
+  const { config: hermesConfig, isConnected } = useHermesConnection();
+  const pendingReplyProcessIdRef = useRef<string | null>(null);
+  const pendingReplySentRef = useRef(false);
+
+  useEffect(() => {
+    pendingReplyProcessIdRef.current = consumePendingHermesReply();
+  }, []);
 
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
@@ -192,29 +198,31 @@ export default function WorkshopPage() {
     toast.success("Workflow renamed");
   }
 
-  async function handleSendMessage(content: string) {
+  const handleSendMessage = useCallback(async (content: string, options?: { replyOnly?: boolean }) => {
     if (!activeId || !hermesConfig) return;
 
     setChatLoading(true);
 
-    const optimisticUser = {
-      id: `temp-${Date.now()}`,
-      processId: activeId,
-      role: "user" as const,
-      content,
-      createdAt: new Date().toISOString(),
-    };
+    if (!options?.replyOnly) {
+      const optimisticUser = {
+        id: `temp-${Date.now()}`,
+        processId: activeId,
+        role: "user" as const,
+        content,
+        createdAt: new Date().toISOString(),
+      };
 
-    setActiveProcess((prev) =>
-      prev ? { ...prev, messages: [...prev.messages, optimisticUser] } : prev
-    );
+      setActiveProcess((prev) =>
+        prev ? { ...prev, messages: [...prev.messages, optimisticUser] } : prev
+      );
+    }
 
     try {
       const res = await fetch(`/api/processes/${activeId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content,
+          ...(options?.replyOnly ? { replyOnly: true } : { content }),
           baseUrl: hermesConfig.baseUrl,
           apiKey: hermesConfig.apiKey,
         }),
@@ -239,19 +247,45 @@ export default function WorkshopPage() {
       if (activeId && businessId) await loadProcess(activeId, businessId);
       setChatLoading(false);
     }
-  }
+  }, [activeId, businessId, hermesConfig, loadProcess, loadProcessList, runBackgroundAgents]);
+
+  useEffect(() => {
+    const pendingProcessId = pendingReplyProcessIdRef.current;
+    if (!pendingProcessId || pendingReplySentRef.current) return;
+    if (pendingProcessId !== activeId) return;
+    if (!activeProcess || !activeId || loadingProcess || chatLoading) return;
+    if (!hermesConfig || !isConnected) return;
+
+    const lastMessage = activeProcess.messages.at(-1);
+    if (!lastMessage || lastMessage.role !== "user") return;
+
+    pendingReplySentRef.current = true;
+    pendingReplyProcessIdRef.current = null;
+    void handleSendMessage(lastMessage.content, { replyOnly: true });
+  }, [
+    activeProcess,
+    activeId,
+    loadingProcess,
+    chatLoading,
+    hermesConfig,
+    isConnected,
+    handleSendMessage,
+  ]);
 
   const diagramChart = activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-950 overflow-hidden">
-      <header className="h-12 shrink-0 border-b border-zinc-800 px-4 flex items-center justify-between bg-zinc-950">
-        <div className="text-xs text-zinc-500">
-          Left: processes · Center: live diagram · Right: chat
+    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+      <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
+          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+            {businessName || "Select a project"}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <HermesStatusBadge onClick={() => setConnectionOpen(true)} />
+          <HermesStatusBadge onClick={openHermesConnection} />
           <button
             onClick={() => {
               loadProcessList();
@@ -261,12 +295,6 @@ export default function WorkshopPage() {
           >
             <RefreshCw className="w-3 h-3" /> Refresh
           </button>
-          <Link href="/projects" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
-            <Building2 className="w-3 h-3" /> Projects
-          </Link>
-          <Link href="/dashboard" className="btn-secondary text-xs py-1 px-2 flex items-center gap-1">
-            <LayoutDashboard className="w-3 h-3" /> Dashboard
-          </Link>
         </div>
       </header>
 
@@ -274,7 +302,6 @@ export default function WorkshopPage() {
         <ProcessSidebar
           processes={processes}
           activeId={activeId}
-          businessName={businessName}
           loading={loadingList}
           creating={creating}
           onSelect={handleSelectProcess}
@@ -282,10 +309,10 @@ export default function WorkshopPage() {
           onRename={handleRenameProcess}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-zinc-950">
-          <div className="px-5 py-3 border-b border-zinc-800 flex items-center justify-between shrink-0">
+        <main className="flex-1 flex flex-col min-w-0 bg-bg">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between shrink-0">
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-zinc-500">
+              <div className="text-[10px] uppercase tracking-widest text-text-muted">
                 Process Diagram
               </div>
               <h1 className="text-lg font-semibold tracking-tight">
@@ -294,13 +321,13 @@ export default function WorkshopPage() {
             </div>
             <div className="flex items-center gap-3">
               {agentsRunning && (
-                <div className="text-[10px] text-emerald-400 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                <div className="text-[10px] text-green flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
                   Updating diagram…
                 </div>
               )}
               {activeProcess?.diagramUpdatedAt && !agentsRunning && (
-                <div className="text-[10px] text-zinc-600">
+                <div className="text-[10px] text-text-soft">
                   Updated {new Date(activeProcess.diagramUpdatedAt).toLocaleTimeString()}
                 </div>
               )}
@@ -310,7 +337,7 @@ export default function WorkshopPage() {
           <div className="flex-1 min-h-0 relative bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:24px_24px]">
             {!activeId ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                <p className="text-zinc-400 text-sm mb-4">
+                <p className="text-text-muted text-sm mb-4">
                   Select a process from the left, or create a new one to start mapping.
                 </p>
                 <button onClick={handleCreateProcess} disabled={creating} className="btn-primary text-sm">
@@ -318,7 +345,7 @@ export default function WorkshopPage() {
                 </button>
               </div>
             ) : loadingProcess && !activeProcess ? (
-              <div className="h-full flex items-center justify-center text-zinc-500 text-sm">
+              <div className="h-full flex items-center justify-center text-text-muted text-sm">
                 Loading process...
               </div>
             ) : (
@@ -327,11 +354,11 @@ export default function WorkshopPage() {
           </div>
 
           {diagramChart && (
-            <details className="shrink-0 border-t border-zinc-800">
-              <summary className="px-5 py-2 text-[10px] uppercase tracking-widest text-zinc-500 cursor-pointer hover:text-zinc-400">
+            <details className="shrink-0 border-t border-border">
+              <summary className="px-5 py-2 text-[10px] uppercase tracking-widest text-text-muted cursor-pointer hover:text-text">
                 Mermaid source
               </summary>
-              <pre className="px-5 pb-3 text-[11px] font-mono text-zinc-500 overflow-x-auto max-h-24">
+              <pre className="px-5 pb-3 text-[11px] font-mono text-text-muted overflow-x-auto max-h-24">
                 {diagramChart}
               </pre>
             </details>
@@ -344,18 +371,17 @@ export default function WorkshopPage() {
             processName={activeProcess.name}
             isLoading={chatLoading}
             onSend={handleSendMessage}
-            onOpenConnection={() => setConnectionOpen(true)}
+            onOpenConnection={openHermesConnection}
           />
         ) : (
-          <div className="w-[380px] shrink-0 border-l border-zinc-800 bg-zinc-950 flex items-center justify-center p-6">
-            <p className="text-xs text-zinc-500 text-center">
+          <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex items-center justify-center p-6">
+            <p className="text-xs text-text-muted text-center">
               Chat will appear here when you select or create a process.
             </p>
           </div>
         )}
       </div>
 
-      <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
     </div>
   );
 }

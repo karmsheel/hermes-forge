@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { ThemeScript } from "@/components/theme/ThemeScript";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +19,11 @@ export const metadata: Metadata = {
   title: "Hermes Forge",
   description: "Process workshop — map workflows with Hermes Agent and live diagrams.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: "/icon.png",
   },
 };
 
@@ -30,9 +35,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-[#171717]">
+      <body className="min-h-full flex flex-col">
+        <ThemeScript />
         <AppProviders>{children}</AppProviders>
         <Toaster position="top-center" richColors closeButton />
       </body>

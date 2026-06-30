@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import iconImage from "@/icon.jpg";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -20,7 +22,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
   const [name, setName] = useState("");
 
   const isSignup = mode === "signup";
-  const redirectTo = searchParams.get("from") || "/projects";
+  const redirectTo = searchParams.get("from") || "/home";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,19 +58,24 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+    <div className="app-shell flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center">
-              <span className="text-black font-bold">H</span>
-            </div>
+            <Image
+              src={iconImage}
+              alt="Hermes Forge"
+              className="w-9 h-9 rounded-lg object-cover"
+              width={36}
+              height={36}
+              priority
+            />
             <span className="font-semibold text-lg">Hermes Forge</span>
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight">
             {isSignup ? "Create your account" : welcome ? "Welcome to Hermes Forge" : "Sign in"}
           </h1>
-          <p className="text-sm text-zinc-500 mt-2">
+          <p className="text-sm text-text-muted mt-2">
             {isSignup
               ? "Create an account — add your project details as you chat"
               : welcome
@@ -80,7 +87,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
           {isSignup && (
             <div>
-              <label className="text-xs text-zinc-500 uppercase tracking-widest">Name</label>
+              <label className="text-xs text-text-muted uppercase tracking-widest">Name</label>
               <input
                 className="input w-full mt-1"
                 value={name}
@@ -91,7 +98,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
           )}
 
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-widest">Email</label>
+            <label className="text-xs text-text-muted uppercase tracking-widest">Email</label>
             <input
               className="input w-full mt-1"
               type="email"
@@ -103,7 +110,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
           </div>
 
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-widest">Password</label>
+            <label className="text-xs text-text-muted uppercase tracking-widest">Password</label>
             <input
               className="input w-full mt-1"
               type="password"
@@ -120,7 +127,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
           </button>
         </form>
 
-        <p className="text-center text-sm text-zinc-500 mt-6">
+        <p className="text-center text-sm text-text-muted mt-6">
           {isSignup ? (
             <>
               Already have an account?{" "}

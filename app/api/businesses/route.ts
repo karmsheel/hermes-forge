@@ -9,7 +9,7 @@ import {
 
 const CreateBusinessSchema = z.object({
   name: z.string().max(120).optional(),
-  description: z.string().max(500).optional(),
+  description: z.string().max(5000).optional(),
   industry: z.string().max(100).optional(),
 });
 

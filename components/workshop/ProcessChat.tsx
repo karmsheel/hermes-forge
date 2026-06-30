@@ -42,15 +42,15 @@ export function ProcessChat({
   }
 
   return (
-    <div className="w-[380px] shrink-0 border-l border-zinc-800 bg-zinc-950 flex flex-col h-full">
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+    <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel text-text flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
-          <div className="text-xs uppercase tracking-widest text-zinc-500">Chat</div>
+          <div className="text-xs uppercase tracking-widest text-text-muted">Chat</div>
           <div className="text-sm font-medium truncate max-w-[240px]">{processName}</div>
         </div>
         <button
           onClick={onOpenConnection}
-          className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg hover:bg-bg-subtle text-text-muted hover:text-text-strong transition-colors"
           title="Hermes connection"
         >
           <Settings2 className="w-4 h-4" />
@@ -66,8 +66,8 @@ export function ProcessChat({
             <div
               className={`chat-message text-sm ${
                 msg.role === "user"
-                  ? "bg-white text-black"
-                  : "bg-zinc-900 border border-zinc-800 text-zinc-200"
+                  ? "bg-accent text-white"
+                  : "bg-bg-elevated border border-border text-text"
               }`}
             >
               <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
@@ -76,7 +76,7 @@ export function ProcessChat({
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="chat-message bg-zinc-900 border border-zinc-800 flex items-center gap-2 text-sm text-zinc-400">
+            <div className="chat-message bg-bg-elevated border border-border flex items-center gap-2 text-sm text-text-muted">
               <Loader2 className="w-4 h-4 animate-spin" /> Hermes is thinking...
             </div>
           </div>
@@ -84,9 +84,9 @@ export function ProcessChat({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-zinc-800">
+      <div className="p-4 border-t border-border">
         {!isConnected && (
-          <div className="mb-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+          <div className="mb-2 text-xs pill pill-amber rounded-lg px-3 py-2">
             <button type="button" onClick={onOpenConnection} className="hover:underline">
               Connect to Hermes
             </button>{" "}
@@ -111,7 +111,7 @@ export function ProcessChat({
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="text-[10px] text-zinc-600 mt-2">
+        <p className="text-[10px] text-text-soft mt-2">
           Each reply updates the diagram in the center. Correct anything that looks wrong.
         </p>
       </div>

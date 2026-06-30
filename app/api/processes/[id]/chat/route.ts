@@ -5,11 +5,16 @@ import { callHermes } from '@/lib/hermes';
 import { buildChatSystemPrompt } from '@/lib/diagram';
 import { requireProcessAccess } from '@/lib/auth';
 
-const ChatSchema = z.object({
-  content: z.string().min(1),
-  baseUrl: z.string(),
-  apiKey: z.string(),
-});
+const ChatSchema = z
+  .object({
+    content: z.string().min(1).optional(),
+    replyOnly: z.boolean().optional(),
+    baseUrl: z.string(),
+    apiKey: z.string(),
+  })
+  .refine((data) => data.replyOnly === true || !!data.content?.trim(), {
+    message: 'content is required unless replyOnly is true',
+  });
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -22,14 +27,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
-    await prisma.chatMessage.create({
-      data: { processId: id, role: 'user', content: body.content },
-    });
+    const replyOnly = body.replyOnly === true;
+    let allMessages = process.messages.map((m) => ({ role: m.role, content: m.content }));
 
-    const allMessages = [
-      ...process.messages.map((m) => ({ role: m.role, content: m.content })),
-      { role: 'user', content: body.content },
-    ];
+    if (replyOnly) {
+      const last = allMessages[allMessages.length - 1];
+      if (!last || last.role !== 'user') {
+        return NextResponse.json(
+          { error: 'No user message to reply to' },
+          { status: 400 }
+        );
+      }
+    } else {
+      const content = body.content!.trim();
+      await prisma.chatMessage.create({
+        data: { processId: id, role: 'user', content },
+      });
+      allMessages = [...allMessages, { role: 'user', content }];
+    }
 
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey },
@@ -57,10 +72,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     // User replied after a pending auto-name — treat as acknowledged unless they asked to rename
+    const lastUserContent =
+      allMessages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+
     if (process.nameStatus === 'pending' && !/^untitled/i.test(process.name)) {
-      const renameIntent = /rename|call it|instead|different name|change (the )?name/i.test(body.content);
+      const renameIntent = /rename|call it|instead|different name|change (the )?name/i.test(lastUserContent);
       if (renameIntent) {
-        const match = body.content.match(/(?:call it|rename (?:it )?(?:to )?|name it)\s+["']?([^"'\n.]+)/i);
+        const match = lastUserContent.match(/(?:call it|rename (?:it )?(?:to )?|name it)\s+["']?([^"'\n.]+)/i);
         if (match?.[1]?.trim()) {
           await prisma.process.update({
             where: { id },

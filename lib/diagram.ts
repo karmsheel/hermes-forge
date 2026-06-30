@@ -1,5 +1,10 @@
 import { callHermes, type HermesConfig } from './hermes';
 import { sanitizeMermaidSource } from './mermaid-sanitize';
+import {
+  getProcessStandard,
+  resolveProcessStandard,
+  type ProcessStandardId,
+} from './process-standards';
 
 const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
 
@@ -7,7 +12,7 @@ Given a conversation about ONE business process, produce or update a Mermaid flo
 
 Rules:
 - Return ONLY valid Mermaid syntax. No markdown fences, no explanation.
-- Use "flowchart TD" as the diagram type.
+- Use "flowchart TD" as the diagram type unless notation rules specify otherwise.
 - Keep node labels short (max ~6 words).
 - Use rectangles for steps, diamonds for decisions, rounded boxes for start/end.
 - Add new nodes and edges as new information appears; refine labels when the user corrects you.
@@ -30,8 +35,12 @@ export async function generateDiagramMermaid(
   processName: string,
   processDescription: string,
   conversation: { role: string; content: string }[],
-  currentDiagram: string | null
+  currentDiagram: string | null,
+  processStandard?: ProcessStandardId
 ): Promise<string> {
+  const standardId = processStandard ?? resolveProcessStandard(processDescription);
+  const standard = getProcessStandard(standardId);
+
   const context = [
     `Process name: ${processName}`,
     `Description: ${processDescription || 'Not yet described'}`,
@@ -43,7 +52,7 @@ export async function generateDiagramMermaid(
   const content = await callHermes(
     config,
     [
-      { role: 'system', content: DIAGRAM_SYSTEM_PROMPT },
+      { role: 'system', content: `${DIAGRAM_SYSTEM_PROMPT}\n\n${standard.diagramPromptAddon}` },
       { role: 'user', content: context },
     ],
     { temperature: 0.2 }
@@ -56,7 +65,11 @@ export function buildChatSystemPrompt(context: {
   processName: string;
   description: string;
   nameStatus: string;
+  processStandard?: ProcessStandardId;
 }): string {
+  const standardId = context.processStandard ?? resolveProcessStandard(context.description);
+  const standard = getProcessStandard(standardId);
+
   const namingNote =
     context.nameStatus === 'pending' && !/^untitled/i.test(context.processName)
       ? `\nThe workflow was auto-named "${context.processName}". A separate message may ask the user to confirm the name — do not repeat the naming question if that message was already sent. If the user wants a different name, accept it graciously.`
@@ -77,6 +90,8 @@ Do NOT output Mermaid or diagram syntax in your replies — a diagram subagent h
 Do NOT mention subagents, background tasks, or automation — stay conversational.
 Do NOT mention n8n yet — this is pure process discovery.
 ${namingNote}
+
+${standard.chatPromptAddon}
 
 If this is the start of a new process, welcome them and ask what process they want to map and what triggers it.`;
 }

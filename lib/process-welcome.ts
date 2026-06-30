@@ -1,0 +1,2 @@
+export const WELCOME_MESSAGE =
+  "Hi! I'm Hermes. Let's map out a business process together — you'll see the diagram build live in the center as we talk.\n\nWhat process would you like to document? Start with what triggers it and who is involved.";
