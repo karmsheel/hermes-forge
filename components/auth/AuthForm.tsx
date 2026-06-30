@@ -8,9 +8,10 @@ import { toast } from "sonner";
 
 interface AuthFormProps {
   mode: "login" | "signup";
+  welcome?: boolean;
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, welcome = false }: AuthFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -65,12 +66,14 @@ export function AuthForm({ mode }: AuthFormProps) {
             <span className="font-semibold text-lg">Hermes Forge</span>
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {isSignup ? "Create your account" : "Sign in"}
+            {isSignup ? "Create your account" : welcome ? "Welcome to Hermes Forge" : "Sign in"}
           </h1>
           <p className="text-sm text-zinc-500 mt-2">
             {isSignup
               ? "Create an account — add your project details as you chat"
-              : "Access your projects and process workshops"}
+              : welcome
+                ? "Sign in or create an account to start mapping your business processes"
+                : "Access your projects and process workshops"}
           </p>
         </div>
 
@@ -121,7 +124,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           {isSignup ? (
             <>
               Already have an account?{" "}
-              <Link href="/login" className="text-white hover:underline">
+              <Link href="/" className="text-white hover:underline">
                 Sign in
               </Link>
             </>

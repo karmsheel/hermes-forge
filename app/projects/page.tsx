@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { FolderKanban, Plus, ArrowRight, Loader2, LogOut, User, Pencil, Check, X } from "lucide-react";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { clearLegacyActiveProcessId } from "@/lib/workshop-storage";
 import type { BusinessSummary, UserProfile } from "@/lib/types";
 
 export default function BusinessesPage() {
@@ -20,6 +22,7 @@ export default function BusinessesPage() {
   const [editName, setEditName] = useState("");
   const [saving, setSaving] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -30,7 +33,7 @@ export default function BusinessesPage() {
       ]);
 
       if (meRes.status === 401) {
-        router.push("/login");
+        router.push("/");
         return;
       }
 
@@ -51,18 +54,20 @@ export default function BusinessesPage() {
     load();
   }, [load]);
 
-  async function startProject() {
+  async function createProject(name: string, description: string) {
     setCreating(true);
 
     try {
       const res = await fetch("/api/businesses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ name, description: description || undefined }),
       });
       if (!res.ok) throw new Error("Failed to create");
       const project = await res.json();
+      clearLegacyActiveProcessId();
       setActiveProjectId(project.id);
+      setNewProjectOpen(false);
       router.push("/workshop");
     } catch {
       toast.error("Could not create project");
@@ -79,6 +84,7 @@ export default function BusinessesPage() {
         body: JSON.stringify({ businessId: id }),
       });
       if (!res.ok) throw new Error("Failed");
+      clearLegacyActiveProcessId();
       setActiveProjectId(id);
       router.push("/workshop");
     } catch {
@@ -127,7 +133,7 @@ export default function BusinessesPage() {
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    router.push("/");
   }
 
   return (
@@ -163,11 +169,10 @@ export default function BusinessesPage() {
             </p>
           </div>
           <button
-            onClick={() => startProject()}
-            disabled={creating}
+            onClick={() => setNewProjectOpen(true)}
             className="btn-primary text-sm"
           >
-            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            <Plus className="w-4 h-4" />
             New Project
           </button>
         </div>
@@ -181,14 +186,13 @@ export default function BusinessesPage() {
           <div className="card p-10 text-center border-dashed">
             <FolderKanban className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
             <p className="text-zinc-400 mb-4">
-              Start mapping workflows — your project name and details will emerge as you chat with Hermes.
+              Create a project to start mapping workflows with Hermes.
             </p>
             <button
-              onClick={() => startProject()}
-              disabled={creating}
+              onClick={() => setNewProjectOpen(true)}
               className="btn-primary inline-flex"
             >
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              <Plus className="w-4 h-4" />
               Get started
             </button>
           </div>
@@ -283,6 +287,12 @@ export default function BusinessesPage() {
       </main>
 
       <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
+      <NewProjectDialog
+        open={newProjectOpen}
+        creating={creating}
+        onClose={() => setNewProjectOpen(false)}
+        onCreate={createProject}
+      />
     </div>
   );
 }

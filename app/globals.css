@@ -3,37 +3,121 @@
 :root {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-bg: #ffffff;
+  --color-text: #171717;
+  --color-muted: #666666;
+  --color-faint: #808080;
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-line-strong: rgba(0, 0, 0, 0.1);
+  --color-surface: #fafafa;
+  --color-surface-alt: #f4f4f5;
+  --color-focus: #0072f5;
 }
 
 body {
   font-family: var(--font-geist-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  letter-spacing: -0.01em;
 }
 
-/* Hermes Forge - Professional dark business theme */
+/* Hermes Forge - minimal Vercel-style system */
+
 .card {
-  @apply bg-zinc-900 border border-zinc-800 rounded-xl;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow:
+    0px 0px 0px 1px rgba(0,0,0,0.08),
+    0px 2px 2px rgba(0,0,0,0.04),
+    #fafafa 0px 0px 0px 1px;
 }
 
 .btn-primary {
-  @apply bg-white text-black hover:bg-zinc-200 transition-colors font-medium px-5 py-2.5 rounded-lg flex items-center gap-2 disabled:opacity-50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background-color: #171717;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.btn-primary:hover {
+  background-color: #000000;
+}
+
+.btn-primary:active {
+  transform: translateY(0.5px);
 }
 
 .btn-secondary {
-  @apply bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white px-4 py-2 rounded-lg transition-colors;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 6px;
+  border: none;
+  background-color: #ffffff;
+  box-shadow: 0px 0px 0px 1px rgba(0,0,0,0.08);
+  color: #171717;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+
+.btn-secondary:hover {
+  background-color: #fafafa;
+}
+
+.btn-secondary:active {
+  transform: translateY(0.5px);
 }
 
 .input {
-  @apply bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600;
+  background-color: #ffffff;
+  border: none;
+  box-shadow: 0px 0px 0px 1px rgba(0,0,0,0.08);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: #171717;
+  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.input::placeholder {
+  color: #666666;
+}
+
+.input:focus {
+  outline: none;
+  box-shadow:
+    0px 0px 0px 1px rgba(0,0,0,0.08),
+    0 0 0 2px var(--color-focus);
+  background-color: #ffffff;
 }
 
 .chat-message {
-  @apply max-w-[85%] rounded-2xl px-4 py-3;
+  max-width: 85%;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
 }
 
 .score-bar {
-  @apply h-2 bg-zinc-800 rounded-full overflow-hidden;
+  height: 0.5rem;
+  background-color: #f4f4f5;
+  border-radius: 9999px;
+  overflow: hidden;
 }
 
 .score-fill {
-  @apply h-full bg-emerald-500 transition-all;
+  height: 100%;
+  background-color: #10b981;
+  transition: width 0.3s ease;
 }

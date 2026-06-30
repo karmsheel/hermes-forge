@@ -8,8 +8,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "dev:website": "npm run dev --prefix website",
-    "build:website": "npm run build --prefix website",
     "desktop:dev": "electron .",
     "desktop:prepare": "node scripts/prepare-standalone.mjs",
     "desktop:build": "npm run build && npm run desktop:prepare && electron-builder"

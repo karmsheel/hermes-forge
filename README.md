@@ -9,18 +9,9 @@ Built for the **Hermes Agent Accelerated Business Hackathon** (NVIDIA × Stripe 
 | Repo | What it is | Run locally | Deploy |
 |------|------------|-------------|--------|
 | **[hermes-forge](https://github.com/karmsheel/hermes-forge)** (this repo) | **Desktop / local app** — Next.js, auth, projects, process workshop, live Mermaid diagrams | `npm run dev` → http://localhost:3000 | Self-host or `npm run desktop:build` |
-| **[hermes-forge-website](https://github.com/karmsheel/hermes-forge-website)** (`website/` submodule) | **Public marketing site** — landing page, GitHub link, desktop download CTA | `npm run dev:website` → http://localhost:4321 | Static `website/dist/` to your domain |
+| **[hermes-forge-website](https://github.com/karmsheel/hermes-forge-website)** | **Public marketing site** — landing page, GitHub link, desktop download CTA | Clone that repo separately | Static build to your domain |
 
-The app entry (`/`) redirects to `/login` or `/projects`. Marketing lives in the separate website repo.
-
-**Clone with the marketing site:**
-```bash
-git clone --recurse-submodules https://github.com/karmsheel/hermes-forge.git
-# or after a plain clone:
-git submodule update --init --recursive
-```
-
-See [`website/README.md`](website/README.md) (in the submodule) for site config and deployment.
+The app entry (`/`) is the welcome sign-in / sign-up page. Marketing lives in the separate [hermes-forge-website](https://github.com/karmsheel/hermes-forge-website) repo.
 
 ## Quickstart (app)
 
@@ -30,9 +21,9 @@ See [`website/README.md`](website/README.md) (in the submodule) for site config 
    # API_SERVER_ENABLED + CORS for localhost:3000
    ```
 
-2. Clone and install (include submodule if you need the marketing site):
+2. Clone and install:
    ```bash
-   git clone --recurse-submodules https://github.com/karmsheel/hermes-forge.git
+   git clone https://github.com/karmsheel/hermes-forge.git
    cd hermes-forge
    npm install
    npx prisma migrate dev
@@ -62,24 +53,11 @@ Structured business discovery is the defensible IP — not the workflow builder.
 
 ## Desktop app
 
-The app ships as an Electron wrapper around the Next.js standalone server. Data and SQLite DB live in the OS user-data folder.
+The app ships as an Electron wrapper around the Next.js standalone server. Data and SQLite DB live in the OS user-data folder. First launch opens the welcome sign-in / sign-up page.
 
 ```bash
 npm run desktop:dev     # dev: Electron + Next on port 3847
 npm run desktop:build   # production installer → dist/desktop/
 ```
 
-Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forge/releases), then set `downloadComingSoon: false` in `website/src/config.ts`.
-
-## Marketing site
-
-Lives in [hermes-forge-website](https://github.com/karmsheel/hermes-forge-website), vendored here as `website/`:
-
-```bash
-git submodule update --init website   # if not cloned with --recurse-submodules
-cd website && npm install
-npm run dev:website    # from repo root → http://localhost:4321
-npm run build:website  # output → website/dist/
-```
-
-Update `website/src/config.ts` before deploy: `appUrl` (optional hosted web app), `downloadUrl`, and `astro.config.mjs` `site` for your domain.
+Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forge/releases), then link them from the marketing site.

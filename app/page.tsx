@@ -1,8 +1,16 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { AuthForm } from "@/components/auth/AuthForm";
 import { getSession } from "@/lib/auth";
 
-/** App entry — marketing lives on the separate website/ project */
-export default async function AppEntry() {
+/** App entry — welcome sign-in / sign-up for first launch */
+export default async function WelcomePage() {
   const session = await getSession();
-  redirect(session ? "/projects" : "/login");
+  if (session) redirect("/projects");
+
+  return (
+    <Suspense>
+      <AuthForm mode="login" welcome />
+    </Suspense>
+  );
 }

@@ -10,12 +10,18 @@ import { ProcessChat } from "@/components/workshop/ProcessChat";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import {
+  clearActiveProcessId,
+  getActiveProcessId,
+  setActiveProcessId,
+} from "@/lib/workshop-storage";
 import type { ProcessSummary, ProcessWithMessages } from "@/lib/types";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [activeProcess, setActiveProcess] = useState<ProcessWithMessages | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingProcess, setLoadingProcess] = useState(false);
@@ -25,17 +31,12 @@ export default function WorkshopPage() {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const { config: hermesConfig } = useHermesConnection();
 
-  useEffect(() => {
-    const savedProcessId = localStorage.getItem("activeProcessId");
-    if (savedProcessId) setActiveId(savedProcessId);
-  }, []);
-
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
     try {
       const res = await fetch("/api/processes");
       if (res.status === 401) {
-        window.location.href = "/login";
+        window.location.href = "/";
         return;
       }
       const data = await res.json();
@@ -43,8 +44,29 @@ export default function WorkshopPage() {
         window.location.href = "/projects";
         return;
       }
-      setProcesses(data.processes || []);
+
+      const list: ProcessSummary[] = data.processes || [];
+      const currentBusinessId: string = data.business.id;
+
+      setProcesses(list);
+      setBusinessId(currentBusinessId);
       setBusinessName(data.business?.name || null);
+
+      const savedProcessId = getActiveProcessId(currentBusinessId);
+      const resolvedId =
+        savedProcessId && list.some((p) => p.id === savedProcessId) ? savedProcessId : null;
+
+      let selectionChanged = false;
+      setActiveId((currentId) => {
+        if (resolvedId === currentId) return currentId;
+        selectionChanged = true;
+        return resolvedId;
+      });
+
+      if (selectionChanged) {
+        setActiveProcess(null);
+        if (!resolvedId && savedProcessId) clearActiveProcessId(currentBusinessId);
+      }
     } catch {
       toast.error("Failed to load processes");
     } finally {
@@ -52,7 +74,7 @@ export default function WorkshopPage() {
     }
   }, []);
 
-  const loadProcess = useCallback(async (id: string) => {
+  const loadProcess = useCallback(async (id: string, projectId: string) => {
     setLoadingProcess(true);
     try {
       const res = await fetch(`/api/processes/${id}`);
@@ -60,11 +82,12 @@ export default function WorkshopPage() {
       const process: ProcessWithMessages = await res.json();
       setActiveProcess(process);
       setActiveId(id);
-      localStorage.setItem("activeProcessId", id);
+      setActiveProcessId(projectId, id);
     } catch {
       toast.error("Failed to load process");
       setActiveId(null);
-      localStorage.removeItem("activeProcessId");
+      setActiveProcess(null);
+      clearActiveProcessId(projectId);
     } finally {
       setLoadingProcess(false);
     }
@@ -75,10 +98,10 @@ export default function WorkshopPage() {
   }, [loadProcessList]);
 
   useEffect(() => {
-    if (activeId && !loadingList) {
-      loadProcess(activeId);
+    if (activeId && businessId && !loadingList) {
+      loadProcess(activeId, businessId);
     }
-  }, [activeId, loadingList, loadProcess]);
+  }, [activeId, businessId, loadingList, loadProcess]);
 
   async function handleCreateProcess() {
     setCreating(true);
@@ -92,7 +115,7 @@ export default function WorkshopPage() {
       const process: ProcessWithMessages = await res.json();
       setActiveProcess(process);
       setActiveId(process.id);
-      localStorage.setItem("activeProcessId", process.id);
+      if (businessId) setActiveProcessId(businessId, process.id);
       await loadProcessList();
       toast.success("New process started");
     } catch {
@@ -145,13 +168,13 @@ export default function WorkshopPage() {
           }
         }
 
-        await loadProcess(processId);
+        if (businessId) await loadProcess(processId, businessId);
         await loadProcessList();
       } finally {
         setAgentsRunning(false);
       }
     },
-    [hermesConfig, loadProcess, loadProcessList]
+    [businessId, hermesConfig, loadProcess, loadProcessList]
   );
 
   async function handleRenameProcess(id: string, name: string) {
@@ -213,7 +236,7 @@ export default function WorkshopPage() {
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
-      if (activeId) await loadProcess(activeId);
+      if (activeId && businessId) await loadProcess(activeId, businessId);
       setChatLoading(false);
     }
   }
@@ -232,7 +255,7 @@ export default function WorkshopPage() {
           <button
             onClick={() => {
               loadProcessList();
-              if (activeId) loadProcess(activeId);
+              if (activeId && businessId) loadProcess(activeId, businessId);
             }}
             className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
           >

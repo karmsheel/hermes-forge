@@ -26,9 +26,9 @@ export async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
+    const welcomeUrl = new URL('/', request.url);
+    welcomeUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(welcomeUrl);
   }
 
   return NextResponse.next();

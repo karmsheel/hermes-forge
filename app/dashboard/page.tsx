@@ -41,7 +41,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/business');
       if (res.status === 401) {
-        window.location.href = '/login';
+        window.location.href = '/';
         return;
       }
       const data = await res.json();
