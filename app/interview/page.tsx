@@ -164,16 +164,16 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-950">
+    <div className="min-h-screen flex flex-col bg-bg text-text">
       {/* Top bar */}
-      <div className="border-b border-zinc-800 bg-zinc-950 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="border-b border-border bg-bg px-6 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
+          <Link href="/" className="flex items-center gap-2 text-sm text-text-muted hover:text-text-strong">
             <ArrowLeft className="w-4 h-4" /> Back
           </Link>
           <div>
             <span className="font-semibold">Business Interview</span>
-            <span className="ml-3 text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">PHASE 1</span>
+            <span className="ml-3 text-xs px-2 py-0.5 rounded bg-green-bg text-green border border-green-border">PHASE 1</span>
           </div>
         </div>
 
@@ -185,14 +185,14 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
 
       <div className="flex-1 flex max-w-6xl mx-auto w-full">
         {/* Chat */}
-        <div className="flex-1 flex flex-col border-r border-zinc-800">
+        <div className="flex-1 flex flex-col border-r border-border">
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div 
                   className={`chat-message ${msg.role === 'user' 
                     ? 'bg-white text-black' 
-                    : 'bg-zinc-900 border border-zinc-800'}`}
+                    : 'bg-bg-panel border border-border'}`}
                 >
                   <div className="whitespace-pre-wrap text-[15px] leading-relaxed">{msg.content}</div>
                 </div>
@@ -200,7 +200,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="chat-message bg-zinc-900 border border-zinc-800 flex items-center gap-2 text-sm text-zinc-400">
+                <div className="chat-message bg-bg-panel border border-border flex items-center gap-2 text-sm text-text-muted">
                   <Loader2 className="w-4 h-4 animate-spin" /> Hermes is thinking...
                 </div>
               </div>
@@ -209,7 +209,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-zinc-800 bg-zinc-950">
+          <div className="p-4 border-t border-border bg-bg">
             {!isConnected && (
               <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
                 Connect to Hermes (or set a demo config) in the panel on the right.
@@ -232,7 +232,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>
-            <div className="text-[10px] text-zinc-500 mt-2 px-1">
+            <div className="text-[10px] text-text-muted mt-2 px-1">
               Hermes will extract structured facts after each exchange. Be specific about customers, tools, and repeated work.
             </div>
           </div>
@@ -243,30 +243,30 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
           <HermesConnectionPanel compact />
 
           <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-zinc-500 mb-2">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-text-muted mb-2">
               <Database className="w-3.5 h-3.5" /> LIVE KNOWLEDGE
             </div>
             {!extracted ? (
-              <div className="text-xs text-zinc-500 p-3 border border-zinc-800 rounded-xl">
+              <div className="text-xs text-text-muted p-3 border border-border rounded-xl">
                 Start the interview. Structured data will appear here as Hermes extracts it.
               </div>
             ) : (
               <div className="space-y-4 text-sm">
                 {extracted.business && (
                   <div className="card p-3">
-                    <div className="font-semibold mb-1 text-emerald-400 text-xs">BUSINESS</div>
+                    <div className="font-semibold mb-1 text-green text-xs">BUSINESS</div>
                     <div>{extracted.business.name}</div>
-                    <div className="text-xs text-zinc-400">{extracted.business.description}</div>
+                    <div className="text-xs text-text-muted">{extracted.business.description}</div>
                   </div>
                 )}
                 {extracted.processes?.length > 0 && (
                   <div className="card p-3">
-                    <div className="font-semibold mb-1.5 text-emerald-400 text-xs">PROCESSES ({extracted.processes.length})</div>
+                    <div className="font-semibold mb-1.5 text-green text-xs">PROCESSES ({extracted.processes.length})</div>
                     <ul className="space-y-1.5 text-xs">
                       {extracted.processes.slice(0, 5).map((p: any, i: number) => (
-                        <li key={i} className="flex justify-between border-b border-zinc-800 pb-1 last:border-0">
+                        <li key={i} className="flex justify-between border-b border-border pb-1 last:border-0">
                           <span>{p.name}</span>
-                          <span className="text-emerald-400 tabular-nums">{p.automationScore}</span>
+                          <span className="text-green tabular-nums">{p.automationScore}</span>
                         </li>
                       ))}
                     </ul>
@@ -288,11 +288,11 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
                   window.location.href = '/dashboard';
                 }
               }}
-              className="w-full text-xs text-zinc-400 hover:text-white py-1"
+              className="w-full text-xs text-text-muted hover:text-text-strong py-1"
             >
               Skip to demo data →
             </button>
-            <div className="text-[10px] text-center text-zinc-500 mt-3">
+            <div className="text-[10px] text-center text-text-muted mt-3">
               All insights are saved to structured memory.<br />No chat-only state.
             </div>
           </div>

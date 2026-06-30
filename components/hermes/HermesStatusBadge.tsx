@@ -23,17 +23,20 @@ export function HermesStatusBadge({ onClick }: HermesStatusBadgeProps) {
       ) : (
         <span
           className={`w-2 h-2 rounded-full ${
-            isConnected ? "bg-emerald-400" : "bg-amber-400"
+            isConnected ? "bg-green" : "bg-amber"
           } ${isConnected ? "animate-pulse" : ""}`}
         />
       )}
       <PlugZap className="w-3.5 h-3.5" />
       <span className="hidden sm:inline">{label}</span>
       {isConnected && status.latencyMs != null && (
-        <span className="hidden md:inline text-zinc-500">{status.latencyMs}ms</span>
+        <span className="hidden md:inline text-text-muted">{status.latencyMs}ms</span>
       )}
     </>
   );
+
+  const baseClass =
+    "flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-60";
 
   if (onClick) {
     return (
@@ -41,7 +44,7 @@ export function HermesStatusBadge({ onClick }: HermesStatusBadgeProps) {
         type="button"
         onClick={onClick}
         disabled={isBusy}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 transition-colors disabled:opacity-60"
+        className={`${baseClass} border-border hover:border-border-strong hover:bg-bg-subtle`}
         title={status.error || label}
       >
         {content}
@@ -55,7 +58,7 @@ export function HermesStatusBadge({ onClick }: HermesStatusBadgeProps) {
         type="button"
         onClick={() => void autoConnect()}
         disabled={isBusy}
-        className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900 transition-colors disabled:opacity-60"
+        className={`${baseClass} border-border hover:border-border-strong hover:bg-bg-subtle`}
         title={status.error || label}
       >
         {content}
@@ -65,7 +68,7 @@ export function HermesStatusBadge({ onClick }: HermesStatusBadgeProps) {
 
   return (
     <div
-      className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-emerald-300"
+      className={`${baseClass} border-green-border bg-green-bg text-green`}
       title={`${status.model ?? "Hermes"} · ${status.latencyMs ?? "?"}ms`}
     >
       {content}

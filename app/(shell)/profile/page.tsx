@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, LogOut } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
 
 export default function ProfilePage() {
@@ -51,29 +51,24 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-500">
+      <div className="flex items-center justify-center py-20 text-text-muted w-full">
         <Loader2 className="w-6 h-6 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <div className="max-w-lg mx-auto px-6 py-10">
-        <Link href="/projects" className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white mb-8">
-          <ArrowLeft className="w-4 h-4" /> Back to projects
-        </Link>
-
+    <div className="max-w-lg mx-auto px-6 py-10 w-full">
         <h1 className="text-2xl font-semibold tracking-tight mb-6">Profile</h1>
 
         <form onSubmit={handleSave} className="card p-6 space-y-4">
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-widest">Email</label>
-            <div className="mt-1 text-sm text-zinc-300">{user?.email}</div>
+            <label className="text-xs text-text-muted uppercase tracking-widest">Email</label>
+            <div className="mt-1 text-sm text-text">{user?.email}</div>
           </div>
 
           <div>
-            <label className="text-xs text-zinc-500 uppercase tracking-widest">Name</label>
+            <label className="text-xs text-text-muted uppercase tracking-widest">Name</label>
             <input
               className="input w-full mt-1"
               value={name}
@@ -82,7 +77,7 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="text-xs text-zinc-600">
+          <div className="text-xs text-text-soft">
             {user?._count?.businesses ?? 0} project{(user?._count?.businesses ?? 0) !== 1 ? "s" : ""}
           </div>
 
@@ -97,7 +92,6 @@ export default function ProfilePage() {
         >
           <LogOut className="w-4 h-4" /> Sign out
         </button>
-      </div>
     </div>
   );
 }

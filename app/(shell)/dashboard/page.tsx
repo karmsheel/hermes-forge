@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, Download, Target } from 'lucide-react';
-import { AppNav } from '@/components/shell/AppNav';
+import { RefreshCw, Download, Target } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Process {
@@ -95,83 +94,78 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="border-b border-zinc-800">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white">
-              <ArrowLeft className="w-4 h-4" /> Home
-            </Link>
-            <div className="font-semibold">Business Dashboard</div>
-            <span className="text-xs px-2 py-px rounded bg-white/10 text-white/70">PHASE 1 — DISCOVERY</span>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={loadData} className="btn-secondary flex items-center gap-2 text-sm">
-              <RefreshCw className="w-4 h-4" /> Refresh
-            </button>
-            <button 
-              onClick={async () => {
-                await fetch('/api/seed', { method: 'POST' });
-                await loadData();
-                toast.success('Demo business loaded');
-              }} 
-              className="btn-secondary text-sm"
-            >
-              Load Demo Data
-            </button>
-            <button onClick={exportKnowledge} className="btn-primary text-sm flex items-center gap-2">
-              <Download className="w-4 h-4" /> Export Knowledge Graph
-            </button>
-            <AppNav current="dashboard" />
-          </div>
+    <main className="max-w-6xl mx-auto px-6 py-10 w-full">
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Analytics</div>
+          <h1 className="text-2xl font-semibold tracking-tight">Business Dashboard</h1>
+          <span className="inline-block mt-2 text-xs pill pill-accent">Phase 1 — Discovery</span>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <button onClick={loadData} className="btn-secondary flex items-center gap-2 text-sm">
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+          <button
+            onClick={async () => {
+              await fetch("/api/seed", { method: "POST" });
+              await loadData();
+              toast.success("Demo business loaded");
+            }}
+            className="btn-secondary text-sm"
+          >
+            Load Demo Data
+          </button>
+          <button onClick={exportKnowledge} className="btn-primary text-sm flex items-center gap-2">
+            <Download className="w-4 h-4" /> Export Knowledge Graph
+          </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div>
         {loading ? (
-          <div className="text-center py-20 text-zinc-400">Loading business model...</div>
+          <div className="text-center py-20 text-text-muted">Loading business model...</div>
         ) : !business ? (
           <div className="text-center py-16">
-            <p className="text-zinc-400 mb-4">No active project. Select or create one to view the dashboard.</p>
+            <p className="text-text-muted mb-4">No active project. Select or create one to view the dashboard.</p>
             <Link href="/projects" className="btn-primary inline-flex">Go to Projects</Link>
           </div>
         ) : (
           <>
             {/* Business Summary */}
             <div className="mb-8">
-              <div className="text-xs tracking-[1.5px] text-zinc-500 mb-1">YOUR BUSINESS</div>
+              <div className="text-xs tracking-[1.5px] text-text-muted mb-1">YOUR BUSINESS</div>
               <div className="flex items-end justify-between">
                 <div>
                   <h1 className="text-4xl font-semibold tracking-tighter">{business.name}</h1>
-                  {business.industry && <div className="text-emerald-400 text-sm mt-1">{business.industry}</div>}
+                  {business.industry && <div className="text-green text-sm mt-1">{business.industry}</div>}
                 </div>
-                <div className="text-right text-sm text-zinc-400">
+                <div className="text-right text-sm text-text-muted">
                   {business.teamSize && `${business.teamSize} people`} • {business.goals && business.goals.slice(0, 70)}
                 </div>
               </div>
               {business.description && (
-                <p className="mt-3 text-zinc-400 max-w-3xl">{business.description}</p>
+                <p className="mt-3 text-text-muted max-w-3xl">{business.description}</p>
               )}
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
               <div className="card p-5">
-                <div className="text-xs text-zinc-400">PROCESSES MAPPED</div>
+                <div className="text-xs text-text-muted">PROCESSES MAPPED</div>
                 <div className="text-4xl font-semibold mt-1 tabular-nums">{processes.length}</div>
               </div>
               <div className="card p-5">
-                <div className="text-xs text-zinc-400">AVG AUTOMATION SCORE</div>
-                <div className="text-4xl font-semibold mt-1 tabular-nums text-emerald-400">{avgScore}</div>
+                <div className="text-xs text-text-muted">AVG AUTOMATION SCORE</div>
+                <div className="text-4xl font-semibold mt-1 tabular-nums text-green">{avgScore}</div>
               </div>
               <div className="card p-5">
-                <div className="text-xs text-zinc-400">HIGH POTENTIAL (≥65)</div>
-                <div className="text-4xl font-semibold mt-1 tabular-nums text-emerald-400">{highPotential}</div>
+                <div className="text-xs text-text-muted">HIGH POTENTIAL (≥65)</div>
+                <div className="text-4xl font-semibold mt-1 tabular-nums text-green">{highPotential}</div>
               </div>
               <div className="card p-5 flex items-center">
                 <div>
-                  <div className="text-xs text-zinc-400">STATUS</div>
-                  <div className="font-medium text-emerald-400">Discovery Complete • Ready for refinement</div>
+                  <div className="text-xs text-text-muted">STATUS</div>
+                  <div className="font-medium text-green">Discovery Complete • Ready for refinement</div>
                 </div>
               </div>
             </div>
@@ -183,20 +177,20 @@ export default function DashboardPage() {
                   <div className="font-semibold text-lg flex items-center gap-2">
                     <Target className="w-5 h-5" /> Processes &amp; Automation Opportunities
                   </div>
-                  <div className="text-xs text-zinc-500">Ranked by automation potential. All scores are recommendations only.</div>
+                  <div className="text-xs text-text-muted">Ranked by automation potential. All scores are recommendations only.</div>
                 </div>
               </div>
 
               {processes.length === 0 ? (
                 <div className="card p-8 text-center border-dashed">
-                  <p className="text-zinc-400">No processes extracted yet.</p>
+                  <p className="text-text-muted">No processes extracted yet.</p>
                   <Link href="/interview" className="btn-primary mt-4 inline-flex">Go to Interview →</Link>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-zinc-800">
+                <div className="overflow-hidden rounded-2xl border border-border">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-zinc-900 text-left text-xs uppercase tracking-widest text-zinc-400 border-b border-zinc-800">
+                      <tr className="bg-bg-panel text-left text-xs uppercase tracking-widest text-text-muted border-b border-border">
                         <th className="px-6 py-3 font-normal">Process</th>
                         <th className="px-4 py-3 font-normal">Department</th>
                         <th className="px-4 py-3 font-normal w-24">Score</th>
@@ -204,19 +198,19 @@ export default function DashboardPage() {
                         <th className="px-6 py-3 font-normal">Key Details</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-800">
+                    <tbody className="divide-y divide-border">
                       {sortedProcesses.map((proc) => (
-                        <tr key={proc.id} className="hover:bg-zinc-900/70">
+                        <tr key={proc.id} className="hover:bg-bg-panel/70">
                           <td className="px-6 py-4">
                             <div className="font-medium">{proc.name}</div>
-                            <div className="text-xs text-zinc-400 line-clamp-2 mt-0.5">{proc.description}</div>
+                            <div className="text-xs text-text-muted line-clamp-2 mt-0.5">{proc.description}</div>
                           </td>
                           <td className="px-4 py-4 text-xs">
-                            <span className="px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300">{proc.department}</span>
+                            <span className="px-2.5 py-1 rounded-full bg-bg-muted text-text">{proc.department}</span>
                           </td>
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-12 text-right font-mono tabular-nums text-lg font-medium text-emerald-400">
+                              <div className="w-12 text-right font-mono tabular-nums text-lg font-medium text-green">
                                 {proc.automationScore}
                               </div>
                               <div className="flex-1 score-bar max-w-[90px]">
@@ -227,10 +221,10 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-4 text-sm text-zinc-300 tabular-nums">
+                          <td className="px-4 py-4 text-sm text-text tabular-nums">
                             {proc.estimatedTimeSaved ? `${proc.estimatedTimeSaved} hrs/wk` : '—'}
                           </td>
-                          <td className="px-6 py-4 text-xs text-zinc-400">
+                          <td className="px-6 py-4 text-xs text-text-muted">
                             {proc.trigger && <div>Trigger: {proc.trigger}</div>}
                             {proc.manualSteps && <div className="line-clamp-1">Steps: {proc.manualSteps}</div>}
                           </td>
@@ -242,13 +236,13 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <div className="mt-8 text-xs text-zinc-500 border-t border-zinc-800 pt-6">
+            <div className="mt-8 text-xs text-text-muted border-t border-border pt-6">
               This is Phase 1 output. The business knowledge graph above is the core IP. 
               Future phases will use this model to generate executable workflows.
             </div>
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

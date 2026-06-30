@@ -142,7 +142,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 1.4 Recent projects strip with status cards
+### 1.4 Recent projects strip with status cards — **DONE**
 
 **Goal:** Bottom section like Open Design `RecentProjectsStrip` + screenshot project cards.
 
@@ -156,15 +156,15 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 - Workflow count
 
 **Acceptance criteria:**
-- [ ] Shows last 4 projects on home
-- [ ] "View all ›" links to `/projects`
-- [ ] Click card opens project in workshop
+- [x] Shows last 4 projects on home
+- [x] "View all ›" links to `/projects`
+- [x] Click card opens project in workshop
 
 **Depends on:** 1.3, D2 (status lifecycle — can stub statuses initially)
 
 ---
 
-### 1.5 Template starter cards
+### 1.5 Template starter cards — **DONE**
 
 **Goal:** Horizontal scroll of illustrated starter cards below composer.
 
@@ -178,11 +178,13 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | `approval-flow` | Approval flow | Sign-off chains | Prompt |
 | `onboarding` | Onboarding | New hire / customer onboarding | Prompt |
 | `incident` | Incident response | Ops escalation | Prompt |
-| `blank` | Blank process | Start from scratch | Empty process |
+| `blank` | Blank process | Start from scratch | Opens New Project modal |
 
 **Acceptance criteria:**
-- [ ] Clicking card pre-fills composer or creates project+process with template metadata
-- [ ] "...or start a blank project ›" link opens `NewProjectDialog`
+- [x] Clicking card pre-fills composer or creates project+process with template metadata
+- [x] "...or start a blank project ›" link opens `NewProjectDialog`
+- [x] Horizontal scroll of illustrated cards below composer
+- [x] Send passes template id + optional starter diagram to workshop flow
 
 **Depends on:** 1.3
 
@@ -190,30 +192,44 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ## Phase 2 — Home → workshop flow
 
-### 2.1 Send creates project + process + opens workshop
+### 2.1 Send creates project + process + opens workshop — **DONE**
 
 **Goal:** One action from home composer (like Open Design home Send).
 
-**Files:** `app/api/businesses/route.ts`, `app/api/processes/route.ts`, `components/home/HomeHero.tsx`
+**Files:** `app/api/start-from-brief/route.ts`, `lib/start-from-brief.ts`, `components/home/HomeHero.tsx`, `app/api/processes/[id]/chat/route.ts`
 
 **Flow:**
 1. User types brief, optionally picks template
-2. POST create business (name from brief or "Untitled Project")
-3. POST create process with template seed prompt as first user message or assistant context
-4. Set active business cookie
-5. Navigate to `/workshop`
+2. POST `/api/start-from-brief` — atomic create business + process + seed messages
+3. Brief stored as first user message; welcome assistant message seeded
+4. Set active business cookie + client active process id
+5. Navigate to `/workshop`; workshop auto-triggers Hermes reply (`replyOnly`)
+
+**Acceptance criteria:**
+- [x] Single Send action from home creates project and workflow
+- [x] Template metadata + optional starter diagram passed through
+- [x] Active business cookie set server-side
+- [x] Workshop opens on new process with brief visible in chat
+- [x] Hermes reply auto-fired when connected
 
 **Depends on:** 1.3, 1.5, B1
 
 ---
 
-### 2.2 Process standards / notation picker
+### 2.2 Process standards / notation picker — **DONE**
 
-**Goal:** Footer control like Open Design "No design system" — "Process standard: None".
+**Goal:** Footer control like Open Design "No design system" — "Process standard: Model picks".
 
-**Files:** `components/home/ProcessStandardPicker.tsx`, `lib/process-standards.ts`
+**Files:** `components/home/ProcessStandardPicker.tsx`, `lib/process-standards.ts`, `lib/diagram.ts`
 
-**Options (v1):** None, BPMN-lite, Swimlane, Simple flowchart
+**Options (v1):** Model picks (default), BPMN-lite, Swimlane, Simple flowchart
+
+**Acceptance criteria:**
+- [x] Footer picker on home composer
+- [x] Default is "Model picks" (`auto`)
+- [x] Selection persists in localStorage
+- [x] Send passes standard through start-from-brief (tag when explicit)
+- [x] Chat + diagram agents apply standard-specific prompt rules
 
 **Depends on:** 1.3, G2 (PROCESS.md — can stub)
 
@@ -362,8 +378,8 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 1.3 | Hero home + composer | 1 | Pending |
 | 1.4 | Recent projects strip | 1 | Pending |
 | 1.5 | Template starter cards | 1 | Pending |
-| 2.1 | Send → project + workshop | 2 | Pending |
-| 2.2 | Process standards picker | 2 | Pending |
+| 2.1 | Send → project + workshop | 2 | Done |
+| 2.2 | Process standards picker | 2 | Done |
 | 2.3 | Inline model switcher | 2 | Pending |
 | 2.4 | Status lifecycle badges | 2 | Pending |
 | 3.1 | Streaming diagram | 3 | Pending |

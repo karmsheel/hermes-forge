@@ -52,21 +52,21 @@ export function NewProjectDialog({ open, creating, onClose, onCreate }: NewProje
           type="button"
           onClick={onClose}
           disabled={creating}
-          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white disabled:opacity-50"
+          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-bg-subtle text-text-muted hover:text-text-strong disabled:opacity-50"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="mb-6 pr-8">
           <h2 className="text-xl font-semibold tracking-tight">New Project</h2>
-          <p className="text-sm text-zinc-500 mt-1">
+          <p className="text-sm text-text-muted mt-1">
             Give your project a name and optional description before opening the workshop.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="project-name" className="block text-xs uppercase tracking-widest text-zinc-500 mb-2">
+            <label htmlFor="project-name" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
               Name
             </label>
             <input
@@ -82,8 +82,8 @@ export function NewProjectDialog({ open, creating, onClose, onCreate }: NewProje
           </div>
 
           <div>
-            <label htmlFor="project-description" className="block text-xs uppercase tracking-widest text-zinc-500 mb-2">
-              Description <span className="normal-case tracking-normal text-zinc-600">(optional)</span>
+            <label htmlFor="project-description" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
+              Description <span className="normal-case tracking-normal text-text-soft">(optional)</span>
             </label>
             <textarea
               id="project-description"

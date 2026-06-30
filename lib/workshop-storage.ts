@@ -36,3 +36,18 @@ export function clearLegacyActiveProcessId() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(LEGACY_ACTIVE_PROCESS_KEY);
 }
+
+const PENDING_REPLY_KEY = "pendingHermesReply";
+
+/** Marks a process whose seeded user message still needs an assistant reply. */
+export function setPendingHermesReply(processId: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PENDING_REPLY_KEY, processId);
+}
+
+export function consumePendingHermesReply(): string | null {
+  if (typeof window === "undefined") return null;
+  const value = sessionStorage.getItem(PENDING_REPLY_KEY);
+  if (value) sessionStorage.removeItem(PENDING_REPLY_KEY);
+  return value;
+}
