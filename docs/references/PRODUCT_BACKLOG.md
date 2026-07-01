@@ -235,11 +235,18 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 2.3 Inline Hermes model switcher in header
+### 2.3 Inline Hermes model switcher in header — **DONE**
 
 **Goal:** `InlineModelSwitcher` in top bar, not buried in dialog only.
 
-**Files:** `components/hermes/HermesModelSwitcher.tsx`, update `HermesConnectionProvider`
+**Files:** `components/hermes/HermesModelSwitcher.tsx`, `lib/hermes-models.ts`, `app/api/hermes/models/route.ts`, update `HermesConnectionProvider`
+
+**Acceptance criteria:**
+- [x] Model dropdown in `AppTopBar` (home, projects, dashboard, etc.)
+- [x] Model switcher also in workshop and automations headers (no top bar on those routes)
+- [x] Fetches models from Hermes `GET /v1/models` when connected
+- [x] Selected model persisted in `localStorage` via `HermesConfig.model`
+- [x] All Hermes API calls pass selected model through to chat completions
 
 **Depends on:** 1.2
 
@@ -353,11 +360,13 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 4.4 Automations page
+### 4.4 Automations page — **DONE** (shipped ahead of Phase 4)
 
-**Goal:** Repeatable process audits (Open Design `/automations`).
+**Goal:** Approved process maps → automation design studio with n8n deploy.
 
-**Route:** `/automations`
+**Route:** `/automations`, `/automations/[processId]`
+
+**Shipped:** Approval flow in workshop, automations list, automation studio, n8n connection, deploy APIs.
 
 ---
 
@@ -375,12 +384,12 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 |----|-------|-------|--------|
 | 1.1 | Token-based theme | 1 | Done |
 | 1.2 | Left icon rail | 1 | Done |
-| 1.3 | Hero home + composer | 1 | Pending |
-| 1.4 | Recent projects strip | 1 | Pending |
-| 1.5 | Template starter cards | 1 | Pending |
+| 1.3 | Hero home + composer | 1 | Done |
+| 1.4 | Recent projects strip | 1 | Done |
+| 1.5 | Template starter cards | 1 | Done |
 | 2.1 | Send → project + workshop | 2 | Done |
 | 2.2 | Process standards picker | 2 | Done |
-| 2.3 | Inline model switcher | 2 | Pending |
+| 2.3 | Inline model switcher | 2 | Done |
 | 2.4 | Status lifecycle badges | 2 | Pending |
 | 3.1 | Streaming diagram | 3 | Pending |
 | 3.2 | Node comments | 3 | Pending |
@@ -393,7 +402,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 4.1 | Template library | 4 | Pending |
 | 4.2 | PROCESS.md | 4 | Pending |
 | 4.3 | Template marketplace | 4 | Pending |
-| 4.4 | Automations page | 4 | Pending |
+| 4.4 | Automations page | 4 | Done |
 | 4.5 | Integrations page | 4 | Pending |
 
 ---
@@ -414,3 +423,4 @@ When picking up a backlog item:
 - Project isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
 - Workshop header: H + Hermes Forge → `/projects`, project name underneath
 - Settings popover on projects home (`components/settings/SettingsMenu.tsx`) with System / Light / Dark theme (`components/theme/ThemeProvider.tsx`, `lib/theme.ts`)
+- Process approval + automation studio + n8n integration (see 4.4)

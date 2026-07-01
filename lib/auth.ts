@@ -118,7 +118,7 @@ export async function requireProcessAccess(request: NextRequest, processId: stri
 
   const activeBusiness = await getActiveBusinessForUser(session.userId, request);
   if (!activeBusiness) {
-    return { error: NextResponse.json({ error: 'No active project' }, { status: 400 }) };
+    return { error: NextResponse.json({ error: 'No active business' }, { status: 400 }) };
   }
 
   const process = await prisma.process.findFirst({

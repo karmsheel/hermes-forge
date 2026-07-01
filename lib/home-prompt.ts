@@ -8,7 +8,7 @@ export const HOME_PROMPT_EXAMPLES = [
 
 export function deriveProjectName(brief: string): string {
   const line = brief.trim().split("\n")[0]?.trim() ?? "";
-  if (!line) return "Untitled Project";
+  if (!line) return "Untitled Function";
 
   const candidate =
     line.length > 60 ? (line.split(/[,.\n]/)[0]?.trim() || line) : line;

@@ -5,11 +5,14 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { Building2 } from "lucide-react";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
+import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import {
   clearActiveProcessId,
@@ -31,7 +34,7 @@ export default function WorkshopPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [agentsRunning, setAgentsRunning] = useState(false);
   const [approving, setApproving] = useState(false);
-  const { openHermesConnection } = useShell();
+  const { openHermesConnection, openBusinessSwitcher } = useShell();
   const { config: hermesConfig, isConnected } = useHermesConnection();
   const pendingReplyProcessIdRef = useRef<string | null>(null);
   const pendingReplySentRef = useRef(false);
@@ -144,10 +147,7 @@ export default function WorkshopPage() {
       if (!hermesConfig) return;
       setAgentsRunning(true);
 
-      const agentBody = JSON.stringify({
-        baseUrl: hermesConfig.baseUrl,
-        apiKey: hermesConfig.apiKey,
-      });
+      const agentBody = JSON.stringify(hermesApiBody(hermesConfig));
 
       try {
         const [diagramResult, nameResult] = await Promise.allSettled([
@@ -250,8 +250,7 @@ export default function WorkshopPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(options?.replyOnly ? { replyOnly: true } : { content }),
-          baseUrl: hermesConfig.baseUrl,
-          apiKey: hermesConfig.apiKey,
+          ...hermesApiBody(hermesConfig),
         }),
       });
 
@@ -315,11 +314,18 @@ export default function WorkshopPage() {
       <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
-          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
-            {businessName || "Select a project"}
-          </h1>
+          <button
+            type="button"
+            onClick={openBusinessSwitcher}
+            className="font-semibold text-sm text-text-strong truncate max-w-[280px] flex items-center gap-1.5 hover:text-accent"
+            title="Switch function"
+          >
+            <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
+            <span>{businessName || "Select a business"}</span>
+          </button>
         </div>
         <div className="flex items-center gap-2">
+          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           <HermesStatusBadge onClick={openHermesConnection} />
           <button
             onClick={() => {

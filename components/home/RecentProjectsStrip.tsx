@@ -3,15 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { clearLegacyActiveProcessId } from "@/lib/workshop-storage";
-import type { BusinessSummary } from "@/lib/types";
-
-interface ProjectWithStatus extends BusinessSummary {
-  statusLabel: string;
-  statusClass: string;
-}
+import { setActiveProcessId } from "@/lib/workshop-storage";
+import type { ProcessSummary } from "@/lib/types";
 
 function timeAgo(dateStr: string): string {
   const then = new Date(dateStr).getTime();
@@ -38,38 +32,24 @@ function getThumbStyle(name: string): React.CSSProperties {
   };
 }
 
-function getStatus(project: BusinessSummary): { label: string; className: string } {
-  const count = project._count?.processes ?? 0;
-  if (count === 0) {
-    return { label: "Not started", className: "pill" };
-  }
-  const updated = new Date(project.updatedAt).getTime();
-  const hours = (Date.now() - updated) / (1000 * 60 * 60);
-  if (hours < 24) {
-    return { label: "Mapping", className: "pill pill-accent" };
-  }
-  return { label: "Needs input", className: "pill pill-amber" };
-}
-
-export function RecentProjectsStrip() {
+export function RecentProcessesStrip() {
   const router = useRouter();
-  const [projects, setProjects] = useState<ProjectWithStatus[]>([]);
+  const [processes, setProcesses] = useState<ProcessSummary[]>([]);
+  const [business, setBusiness] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/businesses");
+      const res = await fetch("/api/processes");
       if (!res.ok) throw new Error("Failed");
       const data = await res.json();
-      const list: BusinessSummary[] = data.businesses || [];
-      const top = list.slice(0, 4).map((p) => {
-        const s = getStatus(p);
-        return { ...p, statusLabel: s.label, statusClass: s.className } as ProjectWithStatus;
-      });
-      setProjects(top);
+      const list: ProcessSummary[] = data.processes || [];
+      setProcesses(list.slice(0, 4));
+      setBusiness(data.business || null);
     } catch {
       // silent — strip is non-critical
-      setProjects([]);
+      setProcesses([]);
+      setBusiness(null);
     } finally {
       setLoading(false);
     }
@@ -79,61 +59,55 @@ export function RecentProjectsStrip() {
     load();
   }, [load]);
 
-  async function selectProject(id: string) {
-    try {
-      const res = await fetch("/api/businesses/active", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ businessId: id }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      clearLegacyActiveProcessId();
+  function selectProcess(processId: string) {
+    if (!business) {
       router.push("/workshop");
-    } catch {
-      toast.error("Could not open project");
+      return;
     }
+    setActiveProcessId(business.id, processId);
+    router.push("/workshop");
   }
 
   if (loading) {
     return null;
   }
 
-  if (projects.length === 0) {
+  if (processes.length === 0) {
     return null;
   }
 
   return (
     <div className="recent-projects">
       <div className="recent-projects__header">
-        <div className="recent-projects__title">Recent projects</div>
+        <div className="recent-projects__title">Recent processes</div>
         <Link href="/projects" className="recent-projects__view-all">
-          View all <ArrowRight className="w-3.5 h-3.5" />
+          View functions <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 
       <div className="recent-projects__grid">
-        {projects.map((project) => (
+        {processes.map((proc) => (
           <button
-            key={project.id}
+            key={proc.id}
             type="button"
-            onClick={() => selectProject(project.id)}
+            onClick={() => selectProcess(proc.id)}
             className="project-card"
-            aria-label={`Open ${project.name}`}
+            aria-label={`Open ${proc.name}`}
           >
-            <div className="project-card__thumb" style={getThumbStyle(project.name)}>
-              <span className="project-card__initial">{project.name[0]?.toUpperCase() || "P"}</span>
+            <div className="project-card__thumb" style={getThumbStyle(proc.name)}>
+              <span className="project-card__initial">{proc.name[0]?.toUpperCase() || "P"}</span>
             </div>
             <div className="project-card__body">
-              <div className="project-card__name" title={project.name}>
-                {project.name}
+              <div className="project-card__name" title={proc.name}>
+                {proc.name}
               </div>
               <div className="project-card__meta">
-                <span className={project.statusClass}>{project.statusLabel}</span>
+                <span className="pill">{proc.department}</span>
                 <span className="project-card__dot">·</span>
-                <span className="project-card__time">{timeAgo(project.updatedAt)}</span>
+                <span className="project-card__time">{timeAgo(proc.updatedAt)}</span>
               </div>
               <div className="project-card__count">
-                {project._count?.processes ?? 0} workflow{(project._count?.processes ?? 0) !== 1 ? "s" : ""}
+                {proc._count?.messages ?? 0} message{(proc._count?.messages ?? 0) !== 1 ? "s" : ""}
               </div>
             </div>
           </button>

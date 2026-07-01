@@ -14,6 +14,7 @@ const ChatSchema = z.object({
   content: z.string().min(1),
   baseUrl: z.string(),
   apiKey: z.string(),
+  model: z.string().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     ];
 
     const assistantContent = await callHermes(
-      { baseUrl: body.baseUrl, apiKey: body.apiKey },
+      { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
       [
         {
           role: 'system',

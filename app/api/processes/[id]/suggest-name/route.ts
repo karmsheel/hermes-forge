@@ -7,6 +7,7 @@ import { requireProcessAccess } from '@/lib/auth';
 const AgentSchema = z.object({
   baseUrl: z.string(),
   apiKey: z.string(),
+  model: z.string().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const suggestedName = await suggestProcessName(
-      { baseUrl: body.baseUrl, apiKey: body.apiKey },
+      { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
       conversation
     );
 

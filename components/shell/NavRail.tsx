@@ -41,7 +41,7 @@ export function NavRail() {
     {
       id: "projects",
       href: "/projects",
-      label: "Projects",
+      label: "Functions",
       icon: FolderKanban,
       match: (path) => path === "/projects",
     },
@@ -91,7 +91,7 @@ export function NavRail() {
           type="button"
           className="nav-rail__item nav-rail__item--accent"
           onClick={openNewProject}
-          title="New project"
+          title="New function"
           aria-label="New project"
         >
           <Plus className="w-5 h-5" />

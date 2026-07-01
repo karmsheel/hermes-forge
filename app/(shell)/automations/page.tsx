@@ -13,6 +13,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import {
   AUTOMATION_DEPLOY_LABELS,
@@ -82,6 +83,7 @@ export default function AutomationsPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           <HermesStatusBadge onClick={openHermesConnection} />
           <button
             onClick={load}
@@ -100,12 +102,12 @@ export default function AutomationsPage() {
         ) : !businessName ? (
           <div className="text-center py-16 card max-w-lg mx-auto">
             <Building2 className="w-10 h-10 text-text-soft mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No active project</h2>
+            <h2 className="text-lg font-semibold mb-2">No active function</h2>
             <p className="text-sm text-text-muted mb-6">
-              Select or create a project to see approved processes.
+              Select or create a function to see approved processes.
             </p>
             <Link href="/projects" className="btn-primary text-sm inline-flex items-center gap-2">
-              Go to Projects <ArrowRight className="w-4 h-4" />
+              Go to Functions <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         ) : processes.length === 0 ? (

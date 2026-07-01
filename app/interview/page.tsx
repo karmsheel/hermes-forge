@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { ArrowLeft, Send, Loader2, Database, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { HermesConnectionPanel } from '@/components/hermes/HermesConnectionPanel';
+import { HermesModelSwitcher } from '@/components/hermes/HermesModelSwitcher';
 import { HermesStatusBadge } from '@/components/hermes/HermesStatusBadge';
 import { useHermesConnection } from '@/components/hermes/HermesConnectionProvider';
+import { hermesApiBody } from '@/lib/hermes-models';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -74,8 +76,7 @@ export default function InterviewPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey,
+          ...hermesApiBody(config),
           messages: newMessages.map(m => ({
             role: m.role,
             content: m.content
@@ -137,8 +138,7 @@ Do NOT mention n8n or automation yet — this is pure discovery.`
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessId: bizId,
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey,
+          ...hermesApiBody(config),
           conversation: conversation.slice(-6) // last few turns
         })
       });

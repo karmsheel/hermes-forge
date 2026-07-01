@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { requireBusinessAccess } from '@/lib/auth';
+import { resolveHermesModel } from '@/lib/hermes-models';
 
 const ExtractSchema = z.object({
   businessId: z.string(),
   baseUrl: z.string(),
   apiKey: z.string(),
+  model: z.string().optional(),
   conversation: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = ExtractSchema.parse(body);
 
-    const { businessId, baseUrl, apiKey, conversation } = parsed;
+    const { businessId, baseUrl, apiKey, model, conversation } = parsed;
 
     const session = await requireBusinessAccess(request, businessId);
     if (session instanceof NextResponse) return session;
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'hermes-agent',
+        model: resolveHermesModel({ model }),
         messages: [
           { role: 'system', content: EXTRACTION_PROMPT },
           { role: 'user', content: 'Here is the recent conversation:\n\n' + 

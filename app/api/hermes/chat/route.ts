@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { resolveHermesModel } from '@/lib/hermes-models';
 
 export async function POST(request: NextRequest) {
   try {
-    const { baseUrl, apiKey, messages, system } = await request.json();
+    const { baseUrl, apiKey, model, messages, system } = await request.json();
 
     if (!baseUrl || !apiKey) {
       return NextResponse.json({ error: 'Missing Hermes baseUrl or apiKey' }, { status: 400 });
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'hermes-agent', // or any profile name Hermes uses
+        model: resolveHermesModel({ model }),
         messages: openaiMessages,
         stream: false,
         temperature: 0.7,

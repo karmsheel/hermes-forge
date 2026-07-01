@@ -101,6 +101,7 @@ export interface Memory {
 export interface HermesConfig {
   baseUrl: string; // e.g. http://localhost:8642
   apiKey: string;
+  model?: string;
 }
 
 export interface N8nConfig {
@@ -149,8 +150,33 @@ export interface HermesConnectionStatus {
 export type Department = 
   | 'Sales' 
   | 'Marketing' 
+  | 'Customer Service' 
+  | 'Revenue' 
+  | 'Manufacturing' 
   | 'Operations' 
   | 'Finance' 
   | 'Support' 
   | 'HR' 
   | 'Custom';
+
+export interface BusinessExportPayload {
+  version: 1;
+  exportedAt: string;
+  business: {
+    name: string;
+    description: string | null;
+    industry: string | null;
+  };
+  processes: Array<{
+    name: string;
+    description: string;
+    department: string;
+    trigger: string | null;
+    inputs: string | null;
+    outputs: string | null;
+    manualSteps: string | null;
+    diagramMermaid: string | null;
+    messages: Array<{ role: 'user' | 'assistant'; content: string; createdAt: string }>;
+  }>;
+  memories?: Array<{ fact: string; confidence?: number; source?: string | null }>;
+}

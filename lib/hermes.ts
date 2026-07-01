@@ -1,6 +1,9 @@
+import { resolveHermesModel } from './hermes-models';
+
 export interface HermesConfig {
   baseUrl: string;
   apiKey: string;
+  model?: string;
 }
 
 export async function callHermes(
@@ -17,7 +20,7 @@ export async function callHermes(
       Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({
-      model: 'hermes-agent',
+      model: resolveHermesModel(config),
       messages,
       stream: false,
       temperature: options?.temperature ?? 0.7,

@@ -8,9 +8,11 @@ interface NewProjectDialogProps {
   creating: boolean;
   onClose: () => void;
   onCreate: (name: string, description: string) => void;
+  title?: string;
+  subtitle?: string;
 }
 
-export function NewProjectDialog({ open, creating, onClose, onCreate }: NewProjectDialogProps) {
+export function NewProjectDialog({ open, creating, onClose, onCreate, title, subtitle }: NewProjectDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -58,9 +60,9 @@ export function NewProjectDialog({ open, creating, onClose, onCreate }: NewProje
         </button>
 
         <div className="mb-6 pr-8">
-          <h2 className="text-xl font-semibold tracking-tight">New Project</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{title || "New Function"}</h2>
           <p className="text-sm text-text-muted mt-1">
-            Give your project a name and optional description before opening the workshop.
+            {subtitle || "Give your function a name and optional description. Workflows will be auto-categorized (e.g. Marketing, Revenue)."}
           </p>
         </div>
 
@@ -74,7 +76,7 @@ export function NewProjectDialog({ open, creating, onClose, onCreate }: NewProje
               className="input w-full text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Acme Corp Operations"
+              placeholder="e.g. Marketing or Customer Service"
               autoFocus
               disabled={creating}
               required

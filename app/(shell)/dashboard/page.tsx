@@ -126,8 +126,8 @@ export default function DashboardPage() {
           <div className="text-center py-20 text-text-muted">Loading business model...</div>
         ) : !business ? (
           <div className="text-center py-16">
-            <p className="text-text-muted mb-4">No active project. Select or create one to view the dashboard.</p>
-            <Link href="/projects" className="btn-primary inline-flex">Go to Projects</Link>
+            <p className="text-text-muted mb-4">No active function. Select or create one to view the dashboard.</p>
+            <Link href="/projects" className="btn-primary inline-flex">Go to Functions</Link>
           </div>
         ) : (
           <>

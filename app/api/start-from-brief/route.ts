@@ -5,6 +5,7 @@ import { requireSession, setActiveBusinessCookie } from '@/lib/auth';
 import { deriveProjectName } from '@/lib/home-prompt';
 import { formatStandardTag } from '@/lib/process-standards';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
+import { categorizeWorkflow } from '@/lib/categorize-workflow';
 
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
@@ -43,12 +44,13 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const processTextForCat = `${body.processName || ''} ${trimmed}`;
       const createdProcess = await tx.process.create({
         data: {
           businessId: createdBusiness.id,
           name: body.processName?.trim() || 'New workflow',
           description: `${templateTag}${standardTag}${trimmed}`,
-          department: 'Operations',
+          department: categorizeWorkflow(processTextForCat),
           status: 'mapping',
           diagramMermaid,
           diagramUpdatedAt: diagramMermaid ? new Date() : null,

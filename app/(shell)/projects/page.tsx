@@ -37,7 +37,7 @@ export default function BusinessesPage() {
       setProjects(biz.businesses || []);
       setActiveProjectId(me.activeBusiness?.id || null);
     } catch {
-      toast.error("Failed to load projects");
+      toast.error("Failed to load functions");
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function BusinessesPage() {
       setActiveProjectId(id);
       router.push("/workshop");
     } catch {
-      toast.error("Could not open project");
+      toast.error("Could not open function");
     }
   }
 
@@ -107,14 +107,14 @@ export default function BusinessesPage() {
       <div className="flex items-end justify-between mb-8">
         <div>
           <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Your workspace</div>
-          <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Functions</h1>
           <p className="text-sm text-text-muted mt-2">
-            Each project contains its own workflows and diagrams.
+            Each function contains its own workflows and diagrams. Workflows are auto-categorized on creation.
           </p>
         </div>
         <button onClick={openNewProject} className="btn-primary text-sm">
           <Plus className="w-4 h-4" />
-          New Project
+          New Function
         </button>
       </div>
 
@@ -127,7 +127,7 @@ export default function BusinessesPage() {
         <div className="card p-10 text-center border-dashed">
           <FolderKanban className="w-10 h-10 text-text-soft mx-auto mb-3" />
           <p className="text-text-muted mb-4">
-            Create a project to start mapping workflows with Hermes.
+            Create a function to start mapping workflows with Hermes.
           </p>
           <button onClick={openNewProject} className="btn-primary inline-flex">
             <Plus className="w-4 h-4" />
@@ -197,7 +197,7 @@ export default function BusinessesPage() {
                             type="button"
                             onClick={(e) => startEdit(project, e)}
                             className="p-1.5 rounded-md hover:bg-bg-subtle text-text-muted hover:text-text shrink-0"
-                            title="Rename project"
+                            title="Rename function"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>

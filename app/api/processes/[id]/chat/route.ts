@@ -17,6 +17,7 @@ const ChatSchema = z
     replyOnly: z.boolean().optional(),
     baseUrl: z.string(),
     apiKey: z.string(),
+    model: z.string().optional(),
   })
   .refine((data) => data.replyOnly === true || !!data.content?.trim(), {
     message: 'content is required unless replyOnly is true',
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .some((m) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
 
     const assistantContent = await callHermes(
-      { baseUrl: body.baseUrl, apiKey: body.apiKey },
+      { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
       [
         {
           role: 'system',

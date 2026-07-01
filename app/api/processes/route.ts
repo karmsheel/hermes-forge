@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
+import { categorizeWorkflow } from '@/lib/categorize-workflow';
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,12 +65,14 @@ export async function POST(request: NextRequest) {
         ? body.diagramMermaid.trim()
         : null;
 
+    const dept = body.department || categorizeWorkflow(`${body.name || ''} ${body.description || ''}`);
+
     const process = await prisma.process.create({
       data: {
         businessId: business.id,
         name: body.name || 'Untitled Process',
         description: body.description || '',
-        department: body.department || 'Operations',
+        department: dept,
         status: 'mapping',
         diagramMermaid,
         diagramUpdatedAt: diagramMermaid ? new Date() : null,

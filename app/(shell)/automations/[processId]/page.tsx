@@ -9,7 +9,9 @@ import { AutomationSidebar } from "@/components/automations/AutomationSidebar";
 import { AutomationChat } from "@/components/automations/AutomationChat";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { N8nConnectionDialog } from "@/components/n8n/N8nConnectionDialog";
+import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { automationStatusToDeployStatus } from "@/lib/automation-types";
 import type { AutomationStudioData } from "@/lib/automation-types";
@@ -77,10 +79,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
         const res = await fetch(`/api/processes/${pid}/automation/extract`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            baseUrl: hermesConfig.baseUrl,
-            apiKey: hermesConfig.apiKey,
-          }),
+          body: JSON.stringify(hermesApiBody(hermesConfig)),
         });
         if (!res.ok) {
           toast.warning("Could not update automation plan");
@@ -148,8 +147,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content,
-          baseUrl: hermesConfig.baseUrl,
-          apiKey: hermesConfig.apiKey,
+          ...hermesApiBody(hermesConfig),
         }),
       });
 
@@ -192,6 +190,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           {extracting && (
             <div className="text-[10px] text-green flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
