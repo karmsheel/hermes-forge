@@ -10,6 +10,7 @@ import {
   shouldPromptForAccuracy,
   userConfirmsAccuracy,
 } from '@/lib/process-approval';
+import { executeProcessSplit, shouldExecuteSplit } from '@/lib/process-split';
 
 const ChatSchema = z
   .object({
@@ -71,6 +72,38 @@ export async function POST(request: NextRequest, context: RouteContext) {
       allMessages = [...allMessages, { role: 'user', content }];
     }
 
+    const lastUserContent =
+      allMessages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+
+    if (
+      !replyOnly &&
+      shouldExecuteSplit({
+        userContent: lastUserContent,
+        lastAssistantContent: lastAssistant?.content,
+        status: approvedFromChat ? 'approved' : process.status,
+      })
+    ) {
+      const splitResult = await executeProcessSplit(
+        { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
+        id,
+        lastUserContent
+      );
+
+      const updated = await prisma.process.findUnique({
+        where: { id },
+        include: {
+          messages: { orderBy: { createdAt: 'asc' } },
+          business: { select: { id: true, name: true } },
+        },
+      });
+
+      return NextResponse.json({
+        process: updated,
+        runBackgroundAgents: false,
+        split: splitResult,
+      });
+    }
+
     const messageCount = allMessages.length;
     const hasDiagram = Boolean(process.diagramMermaid?.trim());
     const recentAccuracyAsk = priorMessages
@@ -112,9 +145,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await prisma.chatMessage.create({
       data: { processId: id, role: 'assistant', content: assistantMessage },
     });
-
-    const lastUserContent =
-      allMessages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
 
     if (process.nameStatus === 'pending' && !/^untitled/i.test(process.name)) {
       const renameIntent = /rename|call it|instead|different name|change (the )?name/i.test(lastUserContent);

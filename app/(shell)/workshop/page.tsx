@@ -299,14 +299,20 @@ export default function WorkshopPage() {
       setActiveProcess(data.process);
       setChatLoading(false);
 
-      if (data.approved) {
+      if (data.split) {
+        toast.success(
+          `Split complete — created "${data.split.childName}" workflow. Both are in the sidebar.`
+        );
+        setStreamingDiagram(null);
+        await loadProcessList();
+      } else if (data.approved) {
         toast.success("Process approved for automation");
         await loadProcessList();
       }
 
       if (data.runBackgroundAgents) {
         void runBackgroundAgents(activeId);
-      } else {
+      } else if (!data.split) {
         await loadProcessList();
       }
     } catch (error) {
@@ -354,7 +360,7 @@ export default function WorkshopPage() {
             type="button"
             onClick={openBusinessSwitcher}
             className="font-semibold text-sm text-text-strong truncate max-w-[280px] flex items-center gap-1.5 hover:text-accent"
-            title="Switch function"
+            title="Switch business"
           >
             <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
             <span>{businessName || "Select a business"}</span>
