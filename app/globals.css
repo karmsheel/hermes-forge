@@ -400,6 +400,16 @@ body {
   color: var(--text-strong);
 }
 
+/* Streaming Mermaid preview */
+.mermaid-diagram--streaming [data-mermaid-host] {
+  opacity: 0.92;
+  transition: opacity 0.2s ease;
+}
+
+.mermaid-diagram--streaming [data-mermaid-host] svg {
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--green) 18%, transparent));
+}
+
 /* App shell + left nav rail */
 .app-shell-layout {
   display: flex;

@@ -30,6 +30,42 @@ flowchart TD
   close -->|Yes| onboard[Onboard customer]
   close -->|No| nurture[Add to nurture list]`;
 
+export interface DiagramGenerationInput {
+  processName: string;
+  processDescription: string;
+  conversation: { role: string; content: string }[];
+  currentDiagram: string | null;
+  processStandard?: ProcessStandardId;
+}
+
+export function buildDiagramMessages(input: DiagramGenerationInput): {
+  role: string;
+  content: string;
+}[] {
+  const standardId =
+    input.processStandard ?? resolveProcessStandard(input.processDescription);
+  const standard = getProcessStandard(standardId);
+
+  const context = [
+    `Process name: ${input.processName}`,
+    `Description: ${input.processDescription || 'Not yet described'}`,
+    input.currentDiagram
+      ? `\nCurrent diagram (update this incrementally):\n${input.currentDiagram}`
+      : '\nNo diagram yet — create an initial skeleton.',
+    '\nConversation:\n' +
+      input.conversation.map((m) => `${m.role}: ${m.content}`).join('\n\n'),
+    '\nOutput the complete updated Mermaid diagram now.',
+  ].join('\n');
+
+  return [
+    {
+      role: 'system',
+      content: `${DIAGRAM_SYSTEM_PROMPT}\n\n${standard.diagramPromptAddon}`,
+    },
+    { role: 'user', content: context },
+  ];
+}
+
 export async function generateDiagramMermaid(
   config: HermesConfig,
   processName: string,
@@ -38,23 +74,15 @@ export async function generateDiagramMermaid(
   currentDiagram: string | null,
   processStandard?: ProcessStandardId
 ): Promise<string> {
-  const standardId = processStandard ?? resolveProcessStandard(processDescription);
-  const standard = getProcessStandard(standardId);
-
-  const context = [
-    `Process name: ${processName}`,
-    `Description: ${processDescription || 'Not yet described'}`,
-    currentDiagram ? `\nCurrent diagram (update this incrementally):\n${currentDiagram}` : '\nNo diagram yet — create an initial skeleton.',
-    '\nConversation:\n' + conversation.map((m) => `${m.role}: ${m.content}`).join('\n\n'),
-    '\nOutput the complete updated Mermaid diagram now.',
-  ].join('\n');
-
   const content = await callHermes(
     config,
-    [
-      { role: 'system', content: `${DIAGRAM_SYSTEM_PROMPT}\n\n${standard.diagramPromptAddon}` },
-      { role: 'user', content: context },
-    ],
+    buildDiagramMessages({
+      processName,
+      processDescription,
+      conversation,
+      currentDiagram,
+      processStandard,
+    }),
     { temperature: 0.2 }
   );
 

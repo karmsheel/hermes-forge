@@ -8,6 +8,7 @@ import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 interface MermaidDiagramProps {
   chart: string | null;
   className?: string;
+  isStreaming?: boolean;
 }
 
 const ZOOM_STEP = 0.2;
@@ -29,7 +30,11 @@ function getSvgDimensions(svg: SVGSVGElement): { width: number; height: number }
   return { width: width || 400, height: height || 300 };
 }
 
-export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
+export function MermaidDiagram({
+  chart,
+  className = "",
+  isStreaming = false,
+}: MermaidDiagramProps) {
   const { resolved } = useTheme();
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
@@ -39,6 +44,17 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
   const [sanitizedChart, setSanitizedChart] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [debouncedChart, setDebouncedChart] = useState(chart);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      setDebouncedChart(chart);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setDebouncedChart(chart), 180);
+    return () => window.clearTimeout(timer);
+  }, [chart, isStreaming]);
 
   const applyScale = useCallback(
     (svg: SVGSVGElement, natural: { width: number; height: number }, fit: number, zoomLevel: number) => {
@@ -79,10 +95,12 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
   );
 
   useEffect(() => {
-    const chartSource = sanitizeMermaidSource(chart);
+    const chartSource = sanitizeMermaidSource(debouncedChart);
     setSanitizedChart(chartSource || null);
-    setZoom(1);
-    setNaturalSize(null);
+    if (!isStreaming) {
+      setZoom(1);
+      setNaturalSize(null);
+    }
 
     if (!chartSource) {
       setError(null);
@@ -169,7 +187,7 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
     return () => {
       cancelled = true;
     };
-  }, [chart, renderId, applyScale, resolved]);
+  }, [debouncedChart, isStreaming, renderId, applyScale, resolved]);
 
   useEffect(() => {
     if (!naturalSize) return;
@@ -216,14 +234,25 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
   }
 
   return (
-    <div className={`relative h-full flex flex-col ${className}`}>
+    <div
+      className={`relative h-full flex flex-col ${className}${
+        isStreaming ? " mermaid-diagram--streaming" : ""
+      }`}
+    >
       <div
         ref={viewportRef}
         className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-5"
       >
-        {rendering && (
+        {rendering && !isStreaming && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/60 z-10">
             <Loader2 className="w-6 h-6 animate-spin text-green" />
+          </div>
+        )}
+
+        {isStreaming && (
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 text-[10px] text-green px-2 py-1 rounded-full border border-green-border bg-green-bg/90">
+            <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
+            Drawing…
           </div>
         )}
 
@@ -235,7 +264,11 @@ export function MermaidDiagram({ chart, className = "" }: MermaidDiagramProps) {
             </pre>
           </div>
         ) : (
-          <div ref={svgHostRef} className="[&_svg]:drop-shadow-sm shrink-0" />
+          <div
+            ref={svgHostRef}
+            data-mermaid-host
+            className="[&_svg]:drop-shadow-sm shrink-0"
+          />
         )}
       </div>
 

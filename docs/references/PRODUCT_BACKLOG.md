@@ -252,11 +252,13 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 2.4 Project status lifecycle badges
+### 2.4 Function status lifecycle badges — **DEFERRED**
 
-**Goal:** Consistent status pills across home cards and project list.
+**Goal:** Consistent status pills across home cards and the functions list (`/projects`).
 
-**Files:** `lib/project-status.ts`, update `prisma/schema.prisma` if persisting status
+**Note:** UI uses **Functions** (business areas) not "projects". Processes live inside a function.
+
+**Files:** `lib/function-status.ts` (or extend status helpers), home strip + functions list
 
 **Statuses:** `not_started` | `mapping` | `needs_input` | `review` | `completed`
 
@@ -272,11 +274,20 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ## Phase 3 — Workshop depth
 
-### 3.1 Streaming diagram updates
+### 3.1 Streaming diagram updates — **DONE**
 
 **Goal:** Partial Mermaid renders while Hermes generates (Open Design staged preview).
 
-**Files:** `app/api/processes/[id]/diagram/route.ts`, `components/workshop/MermaidDiagram.tsx`
+**Files:** `app/api/processes/[id]/diagram/route.ts`, `lib/diagram-stream.ts`, `lib/hermes-stream.ts`, `lib/mermaid-partial.ts`, `components/workshop/MermaidDiagram.tsx`, `app/(shell)/workshop/page.tsx`
+
+**Acceptance criteria:**
+- [x] Diagram subagent streams from Hermes (`stream: true` on chat completions)
+- [x] SSE endpoint emits `preview` events with partial Mermaid and `done` with final diagram
+- [x] Workshop updates the diagram live during background agent runs
+- [x] MermaidDiagram shows a "Drawing…" indicator without blocking the whole canvas
+- [x] Non-streaming JSON mode preserved for backwards compatibility
+
+**Depends on:** 2.1
 
 ---
 
@@ -390,8 +401,8 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 2.1 | Send → project + workshop | 2 | Done |
 | 2.2 | Process standards picker | 2 | Done |
 | 2.3 | Inline model switcher | 2 | Done |
-| 2.4 | Status lifecycle badges | 2 | Pending |
-| 3.1 | Streaming diagram | 3 | Pending |
+| 2.4 | Function status lifecycle badges | 2 | Deferred |
+| 3.1 | Streaming diagram | 3 | Done |
 | 3.2 | Node comments | 3 | Pending |
 | 3.3 | Questions panel | 3 | Pending |
 | 3.4 | Conversation fork | 3 | Pending |

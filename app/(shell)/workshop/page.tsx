@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
+import { Building2, CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
-import { Building2 } from "lucide-react";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import {
@@ -33,6 +33,8 @@ export default function WorkshopPage() {
   const [creating, setCreating] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [agentsRunning, setAgentsRunning] = useState(false);
+  const [diagramStreaming, setDiagramStreaming] = useState(false);
+  const [streamingDiagram, setStreamingDiagram] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const { openHermesConnection, openBusinessSwitcher } = useShell();
   const { config: hermesConfig, isConnected } = useHermesConnection();
@@ -139,6 +141,8 @@ export default function WorkshopPage() {
 
   function handleSelectProcess(id: string) {
     if (id === activeId) return;
+    setStreamingDiagram(null);
+    setDiagramStreaming(false);
     setActiveId(id);
   }
 
@@ -146,27 +150,57 @@ export default function WorkshopPage() {
     async (processId: string) => {
       if (!hermesConfig) return;
       setAgentsRunning(true);
+      setDiagramStreaming(true);
+      setStreamingDiagram(null);
 
-      const agentBody = JSON.stringify(hermesApiBody(hermesConfig));
+      const agentBody = JSON.stringify({ ...hermesApiBody(hermesConfig), stream: true });
+      const agentHeaders = {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      };
 
       try {
         const [diagramResult, nameResult] = await Promise.allSettled([
-          fetch(`/api/processes/${processId}/diagram`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: agentBody,
-          }),
+          consumeDiagramStream(
+            await fetch(`/api/processes/${processId}/diagram`, {
+              method: "POST",
+              headers: agentHeaders,
+              body: agentBody,
+            }),
+            {
+              onPreview: (mermaid) => {
+                setStreamingDiagram(mermaid);
+                setActiveProcess((prev) =>
+                  prev && prev.id === processId
+                    ? { ...prev, diagramMermaid: mermaid }
+                    : prev
+                );
+              },
+              onDone: (mermaid) => {
+                setStreamingDiagram(mermaid);
+                setActiveProcess((prev) =>
+                  prev && prev.id === processId
+                    ? {
+                        ...prev,
+                        diagramMermaid: mermaid,
+                        diagramUpdatedAt: new Date().toISOString(),
+                      }
+                    : prev
+                );
+              },
+            }
+          ),
           fetch(`/api/processes/${processId}/suggest-name`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: agentBody,
+            body: JSON.stringify(hermesApiBody(hermesConfig)),
           }),
         ]);
 
         if (diagramResult.status === "rejected") {
           toast.warning("Diagram subagent failed");
         } else if (!diagramResult.value.ok) {
-          toast.warning("Diagram could not be updated");
+          toast.warning(diagramResult.value.error || "Diagram could not be updated");
         }
 
         if (nameResult.status === "fulfilled" && nameResult.value.ok) {
@@ -180,6 +214,8 @@ export default function WorkshopPage() {
         if (businessId) await loadProcess(processId, businessId);
         await loadProcessList();
       } finally {
+        setDiagramStreaming(false);
+        setStreamingDiagram(null);
         setAgentsRunning(false);
       }
     },
@@ -303,7 +339,7 @@ export default function WorkshopPage() {
     handleSendMessage,
   ]);
 
-  const diagramChart = activeProcess?.diagramMermaid ?? null;
+  const diagramChart = streamingDiagram ?? activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
   const isApproved = activeProcess?.status === "approved";
   const canApprove =
@@ -421,7 +457,11 @@ export default function WorkshopPage() {
                 Loading process...
               </div>
             ) : (
-              <MermaidDiagram chart={diagramChart} className="absolute inset-0 z-0" />
+              <MermaidDiagram
+                chart={diagramChart}
+                isStreaming={diagramStreaming}
+                className="absolute inset-0 z-0"
+              />
             )}
           </div>
 
