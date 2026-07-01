@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { requireSession, setActiveBusinessCookie } from '@/lib/auth';
+import { getActiveBusinessForUser, requireSession, setActiveBusinessCookie } from '@/lib/auth';
 import { deriveProjectName } from '@/lib/home-prompt';
 import { formatStandardTag } from '@/lib/process-standards';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
@@ -28,26 +28,35 @@ export async function POST(request: NextRequest) {
     const standardTag = formatStandardTag(body.processStandard ?? 'auto');
     const diagramMermaid = body.diagramMermaid?.trim() || null;
 
+    // Reuse existing active business if present (so home brief adds process to current business).
+    // Only create a brand new business if the user has none yet.
+    const existingBusiness = await getActiveBusinessForUser(session.userId, request);
+
     const { business, process } = await prisma.$transaction(async (tx) => {
-      const createdBusiness = await tx.business.create({
-        data: {
-          userId: session.userId,
-          name: deriveProjectName(trimmed),
-          description: trimmed,
-        },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+      let business;
+      if (existingBusiness) {
+        business = existingBusiness;
+      } else {
+        business = await tx.business.create({
+          data: {
+            userId: session.userId,
+            name: deriveProjectName(trimmed),
+            description: trimmed,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+      }
 
       const processTextForCat = `${body.processName || ''} ${trimmed}`;
       const createdProcess = await tx.process.create({
         data: {
-          businessId: createdBusiness.id,
+          businessId: business.id,
           name: body.processName?.trim() || 'New workflow',
           description: `${templateTag}${standardTag}${trimmed}`,
           department: categorizeWorkflow(processTextForCat),
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return { business: createdBusiness, process: createdProcess };
+      return { business, process: createdProcess };
     });
 
     const response = NextResponse.json({

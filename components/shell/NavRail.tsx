@@ -28,7 +28,7 @@ type NavItem = {
 
 export function NavRail() {
   const pathname = usePathname();
-  const { openNewProject, openHermesConnection } = useShell();
+  const { requestNewProcess, openHermesConnection } = useShell();
 
   const mainItems: NavItem[] = [
     {
@@ -90,9 +90,9 @@ export function NavRail() {
         <button
           type="button"
           className="nav-rail__item nav-rail__item--accent"
-          onClick={openNewProject}
-          title="New function"
-          aria-label="New project"
+          onClick={requestNewProcess}
+          title="New process"
+          aria-label="New process"
         >
           <Plus className="w-5 h-5" />
         </button>

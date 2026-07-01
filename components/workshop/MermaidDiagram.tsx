@@ -15,6 +15,7 @@ const ZOOM_STEP = 0.2;
 const MIN_ZOOM = 0.3;
 const MAX_ZOOM = 2.5;
 const VIEWPORT_PADDING = 40;
+const DEFAULT_ZOOM = 0.75;
 
 
 
@@ -42,7 +43,7 @@ export function MermaidDiagram({
   const [error, setError] = useState<string | null>(null);
   const [rendering, setRendering] = useState(false);
   const [sanitizedChart, setSanitizedChart] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [debouncedChart, setDebouncedChart] = useState(chart);
 
@@ -98,7 +99,7 @@ export function MermaidDiagram({
     const chartSource = sanitizeMermaidSource(debouncedChart);
     setSanitizedChart(chartSource || null);
     if (!isStreaming) {
-      setZoom(1);
+      setZoom(DEFAULT_ZOOM);
       setNaturalSize(null);
     }
 
@@ -170,7 +171,7 @@ export function MermaidDiagram({
                 ? Math.min(availW / natural.width, availH / natural.height, 1)
                 : 1;
 
-            applyScale(svgEl, natural, fit, 1);
+            applyScale(svgEl, natural, fit, DEFAULT_ZOOM);
           }
         }
       } catch (err) {

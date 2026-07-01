@@ -21,7 +21,7 @@ type PageProps = { params: Promise<{ processId: string }> };
 export default function AutomationStudioPage({ params }: PageProps) {
   const { processId } = use(params);
   const router = useRouter();
-  const { openHermesConnection } = useShell();
+  const { openHermesConnection, currentBusiness } = useShell();
   const { config: hermesConfig } = useHermesConnection();
 
   const [studio, setStudio] = useState<AutomationStudioData | null>(null);
@@ -69,7 +69,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
 
   useEffect(() => {
     loadStudio();
-  }, [loadStudio]);
+  }, [loadStudio, currentBusiness?.id]);
 
   const runExtraction = useCallback(
     async (pid: string) => {
@@ -230,7 +230,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
           onOpenN8nConnection={() => setN8nConnectionOpen(true)}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-bg">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-bg">
           <div className="px-5 py-3 border-b border-border shrink-0">
             <div className="text-[10px] uppercase tracking-widest text-text-muted">
               Approved process map

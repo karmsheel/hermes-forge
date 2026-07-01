@@ -38,6 +38,20 @@ export function clearLegacyActiveProcessId() {
 }
 
 const PENDING_REPLY_KEY = "pendingHermesReply";
+const PENDING_NEW_PROCESS_KEY = "pendingNewProcess";
+
+/** Nav rail + was clicked from outside workshop — create a process on arrival. */
+export function setPendingNewProcess() {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PENDING_NEW_PROCESS_KEY, "1");
+}
+
+export function consumePendingNewProcess(): boolean {
+  if (typeof window === "undefined") return false;
+  const value = sessionStorage.getItem(PENDING_NEW_PROCESS_KEY);
+  if (value) sessionStorage.removeItem(PENDING_NEW_PROCESS_KEY);
+  return value === "1";
+}
 
 /** Marks a process whose seeded user message still needs an assistant reply. */
 export function setPendingHermesReply(processId: string) {

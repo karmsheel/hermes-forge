@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Building2, CheckCircle2, RefreshCw, Zap } from "lucide-react";
+import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
@@ -17,6 +17,7 @@ import { useHermesConnection } from "@/components/hermes/HermesConnectionProvide
 import {
   clearActiveProcessId,
   consumePendingHermesReply,
+  consumePendingNewProcess,
   getActiveProcessId,
   setActiveProcessId,
 } from "@/lib/workshop-storage";
@@ -36,14 +37,27 @@ export default function WorkshopPage() {
   const [diagramStreaming, setDiagramStreaming] = useState(false);
   const [streamingDiagram, setStreamingDiagram] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
-  const { openHermesConnection, openBusinessSwitcher } = useShell();
-  const { config: hermesConfig, isConnected } = useHermesConnection();
+  const [composerFocusKey, setComposerFocusKey] = useState(0);
+  const { openHermesConnection, currentBusiness, registerWorkshopNewProcess } = useShell();
+  const { config: hermesConfig } = useHermesConnection();
   const pendingReplyProcessIdRef = useRef<string | null>(null);
   const pendingReplySentRef = useRef(false);
+  const pendingCreateRef = useRef(consumePendingNewProcess());
+  const activeIdRef = useRef(activeId);
+  const hermesConfigRef = useRef(hermesConfig);
+  const sendMessageRef = useRef<((content: string, options?: { replyOnly?: boolean }) => any) | null>(null);
 
   useEffect(() => {
     pendingReplyProcessIdRef.current = consumePendingHermesReply();
   }, []);
+
+  useEffect(() => {
+    hermesConfigRef.current = hermesConfig;
+  }, [hermesConfig]);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
@@ -77,6 +91,8 @@ export default function WorkshopPage() {
         return resolvedId;
       });
 
+      activeIdRef.current = resolvedId;
+
       if (selectionChanged) {
         setActiveProcess(null);
         if (!resolvedId && savedProcessId) clearActiveProcessId(currentBusinessId);
@@ -96,7 +112,34 @@ export default function WorkshopPage() {
       const process: ProcessWithMessages = await res.json();
       setActiveProcess(process);
       setActiveId(id);
+      activeIdRef.current = id; // sync immediately so replyOnly / handle calls see fresh id
       setActiveProcessId(projectId, id);
+
+      // Trigger the initial agent reply for processes started via home brief (seeded user message).
+      // This is more reliable than effect timing for freshly created workflows.
+      const pendingId = pendingReplyProcessIdRef.current;
+      if (
+        pendingId &&
+        !pendingReplySentRef.current &&
+        pendingId === id &&
+        hermesConfigRef.current
+      ) {
+        const last = process.messages.at(-1);
+        if (last && last.role === "user") {
+          pendingReplySentRef.current = true;
+          pendingReplyProcessIdRef.current = null;
+          const sender = sendMessageRef.current;
+          if (sender) {
+            // Defer to ensure the activeProcess state has settled in this render cycle
+            Promise.resolve().then(() => {
+              try {
+                const p = sender(last.content, { replyOnly: true });
+                if (p && typeof p.catch === "function") p.catch(() => {});
+              } catch {}
+            });
+          }
+        }
+      }
     } catch {
       toast.error("Failed to load process");
       setActiveId(null);
@@ -109,7 +152,7 @@ export default function WorkshopPage() {
 
   useEffect(() => {
     loadProcessList();
-  }, [loadProcessList]);
+  }, [loadProcessList, currentBusiness?.id]);
 
   useEffect(() => {
     if (activeId && businessId && !loadingList) {
@@ -117,7 +160,8 @@ export default function WorkshopPage() {
     }
   }, [activeId, businessId, loadingList, loadProcess]);
 
-  async function handleCreateProcess() {
+  const handleCreateProcess = useCallback(async () => {
+    if (creating) return;
     setCreating(true);
     try {
       const res = await fetch("/api/processes", {
@@ -129,21 +173,36 @@ export default function WorkshopPage() {
       const process: ProcessWithMessages = await res.json();
       setActiveProcess(process);
       setActiveId(process.id);
+      activeIdRef.current = process.id;
       if (businessId) setActiveProcessId(businessId, process.id);
       await loadProcessList();
+      setComposerFocusKey((k) => k + 1);
       toast.success("New process started");
     } catch {
       toast.error("Failed to create process");
     } finally {
       setCreating(false);
     }
-  }
+  }, [businessId, creating, loadProcessList]);
+
+  useEffect(() => {
+    registerWorkshopNewProcess(handleCreateProcess);
+    return () => registerWorkshopNewProcess(null);
+  }, [handleCreateProcess, registerWorkshopNewProcess]);
+
+  useEffect(() => {
+    if (!pendingCreateRef.current) return;
+    if (!businessId || loadingList || creating) return;
+    pendingCreateRef.current = false;
+    void handleCreateProcess();
+  }, [businessId, loadingList, creating, handleCreateProcess]);
 
   function handleSelectProcess(id: string) {
     if (id === activeId) return;
     setStreamingDiagram(null);
     setDiagramStreaming(false);
     setActiveId(id);
+    activeIdRef.current = id; // keep ref in sync for any pending sends
   }
 
   const runBackgroundAgents = useCallback(
@@ -262,14 +321,16 @@ export default function WorkshopPage() {
   }
 
   const handleSendMessage = useCallback(async (content: string, options?: { replyOnly?: boolean }) => {
-    if (!activeId || !hermesConfig) return;
+    const currentActiveId = activeIdRef.current ?? activeId;
+    const currentHermes = hermesConfigRef.current ?? hermesConfig;
+    if (!currentActiveId || !currentHermes) return;
 
     setChatLoading(true);
 
     if (!options?.replyOnly) {
       const optimisticUser = {
         id: `temp-${Date.now()}`,
-        processId: activeId,
+        processId: currentActiveId,
         role: "user" as const,
         content,
         createdAt: new Date().toISOString(),
@@ -281,12 +342,12 @@ export default function WorkshopPage() {
     }
 
     try {
-      const res = await fetch(`/api/processes/${activeId}/chat`, {
+      const res = await fetch(`/api/processes/${currentActiveId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...(options?.replyOnly ? { replyOnly: true } : { content }),
-          ...hermesApiBody(hermesConfig),
+          ...hermesApiBody(currentHermes),
         }),
       });
 
@@ -298,6 +359,11 @@ export default function WorkshopPage() {
       const data = await res.json();
       setActiveProcess(data.process);
       setChatLoading(false);
+
+      // Ensure we have the latest persisted state (e.g. assistant reply) from server
+      if (currentActiveId && businessId) {
+        void loadProcess(currentActiveId, businessId).catch(() => {});
+      }
 
       if (data.split) {
         toast.success(
@@ -311,23 +377,28 @@ export default function WorkshopPage() {
       }
 
       if (data.runBackgroundAgents) {
-        void runBackgroundAgents(activeId);
+        void runBackgroundAgents(currentActiveId);
       } else if (!data.split) {
         await loadProcessList();
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
-      if (activeId && businessId) await loadProcess(activeId, businessId);
+      if (currentActiveId && businessId) await loadProcess(currentActiveId, businessId);
       setChatLoading(false);
     }
   }, [activeId, businessId, hermesConfig, loadProcess, loadProcessList, runBackgroundAgents]);
 
   useEffect(() => {
+    sendMessageRef.current = handleSendMessage;
+  }, [handleSendMessage]);
+
+  useEffect(() => {
     const pendingProcessId = pendingReplyProcessIdRef.current;
     if (!pendingProcessId || pendingReplySentRef.current) return;
-    if (pendingProcessId !== activeId) return;
+    const currentActiveIdForCheck = activeIdRef.current ?? activeId;
+    if (pendingProcessId !== currentActiveIdForCheck) return;
     if (!activeProcess || !activeId || loadingProcess || chatLoading) return;
-    if (!hermesConfig || !isConnected) return;
+    if (!hermesConfig) return;
 
     const lastMessage = activeProcess.messages.at(-1);
     if (!lastMessage || lastMessage.role !== "user") return;
@@ -341,7 +412,6 @@ export default function WorkshopPage() {
     loadingProcess,
     chatLoading,
     hermesConfig,
-    isConnected,
     handleSendMessage,
   ]);
 
@@ -356,15 +426,9 @@ export default function WorkshopPage() {
       <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
-          <button
-            type="button"
-            onClick={openBusinessSwitcher}
-            className="font-semibold text-sm text-text-strong truncate max-w-[280px] flex items-center gap-1.5 hover:text-accent"
-            title="Switch business"
-          >
-            <Building2 className="w-3.5 h-3.5 text-accent shrink-0" />
-            <span>{businessName || "Select a business"}</span>
-          </button>
+          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+            {businessName || currentBusiness?.name || "Select a business"}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           <HermesModelSwitcher onOpenConnection={openHermesConnection} />
@@ -392,7 +456,7 @@ export default function WorkshopPage() {
           onRename={handleRenameProcess}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 bg-bg">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-bg">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between shrink-0">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-text-muted">
@@ -490,6 +554,7 @@ export default function WorkshopPage() {
             isLoading={chatLoading}
             onSend={handleSendMessage}
             onOpenConnection={openHermesConnection}
+            composerFocusKey={composerFocusKey}
           />
         ) : (
           <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex items-center justify-center p-6">

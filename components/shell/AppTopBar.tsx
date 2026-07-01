@@ -16,7 +16,7 @@ export function AppTopBar() {
           type="button"
           onClick={openBusinessSwitcher}
           className="flex items-center gap-2 text-sm text-text-muted hover:text-text-strong max-w-[240px] truncate pr-3"
-          title="Switch function"
+          title="Switch business"
         >
           <Building2 className="w-4 h-4 shrink-0 text-accent" />
           <span className="truncate font-medium">

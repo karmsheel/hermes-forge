@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Download, Target } from 'lucide-react';
 import { toast } from 'sonner';
+import { useShell } from '@/components/shell/ShellContext';
 
 interface Process {
   id: string;
@@ -32,11 +33,12 @@ interface Business {
 }
 
 export default function DashboardPage() {
+  const { currentBusiness } = useShell();
   const [business, setBusiness] = useState<Business | null>(null);
   const [processes, setProcesses] = useState<Process[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/business');
@@ -58,11 +60,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData, currentBusiness?.id]);
 
   const sortedProcesses = [...processes].sort((a, b) => b.automationScore - a.automationScore);
 

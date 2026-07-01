@@ -94,7 +94,7 @@ export function HomeHero() {
 
       <p className="home-hero__blank">
         <button type="button" onClick={openNewProject} className="home-hero__blank-link">
-          …or start a blank function ›
+          …or start a blank business ›
         </button>
       </p>
     </section>

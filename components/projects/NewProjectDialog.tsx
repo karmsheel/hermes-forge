@@ -60,9 +60,9 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
         </button>
 
         <div className="mb-6 pr-8">
-          <h2 className="text-xl font-semibold tracking-tight">{title || "New Function"}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{title || "New Business"}</h2>
           <p className="text-sm text-text-muted mt-1">
-            {subtitle || "Give your function a name and optional description. Workflows will be auto-categorized (e.g. Marketing, Revenue)."}
+            {subtitle || "Give your business a name and optional description before opening the workshop."}
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
               className="input w-full text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Marketing or Customer Service"
+              placeholder="e.g. Acme Operations"
               autoFocus
               disabled={creating}
               required

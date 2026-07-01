@@ -38,8 +38,7 @@ export function PromptComposer({
     return () => window.clearInterval(id);
   }, [trimmed]);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function performSend() {
     if (!trimmed) return;
 
     if (!hermesConfig || !isConnected) {
@@ -50,6 +49,18 @@ export function PromptComposer({
     await onSend(trimmed);
   }
 
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await performSend();
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void performSend();
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} className="home-composer">
       <div className="home-composer__card">
@@ -58,6 +69,7 @@ export function PromptComposer({
           className="home-composer__input"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={HOME_PROMPT_EXAMPLES[placeholderIndex]}
           rows={5}
           disabled={sending}

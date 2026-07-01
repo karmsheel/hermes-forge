@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
+import { useShell } from "@/components/shell/ShellContext";
 import { setActiveProcessId } from "@/lib/workshop-storage";
 import type { ProcessSummary } from "@/lib/types";
 
@@ -34,6 +35,7 @@ function getThumbStyle(name: string): React.CSSProperties {
 
 export function RecentProcessesStrip() {
   const router = useRouter();
+  const { currentBusiness } = useShell();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [business, setBusiness] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export function RecentProcessesStrip() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, currentBusiness?.id]);
 
   function selectProcess(processId: string) {
     if (!business) {

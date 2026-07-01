@@ -9,10 +9,11 @@ import { ShellProvider } from "./ShellContext";
 function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isWorkshop = pathname.startsWith("/workshop");
+  const isAutomation = pathname.startsWith("/automations");
   const isHome = pathname === "/home";
   const layoutClass = [
     "app-shell-layout",
-    isWorkshop && "app-shell-layout--full",
+    (isWorkshop || isAutomation) && "app-shell-layout--full",
     isHome && "app-shell-layout--home",
   ]
     .filter(Boolean)
@@ -22,7 +23,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     <div className={layoutClass}>
       <NavRail />
       <div className="app-shell-layout__main">
-        {!isWorkshop && <AppTopBar />}
+        <AppTopBar />
         <div className="app-shell-layout__content">{children}</div>
       </div>
     </div>

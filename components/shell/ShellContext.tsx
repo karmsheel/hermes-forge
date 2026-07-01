@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,7 +15,7 @@ import { toast } from "sonner";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { BusinessSwitcherDialog } from "@/components/shell/BusinessSwitcherDialog";
-import { clearLegacyActiveProcessId } from "@/lib/workshop-storage";
+import { clearLegacyActiveProcessId, setPendingNewProcess } from "@/lib/workshop-storage";
 import type { UserProfile } from "@/lib/types";
 
 interface ShellContextValue {
@@ -32,7 +33,10 @@ interface ShellContextValue {
   openBusinessSwitcher: () => void;
   closeBusinessSwitcher: () => void;
   switchBusiness: (id: string) => Promise<void>;
+  refreshCurrentBusiness: () => Promise<void>;
   createProject: (name: string, description: string) => Promise<void>;
+  requestNewProcess: () => void;
+  registerWorkshopNewProcess: (handler: (() => void | Promise<void>) | null) => void;
   logout: () => Promise<void>;
 }
 
@@ -47,6 +51,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [businessSwitcherOpen, setBusinessSwitcherOpen] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
+  const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -83,7 +88,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         setNewProjectOpen(false);
         router.push("/workshop");
       } catch {
-        toast.error("Could not create function");
+        toast.error("Could not create business");
       } finally {
         setCreatingProject(false);
       }
@@ -96,6 +101,19 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [router]);
 
+  const refreshCurrentBusiness = useCallback(async () => {
+    try {
+      const me = await fetch("/api/auth/me").then((r) => r.json());
+      if (me?.activeBusiness) {
+        setCurrentBusiness({ id: me.activeBusiness.id, name: me.activeBusiness.name });
+      } else {
+        setCurrentBusiness(null);
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
   const switchBusiness = useCallback(
     async (id: string) => {
       try {
@@ -106,25 +124,33 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         });
         if (!res.ok) throw new Error("Failed");
         clearLegacyActiveProcessId();
-        // Refresh current from /me for authoritative name
-        try {
-          const me = await fetch("/api/auth/me").then((r) => r.json());
-          if (me?.activeBusiness) {
-            setCurrentBusiness({ id: me.activeBusiness.id, name: me.activeBusiness.name });
-          }
-        } catch {
-          /* non-fatal */
-        }
-        router.push("/workshop");
+        await refreshCurrentBusiness();
+        router.refresh();
       } catch {
         toast.error("Could not switch business");
       }
     },
-    [router]
+    [router, refreshCurrentBusiness]
   );
 
   const openBusinessSwitcher = () => setBusinessSwitcherOpen(true);
   const closeBusinessSwitcher = () => setBusinessSwitcherOpen(false);
+
+  const registerWorkshopNewProcess = useCallback(
+    (handler: (() => void | Promise<void>) | null) => {
+      workshopNewProcessRef.current = handler;
+    },
+    []
+  );
+
+  const requestNewProcess = useCallback(() => {
+    if (workshopNewProcessRef.current) {
+      void workshopNewProcessRef.current();
+      return;
+    }
+    setPendingNewProcess();
+    router.push("/workshop");
+  }, [router]);
 
   const value = useMemo(
     () => ({
@@ -142,10 +168,13 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       openBusinessSwitcher,
       closeBusinessSwitcher,
       switchBusiness,
+      refreshCurrentBusiness,
       createProject,
+      requestNewProcess,
+      registerWorkshopNewProcess,
       logout,
     }),
-    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, businessSwitcherOpen, creatingProject, createProject, logout, switchBusiness]
+    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, businessSwitcherOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, logout, switchBusiness, refreshCurrentBusiness]
   );
 
   return (

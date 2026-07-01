@@ -76,7 +76,7 @@ export function AutomationSidebar({
   onOpenN8nConnection,
 }: AutomationSidebarProps) {
   return (
-    <aside className="w-80 shrink-0 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-y-auto">
+    <aside className="w-80 shrink-0 border-r border-zinc-800 bg-zinc-950 flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b border-zinc-800">
         <Link
           href="/automations"
@@ -175,7 +175,7 @@ export function AutomationSidebar({
         )}
       </div>
 
-      <div className="p-4 flex-1">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-zinc-500 mb-3">
           <Clock className="w-3 h-3" /> Automation plan
         </div>

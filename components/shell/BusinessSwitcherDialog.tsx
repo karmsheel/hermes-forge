@@ -77,7 +77,7 @@ export function BusinessSwitcherDialog({
         });
         if (!res.ok) throw new Error("Failed to switch");
         onSwitchRequested?.(id);
-        router.push("/workshop");
+        router.refresh();
       }
       onClose();
     } catch {
@@ -107,10 +107,10 @@ export function BusinessSwitcherDialog({
         <div className="mb-4 pr-8">
           <div className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-accent" />
-            <h2 className="text-xl font-semibold tracking-tight">Your Functions</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Your Businesses</h2>
           </div>
           <p className="text-sm text-text-muted mt-1">
-            Switch the active function or create a new one. All workflows belong to a function and are auto-categorized on creation.
+            Switch the active business or create a new one. Functions (e.g. Marketing, Revenue) are auto-categorized within each business.
           </p>
         </div>
 
@@ -120,7 +120,7 @@ export function BusinessSwitcherDialog({
           </div>
         ) : businesses.length === 0 ? (
           <div className="card p-6 border-dashed text-center mb-4">
-            <p className="text-sm text-text-muted">No functions yet.</p>
+            <p className="text-sm text-text-muted">No businesses yet.</p>
           </div>
         ) : (
           <ul className="max-h-[320px] overflow-auto -mx-1 mb-4 space-y-1 pr-1">
@@ -170,10 +170,10 @@ export function BusinessSwitcherDialog({
           }}
           className="w-full btn-secondary flex items-center justify-center gap-2 text-sm"
         >
-          <Plus className="w-4 h-4" /> Create new function
+          <Plus className="w-4 h-4" /> Create new business
         </button>
         <p className="text-[10px] text-center text-text-soft mt-2">
-          Opens the name + description dialog (auto-categorizes workflows).
+          Opens the name + description dialog.
         </p>
       </div>
     </div>

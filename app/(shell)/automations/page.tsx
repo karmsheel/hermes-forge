@@ -41,7 +41,7 @@ function deployBadgeClass(status: AutomationDeployStatus): string {
 
 export default function AutomationsPage() {
   const router = useRouter();
-  const { openHermesConnection } = useShell();
+  const { openHermesConnection, currentBusiness } = useShell();
   const [processes, setProcesses] = useState<ApprovedProcessSummary[]>([]);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function AutomationsPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, currentBusiness?.id]);
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">

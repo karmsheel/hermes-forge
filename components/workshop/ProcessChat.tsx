@@ -11,6 +11,8 @@ interface ProcessChatProps {
   isLoading: boolean;
   onSend: (content: string) => void;
   onOpenConnection: () => void;
+  /** Increment to focus the composer (e.g. after creating a new process). */
+  composerFocusKey?: number;
 }
 
 export function ProcessChat({
@@ -19,14 +21,24 @@ export function ProcessChat({
   isLoading,
   onSend,
   onOpenConnection,
+  composerFocusKey = 0,
 }: ProcessChatProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { config: hermesConfig, isConnected } = useHermesConnection();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    if (!composerFocusKey) return;
+    const id = window.setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [composerFocusKey]);
 
   function handleSend() {
     if (!input.trim() || isLoading) return;
@@ -95,6 +107,7 @@ export function ProcessChat({
         )}
         <div className="flex gap-2">
           <textarea
+            ref={textareaRef}
             className="input flex-1 resize-none min-h-[44px] max-h-32 text-sm"
             placeholder="Describe steps, actors, tools..."
             value={input}

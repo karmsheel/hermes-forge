@@ -55,7 +55,7 @@ export function ProcessSidebar({
   }
 
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-bg-panel text-text flex flex-col h-full">
+    <aside className="w-64 shrink-0 border-r border-border bg-bg-panel text-text flex flex-col h-full overflow-hidden">
       <div className="p-3 border-b border-border">
         <button
           onClick={onCreate}
