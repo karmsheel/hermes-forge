@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireBusinessAccess } from '@/lib/auth';
+import { diffBusinessFields, recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -42,10 +44,30 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const body = UpdateBusinessSchema.parse(await request.json());
 
+    const before = await prisma.business.findUnique({ where: { id } });
     const business = await prisma.business.update({
       where: { id },
       data: body,
     });
+
+    if (before) {
+      const changes = diffBusinessFields(
+        before as Record<string, unknown>,
+        body as Record<string, unknown>
+      );
+      if (changes.length > 0) {
+        await recordBusinessEvent({
+          businessId: id,
+          userId: session.userId,
+          type: BUSINESS_EVENT_TYPES.BUSINESS_UPDATED,
+          entityType: 'business',
+          entityId: id,
+          entityName: business.name,
+          summary: `Updated business "${business.name}"`,
+          metadata: { changes },
+        });
+      }
+    }
 
     return NextResponse.json(business);
   } catch (error) {
@@ -62,6 +84,21 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const session = await requireBusinessAccess(request, id);
     if (session instanceof NextResponse) return session;
+
+    const business = await prisma.business.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+
+    await recordBusinessEvent({
+      businessId: id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.BUSINESS_DELETED,
+      entityType: 'business',
+      entityId: id,
+      entityName: business?.name ?? 'Business',
+      summary: `Deleted business "${business?.name ?? 'Business'}"`,
+    });
 
     await prisma.business.delete({ where: { id } });
     return NextResponse.json({ success: true });

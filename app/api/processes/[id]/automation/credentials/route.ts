@@ -6,6 +6,8 @@ import {
   getOrCreateAutomation,
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const SaveSchema = z.object({
   credentialMap: z.record(
@@ -28,11 +30,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const result = await requireApprovedProcessAccess(request, id);
     if ('error' in result) return result.error;
 
-    const automation = await getOrCreateAutomation(id);
+    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
     const updated = await prisma.automation.update({
       where: { id: automation.id },
       data: { credentialMapJson: JSON.stringify(body.credentialMap) },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    await recordBusinessEvent({
+      businessId: result.process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.AUTOMATION_CREDENTIALS_MAPPED,
+      entityType: 'automation',
+      entityId: id,
+      entityName: result.process.name,
+      summary: `Mapped credentials for "${result.process.name}"`,
+      metadata: { count: Object.keys(body.credentialMap).length },
     });
 
     return NextResponse.json(buildAutomationStudioData(result.process, updated));

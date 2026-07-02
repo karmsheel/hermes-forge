@@ -8,7 +8,14 @@ import {
   requireApprovedProcessAccess,
   buildAutomationStudioData,
 } from '@/lib/automation-access';
-import { parseAutomationPlan, parseIntegrations } from '@/lib/automation-types';
+import {
+  parseAutomationPlan,
+  parseIntegrations,
+  type AutomationWithMessages,
+} from '@/lib/automation-types';
+import { syncProcessCronLink } from '@/lib/automation-sync';
+import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ChatSchema = z.object({
   content: z.string().min(1),
@@ -28,10 +35,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
-    const automation = await getOrCreateAutomation(id);
+    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
 
     await prisma.automationMessage.create({
       data: { automationId: automation.id, role: 'user', content: body.content },
+    });
+
+    await recordBusinessEvent({
+      businessId: process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.CHAT_USER_MESSAGE,
+      entityType: 'chat',
+      entityId: id,
+      entityName: process.name,
+      summary: `Automation message in "${process.name}"`,
+      metadata: { preview: truncatePreview(body.content), role: 'user' },
     });
 
     const allMessages = [
@@ -72,14 +90,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: { automationId: automation.id, role: 'assistant', content: assistantMessage },
     });
 
-    const updatedAutomation = await prisma.automation.findUniqueOrThrow({
+    let updatedAutomation: AutomationWithMessages = await prisma.automation.findUniqueOrThrow({
       where: { id: automation.id },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
 
+    const syncResult = await syncProcessCronLink(
+      id,
+      process.name,
+      body.baseUrl,
+      body.apiKey,
+      process.businessId
+    );
+    if (syncResult.automation) {
+      updatedAutomation = syncResult.automation;
+    }
+
     return NextResponse.json({
       ...buildAutomationStudioData(process, updatedAutomation),
       runExtraction: true,
+      cronLinked: syncResult.linked,
     });
   } catch (error) {
     console.error('Automation chat error', error);

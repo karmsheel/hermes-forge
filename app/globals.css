@@ -410,6 +410,27 @@ body {
   filter: drop-shadow(0 0 12px color-mix(in srgb, var(--green) 18%, transparent));
 }
 
+/* 3.2 Node selection highlight in diagram */
+[data-mermaid-host] .node-selected,
+[data-mermaid-host] .node-selected rect,
+[data-mermaid-host] .node-selected circle,
+[data-mermaid-host] .node-selected ellipse,
+[data-mermaid-host] .node-selected polygon,
+[data-mermaid-host] .node-selected path {
+  stroke: var(--accent) !important;
+  stroke-width: 3px !important;
+}
+
+/* Make sure the clickable nodes are obvious on hover */
+[data-mermaid-host] [data-clickable-node="true"]:hover rect,
+[data-mermaid-host] [data-clickable-node="true"]:hover circle,
+[data-mermaid-host] [data-clickable-node="true"]:hover ellipse,
+[data-mermaid-host] [data-clickable-node="true"]:hover polygon {
+  stroke: var(--accent) !important;
+  stroke-width: 2px !important;
+  opacity: 0.95;
+}
+
 /* App shell + left nav rail */
 .app-shell-layout {
   display: flex;

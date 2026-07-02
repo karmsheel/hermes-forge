@@ -9,7 +9,15 @@ interface MermaidDiagramProps {
   chart: string | null;
   className?: string;
   isStreaming?: boolean;
+  onNodeClick?: (node: { id: string; label: string }) => void;
+  selectedNodeLabel?: string | null;
+  /** Called when user clicks the diagram background (not a node) to deselect (3.2) */
+  onDeselect?: () => void;
+  /** Full selected node (used for precise highlight even with duplicate labels) */
+  selectedNode?: MermaidNodeInfo | null;
 }
+
+export type MermaidNodeInfo = { id: string; label: string };
 
 const ZOOM_STEP = 0.2;
 const MIN_ZOOM = 0.3;
@@ -31,10 +39,111 @@ function getSvgDimensions(svg: SVGSVGElement): { width: number; height: number }
   return { width: width || 400, height: height || 300 };
 }
 
+function extractNodeLabel(el: Element): string {
+  // Primary: text or tspan content inside the node group
+  const textEl = el.querySelector("text");
+  if (textEl) {
+    const tspans = Array.from(textEl.querySelectorAll("tspan"))
+      .map((t) => t.textContent?.trim() || "")
+      .filter(Boolean);
+    const joined = tspans.join(" ").trim();
+    if (joined) return joined;
+    const direct = textEl.textContent?.trim();
+    if (direct) return direct;
+  }
+
+  // Try all text content under the group (handles some Mermaid variants)
+  const anyText = el.textContent?.replace(/\s+/g, " ").trim();
+  if (anyText) return anyText;
+
+  // Fallbacks
+  const title = el.querySelector("title");
+  if (title?.textContent?.trim()) return title.textContent.trim();
+  const labelAttr = el.getAttribute("data-label") || el.getAttribute("aria-label");
+  if (labelAttr) return labelAttr.trim();
+  return "";
+}
+
+function attachNodeInteractivity(
+  svg: SVGSVGElement,
+  onClick?: (node: { id: string; label: string }) => void,
+  selectedForHighlight?: MermaidNodeInfo | null
+) {
+  // Clear previous selection classes
+  svg.querySelectorAll(".node-selected").forEach((n) => n.classList.remove("node-selected"));
+
+  // Robust node detection: prefer explicit classes, then heuristic for groups containing shape + text label
+  let nodeEls = Array.from(
+    svg.querySelectorAll<SVGGElement>("g.node, g.cluster")
+  );
+
+  if (nodeEls.length === 0) {
+    // Fallback: any <g> that looks like a labeled node (common across Mermaid diagram types)
+    nodeEls = Array.from(svg.querySelectorAll<SVGGElement>("g")).filter((g) => {
+      const hasShape = g.querySelector("rect, circle, ellipse, polygon");
+      const hasText = g.querySelector("text");
+      return hasShape && hasText;
+    });
+  }
+
+  nodeEls.forEach((el) => {
+    // Make interactive
+    el.style.cursor = "pointer";
+    el.setAttribute("data-clickable-node", "true");
+    el.setAttribute("title", "Click to comment on this step");
+    el.querySelectorAll("rect, circle, ellipse, polygon, path").forEach((shape) => {
+      (shape as SVGElement).style.cursor = "pointer";
+    });
+
+    // Always re-attach with the *current* onClick to avoid stale closures.
+    // Remove previous handler if we stored one.
+    const prevHandler = (el as any)._mermaidNodeClickHandler as EventListener | undefined;
+    if (prevHandler) {
+      el.removeEventListener("click", prevHandler);
+    }
+
+    const handler = (ev: Event) => {
+      ev.stopPropagation();
+      const label = extractNodeLabel(el);
+      const id = el.id || el.getAttribute("data-id") || "";
+      if (label && onClick) {
+        onClick({ id, label });
+      }
+    };
+
+    (el as any)._mermaidNodeClickHandler = handler;
+    el.addEventListener("click", handler);
+
+    // Apply highlight - prefer id match (for duplicate labels), fallback to label
+    if (selectedForHighlight) {
+      const nodeLabel = extractNodeLabel(el);
+      const nodeId = el.id || el.getAttribute("data-id") || "";
+      const wantId = selectedForHighlight.id || "";
+      const wantLabel = selectedForHighlight.label;
+
+      const idMatches = wantId && nodeId && nodeId === wantId;
+      const labelMatches = nodeLabel && nodeLabel.toLowerCase() === wantLabel.toLowerCase();
+
+      if (idMatches || (!wantId && labelMatches)) {
+        el.classList.add("node-selected");
+        const shape = el.querySelector("rect, circle, ellipse, polygon");
+        if (shape) {
+          shape.setAttribute("stroke", "#d97a56");
+          shape.setAttribute("stroke-width", "3");
+        }
+      }
+    }
+  });
+}
+
 export function MermaidDiagram({
   chart,
   className = "",
   isStreaming = false,
+  onNodeClick,
+  selectedNodeLabel,
+  onDeselect,
+  selectedNode,
 }: MermaidDiagramProps) {
   const { resolved } = useTheme();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -46,6 +155,17 @@ export function MermaidDiagram({
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [debouncedChart, setDebouncedChart] = useState(chart);
+
+  // Always call the latest onNodeClick even if captured in old closures (fixes stale handlers)
+  const onNodeClickRef = useRef(onNodeClick);
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick;
+  }, [onNodeClick]);
+
+  const onDeselectRef = useRef(onDeselect);
+  useEffect(() => {
+    onDeselectRef.current = onDeselect;
+  }, [onDeselect]);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -172,6 +292,49 @@ export function MermaidDiagram({
                 : 1;
 
             applyScale(svgEl, natural, fit, DEFAULT_ZOOM);
+
+            // Attach node click handlers + apply selection highlight (3.2)
+            const highlightNode = selectedNode ?? (selectedNodeLabel ? { id: "", label: selectedNodeLabel } : null);
+            attachNodeInteractivity(svgEl, onNodeClickRef.current ?? onNodeClick, highlightNode);
+
+            // Attach deselect on the SVG itself for clicks on diagram background / edges (nodes stopPropagation)
+            if (onDeselectRef.current) {
+              // Remove previous if any
+              const prev = (svgEl as any)._bgDeselectHandler as EventListener | undefined;
+              if (prev) svgEl.removeEventListener("click", prev);
+
+              const bgHandler = (ev: MouseEvent) => {
+                // If it bubbled from a node, the node already stopped it.
+                // This will only fire for true background clicks inside the SVG.
+                onDeselectRef.current?.();
+              };
+              (svgEl as any)._bgDeselectHandler = bgHandler;
+              svgEl.addEventListener("click", bgHandler);
+            }
+
+            // Safety: re-attach shortly after in case the initial onNodeClick prop was not yet the final one
+            // (handles some render timing in parent)
+            setTimeout(() => {
+              if (!cancelled && svgHostRef.current) {
+                const freshSvg = svgHostRef.current.querySelector("svg");
+                if (freshSvg) {
+                  const freshHighlight = selectedNode ?? (selectedNodeLabel ? { id: "", label: selectedNodeLabel } : null);
+                  attachNodeInteractivity(
+                    freshSvg as SVGSVGElement,
+                    onNodeClickRef.current ?? onNodeClick,
+                    freshHighlight
+                  );
+                  // Re-attach deselect on fresh svg too
+                  if (onDeselectRef.current) {
+                    const prev = (freshSvg as any)._bgDeselectHandler as EventListener | undefined;
+                    if (prev) freshSvg.removeEventListener("click", prev);
+                    const bgHandler = () => onDeselectRef.current?.();
+                    (freshSvg as any)._bgDeselectHandler = bgHandler;
+                    freshSvg.addEventListener("click", bgHandler);
+                  }
+                }
+              }
+            }, 0);
           }
         }
       } catch (err) {
@@ -205,6 +368,16 @@ export function MermaidDiagram({
     if (!naturalSize) return;
     updateFit(zoom);
   }, [zoom, naturalSize, updateFit]);
+
+  // Re-apply node highlight + fresh interactivity when selection or handler identity changes (3.2)
+  useEffect(() => {
+    const host = svgHostRef.current;
+    const svg = host?.querySelector("svg");
+    if (!svg) return;
+    // Prefer full node for precise matching (handles duplicate labels via id)
+    const highlight = selectedNode ?? (selectedNodeLabel ? { id: "", label: selectedNodeLabel } : null);
+    attachNodeInteractivity(svg as SVGSVGElement, onNodeClickRef.current ?? onNodeClick, highlight);
+  }, [selectedNode, selectedNodeLabel, onNodeClick]);
 
   function zoomIn() {
     setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));
@@ -243,6 +416,15 @@ export function MermaidDiagram({
       <div
         ref={viewportRef}
         className="flex-1 min-h-0 overflow-auto flex items-center justify-center p-5"
+        onClick={(e) => {
+          // Background click in the diagram viewport area (padding or outside the SVG) → deselect (3.2)
+          // Clicks inside the SVG bubble from the svg element; nodes stopPropagation
+          const target = e.target as HTMLElement;
+          // Fire only for direct background areas, not overlays or controls inside
+          if (target === e.currentTarget || target.hasAttribute("data-mermaid-host")) {
+            onDeselectRef.current?.();
+          }
+        }}
       >
         {rendering && !isStreaming && (
           <div className="absolute inset-0 flex items-center justify-center bg-bg/60 z-10">

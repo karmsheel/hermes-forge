@@ -123,23 +123,15 @@ export function parseIntegrations(integrationsJson: string | null): IntegrationR
 export function automationStatusToDeployStatus(
   automation: { status: string; type: string | null; externalId?: string | null } | null
 ): AutomationDeployStatus {
-  if (!automation || !automation.externalId) {
-    if (!automation) return 'not_started';
+  if (!automation) return 'not_started';
+
+  if (!automation.externalId) {
     if (automation.status === 'ready_to_deploy') return 'ready_to_deploy';
     if (automation.status === 'designing') return 'designing';
     return 'not_started';
   }
-  switch (automation.status) {
-    case 'designing':
-      return 'designing';
-    case 'ready_to_deploy':
-      return 'ready_to_deploy';
-    case 'needs_credentials':
-      return 'needs_credentials';
-    case 'active':
-    case 'deployed':
-      return automation.type === 'n8n_workflow' ? 'deployed_n8n' : 'deployed_cron';
-    default:
-      return 'designing';
-  }
+
+  if (automation.status === 'needs_credentials') return 'needs_credentials';
+
+  return automation.type === 'n8n_workflow' ? 'deployed_n8n' : 'deployed_cron';
 }

@@ -32,6 +32,37 @@ export default function AutomationStudioPage({ params }: PageProps) {
   const [n8nConnectionOpen, setN8nConnectionOpen] = useState(false);
   const [credentialMap, setCredentialMap] = useState<AutomationStudioData["credentialMap"]>({});
 
+  const syncCronIfConnected = useCallback(
+    async (
+      studioData: AutomationStudioData,
+      options?: { silent?: boolean }
+    ): Promise<AutomationStudioData> => {
+      if (!hermesConfig?.baseUrl || !hermesConfig.apiKey) return studioData;
+      if (studioData.automation.externalId) return studioData;
+
+      try {
+        const res = await fetch(`/api/processes/${processId}/automation/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(hermesApiBody(hermesConfig)),
+        });
+        if (!res.ok) return studioData;
+
+        const data = await res.json();
+        if (data.linked && data.studio) {
+          if (!options?.silent) {
+            toast.success("Detected existing Hermes cron job for this process");
+          }
+          return data.studio;
+        }
+        return data.studio ?? studioData;
+      } catch {
+        return studioData;
+      }
+    },
+    [hermesConfig, processId]
+  );
+
   const loadStudio = useCallback(async () => {
     setLoading(true);
     try {
@@ -51,7 +82,8 @@ export default function AutomationStudioPage({ params }: PageProps) {
       }
       if (!studioRes.ok) throw new Error("Failed to load studio");
 
-      const data: AutomationStudioData = await studioRes.json();
+      let data: AutomationStudioData = await studioRes.json();
+      data = await syncCronIfConnected(data);
       setStudio(data);
       setCredentialMap(data.credentialMap ?? {});
 
@@ -65,11 +97,25 @@ export default function AutomationStudioPage({ params }: PageProps) {
     } finally {
       setLoading(false);
     }
-  }, [processId, router]);
+  }, [processId, router, syncCronIfConnected]);
 
   useEffect(() => {
     loadStudio();
   }, [loadStudio, currentBusiness?.id]);
+
+  useEffect(() => {
+    if (!studio || !hermesConfig?.baseUrl || !hermesConfig.apiKey) return;
+    if (studio.automation.externalId) return;
+
+    void (async () => {
+      const synced = await syncCronIfConnected(studio, { silent: true });
+      if (synced.automation.externalId) {
+        setStudio(synced);
+        setCredentialMap(synced.credentialMap ?? {});
+        toast.success("Detected existing Hermes cron job for this process");
+      }
+    })();
+  }, [hermesConfig, studio, syncCronIfConnected]);
 
   const runExtraction = useCallback(
     async (pid: string) => {
@@ -88,7 +134,9 @@ export default function AutomationStudioPage({ params }: PageProps) {
         const data = await res.json();
         if (data.updated && data.studio) {
           setStudio(data.studio);
-          if (data.planReady) {
+          if (data.cronLinked) {
+            toast.success("Detected existing Hermes cron job for this process");
+          } else if (data.planReady) {
             toast.success("Automation plan ready to deploy");
           }
         }
@@ -159,6 +207,10 @@ export default function AutomationStudioPage({ params }: PageProps) {
       const data = await res.json();
       setStudio(data);
       setChatLoading(false);
+
+      if (data.cronLinked) {
+        toast.success("Detected existing Hermes cron job for this process");
+      }
 
       if (data.runExtraction) {
         void runExtraction(processId);

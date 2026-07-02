@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { generateDiagramMermaid } from '@/lib/diagram';
 import { encodeDiagramSse, streamDiagramMermaid } from '@/lib/diagram-stream';
 import { requireProcessAccess } from '@/lib/auth';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
   baseUrl: z.string(),
@@ -65,6 +67,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
                     diagramUpdatedAt: new Date(),
                   },
                 });
+                await recordBusinessEvent({
+                  businessId: process.businessId,
+                  userId: result.session.userId,
+                  type: BUSINESS_EVENT_TYPES.PROCESS_DIAGRAM_UPDATED,
+                  entityType: 'process',
+                  entityId: id,
+                  entityName: process.name,
+                  summary: `Updated diagram for "${process.name}"`,
+                });
               }
 
               if (event.type === 'error') {
@@ -109,6 +120,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
           diagramMermaid: updatedDiagram,
           diagramUpdatedAt: new Date(),
         },
+      });
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_DIAGRAM_UPDATED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Updated diagram for "${process.name}"`,
       });
     }
 

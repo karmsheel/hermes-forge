@@ -10,6 +10,7 @@ export interface HermesJobSummary {
   name?: string;
   schedule?: string;
   status?: string;
+  prompt?: string;
 }
 
 function normalizeBaseUrl(baseUrl: string): string {

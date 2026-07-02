@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Send, Loader2, Settings2 } from "lucide-react";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import type { ChatMessage } from "@/lib/types";
+import { NodeContextPill } from "./DiagramComments";
+import type { MermaidNodeInfo } from "./MermaidDiagram";
 
 interface ProcessChatProps {
   messages: ChatMessage[];
@@ -13,6 +15,9 @@ interface ProcessChatProps {
   onOpenConnection: () => void;
   /** Increment to focus the composer (e.g. after creating a new process). */
   composerFocusKey?: number;
+  /** Current selected node for targeting corrections (3.2). */
+  selectedNode?: MermaidNodeInfo | null;
+  onClearNodeContext?: () => void;
 }
 
 export function ProcessChat({
@@ -22,6 +27,8 @@ export function ProcessChat({
   onSend,
   onOpenConnection,
   composerFocusKey = 0,
+  selectedNode,
+  onClearNodeContext,
 }: ProcessChatProps) {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,10 +42,48 @@ export function ProcessChat({
   useEffect(() => {
     if (!composerFocusKey) return;
     const id = window.setTimeout(() => {
-      textareaRef.current?.focus();
-    }, 0);
+      textareaRef.current?.focus({ preventScroll: true });
+    }, 50);
     return () => window.clearTimeout(id);
   }, [composerFocusKey]);
+
+  // Track previous selection for smart prefix handling (3.2)
+  const prevSelectedRef = useRef<typeof selectedNode>(null);
+
+  // Handle node selection: set or replace the "Regarding" prefix.
+  // This reacts to the object reference (so duplicate labels still trigger update).
+  useEffect(() => {
+    const label = selectedNode?.label;
+    if (label) {
+      setInput((current) => {
+        const newPrefix = `Regarding "${label}": `;
+        if (!current.trim()) {
+          return newPrefix;
+        }
+        // If user already has a "Regarding ..." prefix, replace it with the new node's.
+        const existingMatch = current.match(/^Regarding "[^"]+": /);
+        if (existingMatch) {
+          return newPrefix + current.slice(existingMatch[0].length);
+        }
+        return current;
+      });
+    }
+    prevSelectedRef.current = selectedNode || null;
+  }, [selectedNode]);
+
+  // On deselect (background click), strip the old Regarding prefix if still present.
+  useEffect(() => {
+    if (!selectedNode && prevSelectedRef.current?.label) {
+      const oldLabel = prevSelectedRef.current.label;
+      const oldPrefix = `Regarding "${oldLabel}": `;
+      setInput((current) => {
+        if (current.startsWith(oldPrefix)) {
+          return current.slice(oldPrefix.length);
+        }
+        return current;
+      });
+    }
+  }, [selectedNode]);
 
   function handleSend() {
     if (!input.trim() || isLoading) return;
@@ -104,6 +149,9 @@ export function ProcessChat({
             </button>{" "}
             to start chatting.
           </div>
+        )}
+        {selectedNode && onClearNodeContext && (
+          <NodeContextPill label={selectedNode.label} onClear={onClearNodeContext} />
         )}
         <div className="flex gap-2">
           <textarea

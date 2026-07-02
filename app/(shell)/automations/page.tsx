@@ -15,6 +15,8 @@ import {
 import { useShell } from "@/components/shell/ShellContext";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import { hermesApiBody } from "@/lib/hermes-models";
 import {
   AUTOMATION_DEPLOY_LABELS,
   PROCESS_STATUS_LABELS,
@@ -39,9 +41,17 @@ function deployBadgeClass(status: AutomationDeployStatus): string {
   }
 }
 
+function automationCtaLabel(status: AutomationDeployStatus): string {
+  if (status === "deployed_cron" || status === "deployed_n8n") {
+    return "View automation";
+  }
+  return "Design automation";
+}
+
 export default function AutomationsPage() {
   const router = useRouter();
   const { openHermesConnection, currentBusiness } = useShell();
+  const { config: hermesConfig } = useHermesConnection();
   const [processes, setProcesses] = useState<ApprovedProcessSummary[]>([]);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +59,20 @@ export default function AutomationsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/automations");
+      const endpoint =
+        hermesConfig?.baseUrl && hermesConfig?.apiKey
+          ? "/api/automations/sync"
+          : "/api/automations";
+      const init: RequestInit =
+        endpoint === "/api/automations/sync"
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(hermesApiBody(hermesConfig!)),
+            }
+          : {};
+
+      const res = await fetch(endpoint, init);
       if (res.status === 401) {
         router.push("/");
         return;
@@ -62,12 +85,17 @@ export default function AutomationsPage() {
       }
       setProcesses(data.processes || []);
       setBusinessName(data.business.name);
+      if (data.linkedCount > 0) {
+        toast.success(
+          `Linked ${data.linkedCount} existing Hermes cron job${data.linkedCount === 1 ? "" : "s"}`
+        );
+      }
     } catch {
       toast.error("Failed to load automations");
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [hermesConfig, router]);
 
   useEffect(() => {
     load();
@@ -170,7 +198,7 @@ export default function AutomationsPage() {
                       href={`/automations/${proc.id}`}
                       className="btn-primary w-full text-sm flex items-center justify-center gap-2"
                     >
-                      Design automation
+                      {automationCtaLabel(proc.automationStatus)}
                       <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>

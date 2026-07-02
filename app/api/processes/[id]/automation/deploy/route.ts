@@ -10,12 +10,19 @@ import {
   buildCronPrompt,
   defaultCronDeliver,
   defaultCronSchedule,
-  slugifyJobName,
 } from '@/lib/automation-deploy';
+import {
+  findMatchingHermesJob,
+  forgeJobNameForProcess,
+  getClaimedJobIdsForBusiness,
+  listHermesJobsSafe,
+} from '@/lib/automation-sync';
 import { createHermesJob } from '@/lib/hermes-jobs';
 import { createN8nWorkflow } from '@/lib/n8n-client';
 import { generateN8nWorkflow } from '@/lib/n8n-workflow-gen';
 import { parseAutomationPlan, parseCredentialMap, parseIntegrations } from '@/lib/automation-types';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const DeploySchema = z.object({
   type: z.enum(['hermes_cron', 'n8n_workflow']),
@@ -39,7 +46,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
-    const automation = await getOrCreateAutomation(id);
+    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
     const plan = parseAutomationPlan(automation.planJson);
     if (!plan?.summary) {
       return NextResponse.json(
@@ -107,6 +114,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         include: { messages: { orderBy: { createdAt: 'asc' } } },
       });
 
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.AUTOMATION_DEPLOYED,
+        entityType: 'automation',
+        entityId: id,
+        entityName: process.name,
+        summary: `Deployed n8n automation for "${process.name}"`,
+        metadata: { type: 'n8n_workflow', status: 'needs_credentials' },
+      });
+
       return NextResponse.json({
         studio: buildAutomationStudioData(process, updated),
         deploy: { type: 'n8n_workflow', workflowId, editorUrl },
@@ -116,14 +134,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const schedule = body.schedule ?? defaultCronSchedule(plan);
     const deliver = body.deliver ?? defaultCronDeliver(plan);
     const prompt = buildCronPrompt(process, plan);
-    const jobName = `forge-${slugifyJobName(process.name)}`;
+    const jobName = forgeJobNameForProcess(process.name);
 
-    const { jobId } = await createHermesJob(body.hermesBaseUrl, body.hermesApiKey, {
-      schedule,
-      prompt,
-      name: jobName,
-      deliver,
-    });
+    const [jobs, claimedJobIds] = await Promise.all([
+      listHermesJobsSafe(body.hermesBaseUrl, body.hermesApiKey),
+      getClaimedJobIdsForBusiness(process.businessId),
+    ]);
+
+    const existingJob = await findMatchingHermesJob(process.name, jobs, claimedJobIds);
+    let jobId: string;
+
+    if (existingJob) {
+      jobId = existingJob.id;
+    } else {
+      const created = await createHermesJob(body.hermesBaseUrl, body.hermesApiKey, {
+        schedule,
+        prompt,
+        name: jobName,
+        deliver,
+      });
+      jobId = created.jobId;
+    }
 
     const updated = await prisma.automation.update({
       where: { id: automation.id },
@@ -137,9 +168,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
 
+    await recordBusinessEvent({
+      businessId: process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.AUTOMATION_DEPLOYED,
+      entityType: 'automation',
+      entityId: id,
+      entityName: process.name,
+      summary: `Deployed Hermes cron for "${process.name}"`,
+      metadata: { type: 'hermes_cron', status: 'active' },
+    });
+
     return NextResponse.json({
       studio: buildAutomationStudioData(process, updated),
-      deploy: { type: 'hermes_cron', jobId, schedule, deliver },
+      deploy: {
+        type: 'hermes_cron',
+        jobId,
+        schedule,
+        deliver,
+        linkedExisting: Boolean(existingJob),
+      },
     });
   } catch (error) {
     console.error('Automation deploy error', error);

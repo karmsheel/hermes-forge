@@ -6,6 +6,8 @@ import {
   requireSession,
   setActiveBusinessCookie,
 } from '@/lib/auth';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const CreateBusinessSchema = z.object({
   name: z.string().max(120).optional(),
@@ -62,6 +64,16 @@ export async function POST(request: NextRequest) {
         updatedAt: true,
         _count: { select: { processes: true } },
       },
+    });
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.BUSINESS_CREATED,
+      entityType: 'business',
+      entityId: business.id,
+      entityName: business.name,
+      summary: `Created business "${business.name}"`,
     });
 
     const response = NextResponse.json(business);

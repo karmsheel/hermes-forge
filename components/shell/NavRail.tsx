@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   PlugZap,
   Plus,
+  ScrollText,
   User,
   Zap,
 } from "lucide-react";
@@ -65,6 +66,13 @@ export function NavRail() {
       label: "Dashboard",
       icon: LayoutDashboard,
       match: (path) => path.startsWith("/dashboard"),
+    },
+    {
+      id: "log",
+      href: "/log",
+      label: "Business log",
+      icon: ScrollText,
+      match: (path) => path.startsWith("/log"),
     },
   ];
 

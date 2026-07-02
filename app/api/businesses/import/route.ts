@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession, setActiveBusinessCookie } from '@/lib/auth';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ImportMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -99,6 +101,19 @@ export async function POST(request: NextRequest) {
       }
 
       return createdBusiness;
+    });
+
+    await recordBusinessEvent({
+      businessId: result.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.BUSINESS_IMPORTED,
+      entityType: 'business',
+      entityId: result.id,
+      entityName: result.name,
+      summary: `Imported business "${result.name}"`,
+      metadata: {
+        count: data.processes?.length ?? 0,
+      },
     });
 
     const response = NextResponse.json({ business: result });

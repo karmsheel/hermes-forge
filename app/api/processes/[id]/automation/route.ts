@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const result = await requireApprovedProcessAccess(request, id);
     if ('error' in result) return result.error;
 
-    const automation = await getOrCreateAutomation(id);
+    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
 
     return NextResponse.json(buildAutomationStudioData(result.process, automation));
   } catch (error) {

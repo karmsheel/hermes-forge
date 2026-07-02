@@ -295,7 +295,23 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 **Goal:** Click Mermaid node → annotate → agent revises that step.
 
-**Files:** `components/workshop/DiagramComments.tsx`, extend chat API
+**Files:** `components/workshop/DiagramComments.tsx`, `components/workshop/MermaidDiagram.tsx`, extend chat API + workshop page
+
+**Implemented:**
+- Mermaid nodes are now clickable (cursor + listeners post-render). Extracts best label + id.
+- Clicking a node highlights it (accent stroke), focuses the chat composer, and prefills with `Regarding "..."` context + shows a dismissible "Node:" pill.
+- User messages targeting a node are stored with explicit prefix so the diagram subagent sees the correction in conversation history.
+- Chat API accepts optional `nodeContext`; augments content for clarity.
+- Diagram updates continue to use full history → agent revises the targeted step.
+- No DB schema change required. Minimal UI following token system.
+
+---
+
+**Acceptance criteria (met):**
+- [x] Click node in diagram targets it for feedback
+- [x] Context is visible (pill + prefilled text)
+- [x] Correction message flows through normal chat → diagram regeneration
+- [x] Build passes
 
 ---
 
@@ -403,7 +419,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 2.3 | Inline model switcher | 2 | Done |
 | 2.4 | Function status lifecycle badges | 2 | Deferred |
 | 3.1 | Streaming diagram | 3 | Done |
-| 3.2 | Node comments | 3 | Pending |
+| 3.2 | Node comments | 3 | Done |
 | 3.3 | Questions panel | 3 | Pending |
 | 3.4 | Conversation fork | 3 | Pending |
 | 3.5 | Rich composer | 3 | Pending |

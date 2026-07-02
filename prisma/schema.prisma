@@ -34,11 +34,33 @@ model Business {
   website     String?
   goals       String?
   constraints String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  backfillCompletedAt DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   processes Process[]
   memories  Memory[]
+  events    BusinessEvent[]
+}
+
+model BusinessEvent {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?
+
+  type       String
+  entityType String?
+  entityId   String?
+  entityName String?
+
+  summary  String
+  metadata String?
+
+  source    String   @default("live")
+  createdAt DateTime @default(now())
+
+  @@index([businessId, createdAt(sort: Desc)])
 }
 
 model Process {

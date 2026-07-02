@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { isUntitledProcessName, suggestProcessName } from '@/lib/naming';
 import { requireProcessAccess } from '@/lib/auth';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
   baseUrl: z.string(),
@@ -46,6 +48,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: {
         name: suggestedName,
         nameStatus: 'pending',
+      },
+    });
+
+    await recordBusinessEvent({
+      businessId: process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_UPDATED,
+      entityType: 'process',
+      entityId: id,
+      entityName: suggestedName,
+      summary: `Suggested name "${suggestedName}" for workflow`,
+      metadata: {
+        changes: [{ field: 'name', before: process.name, after: suggestedName }],
       },
     });
 

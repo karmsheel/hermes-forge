@@ -6,6 +6,8 @@ import { deriveProjectName } from '@/lib/home-prompt';
 import { formatStandardTag } from '@/lib/process-standards';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
+import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
@@ -91,6 +93,39 @@ export async function POST(request: NextRequest) {
       });
 
       return { business, process: createdProcess };
+    });
+
+    if (!existingBusiness) {
+      await recordBusinessEvent({
+        businessId: business.id,
+        userId: session.userId,
+        type: BUSINESS_EVENT_TYPES.BUSINESS_CREATED,
+        entityType: 'business',
+        entityId: business.id,
+        entityName: business.name,
+        summary: `Created business "${business.name}"`,
+      });
+    }
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_CREATED,
+      entityType: 'process',
+      entityId: process.id,
+      entityName: process.name,
+      summary: `Created process "${process.name}"`,
+    });
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.CHAT_USER_MESSAGE,
+      entityType: 'chat',
+      entityId: process.id,
+      entityName: process.name,
+      summary: `Message in "${process.name}"`,
+      metadata: { preview: truncatePreview(trimmed), role: 'user' },
     });
 
     const response = NextResponse.json({

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,6 +87,16 @@ export async function POST(request: NextRequest) {
         role: 'assistant',
         content: WELCOME_MESSAGE,
       },
+    });
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_CREATED,
+      entityType: 'process',
+      entityId: process.id,
+      entityName: process.name,
+      summary: `Created process "${process.name}"`,
     });
 
     const full = await prisma.process.findUnique({

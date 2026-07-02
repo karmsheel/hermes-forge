@@ -11,6 +11,8 @@ import {
   userConfirmsAccuracy,
 } from '@/lib/process-approval';
 import { executeProcessSplit, shouldExecuteSplit } from '@/lib/process-split';
+import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ChatSchema = z
   .object({
@@ -19,6 +21,13 @@ const ChatSchema = z
     baseUrl: z.string(),
     apiKey: z.string(),
     model: z.string().optional(),
+    // 3.2: explicit node targeting for corrections
+    nodeContext: z
+      .object({
+        nodeId: z.string().optional(),
+        label: z.string(),
+      })
+      .optional(),
   })
   .refine((data) => data.replyOnly === true || !!data.content?.trim(), {
     message: 'content is required unless replyOnly is true',
@@ -54,6 +63,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
         where: { id },
         data: buildApprovalUpdate('approved'),
       });
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_APPROVED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Approved process "${process.name}"`,
+      });
     }
 
     if (replyOnly) {
@@ -65,9 +83,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
         );
       }
     } else {
-      const content = body.content!.trim();
+      let content = body.content!.trim();
+
+      // 3.2 Node-level correction: ensure the stored message makes the target explicit
+      // so the diagram subagent (which replays conversation) can focus the revision.
+      if (body.nodeContext?.label) {
+        const hasReference = content.toLowerCase().includes(body.nodeContext.label.toLowerCase());
+        if (!hasReference) {
+          content = `Regarding "${body.nodeContext.label}": ${content}`;
+        }
+      }
+
       await prisma.chatMessage.create({
         data: { processId: id, role: 'user', content },
+      });
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.CHAT_USER_MESSAGE,
+        entityType: 'chat',
+        entityId: id,
+        entityName: process.name,
+        summary: `Message in "${process.name}"`,
+        metadata: { preview: truncatePreview(content), role: 'user' },
       });
       allMessages = [...allMessages, { role: 'user', content }];
     }
@@ -88,6 +126,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
         id,
         lastUserContent
       );
+
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_SPLIT,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Split "${process.name}" into "${splitResult.childName}"`,
+        metadata: {
+          parentProcessId: splitResult.parentProcessId,
+          childProcessId: splitResult.childProcessId,
+        },
+      });
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_CREATED,
+        entityType: 'process',
+        entityId: splitResult.childProcessId,
+        entityName: splitResult.childName,
+        summary: `Created process "${splitResult.childName}" from split`,
+        metadata: { parentProcessId: splitResult.parentProcessId },
+      });
 
       const updated = await prisma.process.findUnique({
         where: { id },

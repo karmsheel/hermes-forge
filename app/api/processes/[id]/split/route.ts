@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requireProcessAccess } from '@/lib/auth';
 import { executeProcessSplit } from '@/lib/process-split';
 import { prisma } from '@/lib/prisma';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const SplitSchema = z.object({
   baseUrl: z.string(),
@@ -34,6 +36,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       id,
       body.instruction?.trim() || 'Split into two single-flow workflows for automation.'
     );
+
+    await recordBusinessEvent({
+      businessId: result.process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_SPLIT,
+      entityType: 'process',
+      entityId: id,
+      entityName: result.process.name,
+      summary: `Split "${result.process.name}" into "${splitResult.childName}"`,
+      metadata: {
+        parentProcessId: splitResult.parentProcessId,
+        childProcessId: splitResult.childProcessId,
+      },
+    });
+    await recordBusinessEvent({
+      businessId: result.process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_CREATED,
+      entityType: 'process',
+      entityId: splitResult.childProcessId,
+      entityName: splitResult.childName,
+      summary: `Created process "${splitResult.childName}" from split`,
+      metadata: { parentProcessId: splitResult.parentProcessId },
+    });
 
     const updated = await prisma.process.findUnique({
       where: { id },

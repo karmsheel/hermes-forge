@@ -7,7 +7,7 @@ import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
-import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
+import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
@@ -38,18 +38,17 @@ export default function WorkshopPage() {
   const [streamingDiagram, setStreamingDiagram] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [composerFocusKey, setComposerFocusKey] = useState(0);
+  // 3.2 Node-level comments
+  const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
   const { openHermesConnection, currentBusiness, registerWorkshopNewProcess } = useShell();
   const { config: hermesConfig } = useHermesConnection();
-  const pendingReplyProcessIdRef = useRef<string | null>(null);
+  const pendingReplyProcessIdRef = useRef<string | null>(consumePendingHermesReply());
   const pendingReplySentRef = useRef(false);
   const pendingCreateRef = useRef(consumePendingNewProcess());
   const activeIdRef = useRef(activeId);
   const hermesConfigRef = useRef(hermesConfig);
   const sendMessageRef = useRef<((content: string, options?: { replyOnly?: boolean }) => any) | null>(null);
-
-  useEffect(() => {
-    pendingReplyProcessIdRef.current = consumePendingHermesReply();
-  }, []);
+  const selectedNodeRef = useRef<MermaidNodeInfo | null>(null);
 
   useEffect(() => {
     hermesConfigRef.current = hermesConfig;
@@ -58,6 +57,10 @@ export default function WorkshopPage() {
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
+
+  useEffect(() => {
+    selectedNodeRef.current = selectedNode;
+  }, [selectedNode]);
 
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
@@ -115,30 +118,8 @@ export default function WorkshopPage() {
       activeIdRef.current = id; // sync immediately so replyOnly / handle calls see fresh id
       setActiveProcessId(projectId, id);
 
-      // Trigger the initial agent reply for processes started via home brief (seeded user message).
-      // This is more reliable than effect timing for freshly created workflows.
-      const pendingId = pendingReplyProcessIdRef.current;
-      if (
-        pendingId &&
-        !pendingReplySentRef.current &&
-        pendingId === id &&
-        hermesConfigRef.current
-      ) {
-        const last = process.messages.at(-1);
-        if (last && last.role === "user") {
-          pendingReplySentRef.current = true;
-          pendingReplyProcessIdRef.current = null;
-          const sender = sendMessageRef.current;
-          if (sender) {
-            // Defer to ensure the activeProcess state has settled in this render cycle
-            Promise.resolve().then(() => {
-              try {
-                const p = sender(last.content, { replyOnly: true });
-                if (p && typeof p.catch === "function") p.catch(() => {});
-              } catch {}
-            });
-          }
-        }
+      if (pendingReplyProcessIdRef.current === id && !pendingReplySentRef.current) {
+        setComposerFocusKey((k) => k + 1);
       }
     } catch {
       toast.error("Failed to load process");
@@ -174,6 +155,7 @@ export default function WorkshopPage() {
       setActiveProcess(process);
       setActiveId(process.id);
       activeIdRef.current = process.id;
+      setSelectedNode(null);
       if (businessId) setActiveProcessId(businessId, process.id);
       await loadProcessList();
       setComposerFocusKey((k) => k + 1);
@@ -201,6 +183,7 @@ export default function WorkshopPage() {
     if (id === activeId) return;
     setStreamingDiagram(null);
     setDiagramStreaming(false);
+    setSelectedNode(null);
     setActiveId(id);
     activeIdRef.current = id; // keep ref in sync for any pending sends
   }
@@ -320,6 +303,17 @@ export default function WorkshopPage() {
     toast.success("Workflow renamed");
   }
 
+  // 3.2: User clicked a node in the diagram — target it for correction
+  const handleNodeClick = useCallback((node: MermaidNodeInfo) => {
+    setSelectedNode(node);
+    // Focus the chat composer so the user can immediately type the correction
+    setComposerFocusKey((k) => k + 1);
+  }, []);
+
+  const clearSelectedNode = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
   const handleSendMessage = useCallback(async (content: string, options?: { replyOnly?: boolean }) => {
     const currentActiveId = activeIdRef.current ?? activeId;
     const currentHermes = hermesConfigRef.current ?? hermesConfig;
@@ -327,12 +321,26 @@ export default function WorkshopPage() {
 
     setChatLoading(true);
 
+    // 3.2 Node context: if a node is selected, make the correction target explicit
+    // in the message (for conversation history + diagram agent) and for optimistic UI.
+    const currentSelected = selectedNodeRef.current;
+    let outgoingContent = content;
+    let nodeContext: { nodeId?: string; label: string } | undefined;
+
+    if (!options?.replyOnly && currentSelected) {
+      nodeContext = { nodeId: currentSelected.id, label: currentSelected.label };
+      const mentionsNode = content.toLowerCase().includes(currentSelected.label.toLowerCase());
+      if (!mentionsNode) {
+        outgoingContent = `Regarding "${currentSelected.label}": ${content}`;
+      }
+    }
+
     if (!options?.replyOnly) {
       const optimisticUser = {
         id: `temp-${Date.now()}`,
         processId: currentActiveId,
         role: "user" as const,
-        content,
+        content: outgoingContent,
         createdAt: new Date().toISOString(),
       };
 
@@ -346,7 +354,8 @@ export default function WorkshopPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(options?.replyOnly ? { replyOnly: true } : { content }),
+          ...(options?.replyOnly ? { replyOnly: true } : { content: outgoingContent }),
+          ...(nodeContext ? { nodeContext } : {}),
           ...hermesApiBody(currentHermes),
         }),
       });
@@ -359,6 +368,11 @@ export default function WorkshopPage() {
       const data = await res.json();
       setActiveProcess(data.process);
       setChatLoading(false);
+
+      // Clear node selection after the targeted correction message has been sent (3.2)
+      if (nodeContext) {
+        setSelectedNode(null);
+      }
 
       // Ensure we have the latest persisted state (e.g. assistant reply) from server
       if (currentActiveId && businessId) {
@@ -388,32 +402,39 @@ export default function WorkshopPage() {
     }
   }, [activeId, businessId, hermesConfig, loadProcess, loadProcessList, runBackgroundAgents]);
 
-  useEffect(() => {
-    sendMessageRef.current = handleSendMessage;
-  }, [handleSendMessage]);
+  const trySendPendingReply = useCallback(() => {
+    const pendingId = pendingReplyProcessIdRef.current;
+    if (!pendingId || pendingReplySentRef.current) return;
 
-  useEffect(() => {
-    const pendingProcessId = pendingReplyProcessIdRef.current;
-    if (!pendingProcessId || pendingReplySentRef.current) return;
-    const currentActiveIdForCheck = activeIdRef.current ?? activeId;
-    if (pendingProcessId !== currentActiveIdForCheck) return;
-    if (!activeProcess || !activeId || loadingProcess || chatLoading) return;
-    if (!hermesConfig) return;
+    const currentActiveId = activeIdRef.current ?? activeId;
+    if (!currentActiveId || pendingId !== currentActiveId) return;
+    if (!activeProcess || loadingProcess || chatLoading) return;
+
+    const currentHermes = hermesConfigRef.current ?? hermesConfig;
+    if (!currentHermes) return;
 
     const lastMessage = activeProcess.messages.at(-1);
-    if (!lastMessage || lastMessage.role !== "user") return;
+    if (!lastMessage || lastMessage.role !== "user") {
+      pendingReplyProcessIdRef.current = null;
+      return;
+    }
+
+    const sender = sendMessageRef.current;
+    if (!sender) return;
 
     pendingReplySentRef.current = true;
     pendingReplyProcessIdRef.current = null;
-    void handleSendMessage(lastMessage.content, { replyOnly: true });
-  }, [
-    activeProcess,
-    activeId,
-    loadingProcess,
-    chatLoading,
-    hermesConfig,
-    handleSendMessage,
-  ]);
+    void sender(lastMessage.content, { replyOnly: true });
+  }, [activeId, activeProcess, chatLoading, hermesConfig, loadingProcess]);
+
+  useEffect(() => {
+    sendMessageRef.current = handleSendMessage;
+    trySendPendingReply();
+  }, [handleSendMessage, trySendPendingReply]);
+
+  useEffect(() => {
+    trySendPendingReply();
+  }, [trySendPendingReply]);
 
   const diagramChart = streamingDiagram ?? activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
@@ -465,6 +486,9 @@ export default function WorkshopPage() {
               <h1 className="text-lg font-semibold tracking-tight">
                 {loadingProcess ? "Loading..." : processName}
               </h1>
+              {diagramChart && (
+                <div className="text-[10px] text-text-soft">Click any node to target a correction</div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {activeProcess && (
@@ -531,6 +555,10 @@ export default function WorkshopPage() {
                 chart={diagramChart}
                 isStreaming={diagramStreaming}
                 className="absolute inset-0 z-0"
+                onNodeClick={handleNodeClick}
+                selectedNodeLabel={selectedNode?.label}
+                selectedNode={selectedNode}
+                onDeselect={clearSelectedNode}
               />
             )}
           </div>
@@ -555,6 +583,8 @@ export default function WorkshopPage() {
             onSend={handleSendMessage}
             onOpenConnection={openHermesConnection}
             composerFocusKey={composerFocusKey}
+            selectedNode={selectedNode}
+            onClearNodeContext={clearSelectedNode}
           />
         ) : (
           <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex items-center justify-center p-6">

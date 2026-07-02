@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { extractAutomationPlan } from '@/lib/automation-extract';
+import type { AutomationWithMessages } from '@/lib/automation-types';
 import {
   buildAutomationStudioData,
   getOrCreateAutomation,
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
+import { syncProcessCronLink } from '@/lib/automation-sync';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
   baseUrl: z.string(),
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
-    const automation = await getOrCreateAutomation(id);
+    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
     const userMessageCount = automation.messages.filter((m) => m.role === 'user').length;
     if (userMessageCount < 1) {
       return NextResponse.json({ updated: false, reason: 'no_user_messages' });
@@ -44,19 +48,65 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
     );
 
-    const updatedAutomation = await prisma.automation.update({
+    const updateData: {
+      planJson: string;
+      integrationsJson: string;
+      status?: string;
+    } = {
+      planJson: JSON.stringify(extraction.plan),
+      integrationsJson: JSON.stringify(extraction.integrations),
+    };
+    if (!automation.externalId) {
+      updateData.status = extraction.planReady ? 'ready_to_deploy' : 'designing';
+    }
+
+    let updatedAutomation: AutomationWithMessages = await prisma.automation.update({
       where: { id: automation.id },
-      data: {
-        planJson: JSON.stringify(extraction.plan),
-        integrationsJson: JSON.stringify(extraction.integrations),
-        status: extraction.planReady ? 'ready_to_deploy' : 'designing',
-      },
+      data: updateData,
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+
+    const syncResult = await syncProcessCronLink(
+      id,
+      process.name,
+      body.baseUrl,
+      body.apiKey,
+      process.businessId
+    );
+    if (syncResult.automation) {
+      updatedAutomation = syncResult.automation;
+    }
+
+    await recordBusinessEvent({
+      businessId: process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.AUTOMATION_PLAN_EXTRACTED,
+      entityType: 'automation',
+      entityId: id,
+      entityName: process.name,
+      summary: `Extracted automation plan for "${process.name}"`,
+      metadata: {
+        status: updatedAutomation.status,
+        planReady: extraction.planReady,
+      },
+    });
+
+    if (syncResult.linked) {
+      await recordBusinessEvent({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.AUTOMATION_SYNCED,
+        entityType: 'automation',
+        entityId: id,
+        entityName: process.name,
+        summary: `Synced Hermes cron for "${process.name}"`,
+      });
+    }
 
     return NextResponse.json({
       updated: true,
       planReady: extraction.planReady,
+      cronLinked: syncResult.linked,
       studio: buildAutomationStudioData(process, updatedAutomation),
     });
   } catch (error) {

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { requireBusinessAccess } from '@/lib/auth';
 import { resolveHermesModel } from '@/lib/hermes-models';
+import { diffBusinessFields, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ExtractSchema = z.object({
   businessId: z.string(),
@@ -105,16 +107,37 @@ export async function POST(request: NextRequest) {
 
     // Update Business
     if (extracted.business?.name) {
-      await prisma.business.update({
+      const before = await prisma.business.findUnique({ where: { id: businessId } });
+      const updateData = {
+        name: extracted.business.name,
+        industry: extracted.business.industry,
+        description: extracted.business.description,
+        teamSize: extracted.business.teamSize,
+        goals: extracted.business.goals,
+      };
+      const business = await prisma.business.update({
         where: { id: businessId },
-        data: {
-          name: extracted.business.name,
-          industry: extracted.business.industry,
-          description: extracted.business.description,
-          teamSize: extracted.business.teamSize,
-          goals: extracted.business.goals,
-        },
+        data: updateData,
       });
+
+      if (before) {
+        const changes = diffBusinessFields(
+          before as Record<string, unknown>,
+          updateData as Record<string, unknown>
+        );
+        if (changes.length > 0) {
+          await recordBusinessEvent({
+            businessId,
+            userId: session.userId,
+            type: BUSINESS_EVENT_TYPES.BUSINESS_UPDATED,
+            entityType: 'business',
+            entityId: businessId,
+            entityName: business.name,
+            summary: `Updated business "${business.name}" from interview`,
+            metadata: { changes },
+          });
+        }
+      }
     }
 
     // Create Processes (simple dedupe by name for demo)
@@ -128,7 +151,7 @@ export async function POST(request: NextRequest) {
         const comp = p.complexity ?? 5;
         const score = Math.max(10, Math.min(95, Math.round((rep * 0.4 + val * 0.5 - comp * 0.3) * 6)));
 
-        await prisma.process.create({
+        const created = await prisma.process.create({
           data: {
             businessId,
             name: p.name,
@@ -145,19 +168,43 @@ export async function POST(request: NextRequest) {
             estimatedTimeSaved: Math.max(1, Math.round((rep + val) / 2)),
           },
         });
+        await recordBusinessEvent({
+          businessId,
+          userId: session.userId,
+          type: BUSINESS_EVENT_TYPES.PROCESS_CREATED,
+          entityType: 'process',
+          entityId: created.id,
+          entityName: created.name,
+          summary: `Discovered process "${created.name}" from interview`,
+        });
         processesCreated++;
       }
     }
 
     // Save facts as Memory
     if (Array.isArray(extracted.facts)) {
-      for (const fact of extracted.facts.slice(0, 6)) {
+      const facts = extracted.facts.slice(0, 6);
+      for (const fact of facts) {
         await prisma.memory.create({
           data: {
             businessId,
             fact,
             confidence: 0.75,
             source: 'extraction',
+          },
+        });
+      }
+      if (facts.length > 0) {
+        await recordBusinessEvent({
+          businessId,
+          userId: session.userId,
+          type: BUSINESS_EVENT_TYPES.MEMORY_FACT_ADDED,
+          entityType: 'memory',
+          entityId: businessId,
+          summary: `Added ${facts.length} business fact${facts.length === 1 ? '' : 's'} from interview`,
+          metadata: {
+            count: facts.length,
+            preview: truncatePreview(facts[0]),
           },
         });
       }

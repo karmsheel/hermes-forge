@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
 import { buildApprovalUpdate } from '@/lib/process-approve';
 import { canApproveForAutomation, isProcessStatus } from '@/lib/process-status';
+import { diffProcessFields, recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -42,6 +44,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const approvalPatch =
       body.status !== undefined ? buildApprovalUpdate(body.status) : {};
 
+    const before = result.process;
     const process = await prisma.process.update({
       where: { id },
       data: {
@@ -55,6 +58,59 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
 
+    const changes = diffProcessFields(
+      before as unknown as Record<string, unknown>,
+      body as Record<string, unknown>
+    );
+    if (changes.length > 0) {
+      await recordBusinessEvent({
+        businessId: before.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_UPDATED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Updated process "${process.name}"`,
+        metadata: { changes },
+      });
+    }
+
+    if (body.status === 'approved' && before.status !== 'approved') {
+      await recordBusinessEvent({
+        businessId: before.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_APPROVED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Approved process "${process.name}"`,
+      });
+    }
+
+    if (body.diagramMermaid && body.diagramMermaid !== before.diagramMermaid) {
+      await recordBusinessEvent({
+        businessId: before.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_DIAGRAM_UPDATED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Updated diagram for "${process.name}"`,
+      });
+    }
+
+    if (body.name !== undefined && body.name !== before.name) {
+      await recordBusinessEvent({
+        businessId: before.businessId,
+        userId: result.session.userId,
+        type: BUSINESS_EVENT_TYPES.PROCESS_NAME_CONFIRMED,
+        entityType: 'process',
+        entityId: id,
+        entityName: process.name,
+        summary: `Confirmed name "${process.name}"`,
+      });
+    }
+
     return NextResponse.json(process);
   } catch (error) {
     console.error('Update process error', error);
@@ -67,6 +123,16 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const result = await requireProcessAccess(request, id);
     if ('error' in result) return result.error;
+
+    await recordBusinessEvent({
+      businessId: result.process.businessId,
+      userId: result.session.userId,
+      type: BUSINESS_EVENT_TYPES.PROCESS_DELETED,
+      entityType: 'process',
+      entityId: id,
+      entityName: result.process.name,
+      summary: `Deleted process "${result.process.name}"`,
+    });
 
     await prisma.process.delete({ where: { id } });
     return NextResponse.json({ success: true });

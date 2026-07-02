@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
+import { recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { AUTOMATION_WELCOME_MESSAGE } from '@/lib/automation-chat';
 import {
   parseAutomationPlan,
@@ -26,13 +28,21 @@ export async function requireApprovedProcessAccess(request: NextRequest, process
   return result;
 }
 
-export async function getOrCreateAutomation(processId: string): Promise<AutomationWithMessages> {
+export async function getOrCreateAutomation(
+  processId: string,
+  logContext?: { userId?: string }
+): Promise<AutomationWithMessages> {
   const existing = await prisma.automation.findUnique({
     where: { processId },
     include: { messages: { orderBy: { createdAt: 'asc' } } },
   });
 
   if (existing) return existing;
+
+  const process = await prisma.process.findUnique({
+    where: { id: processId },
+    select: { businessId: true, name: true },
+  });
 
   const automation = await prisma.automation.create({
     data: { processId, status: 'designing' },
@@ -45,6 +55,18 @@ export async function getOrCreateAutomation(processId: string): Promise<Automati
       content: AUTOMATION_WELCOME_MESSAGE,
     },
   });
+
+  if (process) {
+    await recordBusinessEvent({
+      businessId: process.businessId,
+      userId: logContext?.userId,
+      type: BUSINESS_EVENT_TYPES.AUTOMATION_STUDIO_OPENED,
+      entityType: 'automation',
+      entityId: processId,
+      entityName: process.name,
+      summary: `Opened automation studio for "${process.name}"`,
+    });
+  }
 
   return prisma.automation.findUniqueOrThrow({
     where: { id: automation.id },
