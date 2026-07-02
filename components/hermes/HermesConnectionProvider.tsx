@@ -267,11 +267,8 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
       const normalized = withResolvedModel(saved);
       setConfig(normalized);
       void testConnection(normalized);
-      return;
     }
-
-    void autoConnect();
-  }, [autoConnect, testConnection]);
+  }, [testConnection]);
 
   useEffect(() => {
     if (status.state === "connected" && config) {

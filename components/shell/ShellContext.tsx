@@ -37,7 +37,6 @@ interface ShellContextValue {
   createProject: (name: string, description: string) => Promise<void>;
   requestNewProcess: () => void;
   registerWorkshopNewProcess: (handler: (() => void | Promise<void>) | null) => void;
-  logout: () => Promise<void>;
 }
 
 const ShellContext = createContext<ShellContextValue | null>(null);
@@ -54,25 +53,28 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => {
-        if (res.status === 401) {
-          router.push("/login");
-          return null;
+    async function loadUser() {
+      try {
+        let res = await fetch("/api/auth/me");
+        let data = await res.json();
+        if (!data?.user) {
+          await fetch("/api/auth/local", { method: "POST" });
+          res = await fetch("/api/auth/me");
+          data = await res.json();
         }
-        return res.json();
-      })
-      .then((data) => {
         if (data?.user) setUser(data.user);
         if (data?.activeBusiness) {
           setCurrentBusiness({ id: data.activeBusiness.id, name: data.activeBusiness.name });
         }
-      })
-      .catch(() => {
+      } catch {
         /* ignore */
-      })
-      .finally(() => setUserLoading(false));
-  }, [router]);
+      } finally {
+        setUserLoading(false);
+      }
+    }
+
+    void loadUser();
+  }, []);
 
   const createProject = useCallback(
     async (name: string, description: string) => {
@@ -95,11 +97,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     },
     [router]
   );
-
-  const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-  }, [router]);
 
   const refreshCurrentBusiness = useCallback(async () => {
     try {
@@ -172,9 +169,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       createProject,
       requestNewProcess,
       registerWorkshopNewProcess,
-      logout,
     }),
-    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, businessSwitcherOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, logout, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, businessSwitcherOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (

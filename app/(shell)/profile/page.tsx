@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Loader2, LogOut, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, Loader2, Pencil, Trash2, Upload } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessSummary, BusinessExportPayload, UserProfile } from "@/lib/types";
 import { buildBusinessExportPayload, createBusinessExportZip, downloadBlob, makeExportFilename } from "@/lib/business-export";
@@ -46,7 +46,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/businesses");
       if (res.status === 401) {
-        router.push("/login");
+        router.push("/");
         return;
       }
       const data = await res.json();
@@ -76,11 +76,6 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/");
   }
 
   async function handleDownload(biz: BusinessSummary) {
@@ -282,12 +277,7 @@ export default function ProfilePage() {
 
         <form onSubmit={handleSave} className="card p-6 space-y-4 mb-8">
           <div>
-            <label className="text-xs text-text-muted uppercase tracking-widest">Email</label>
-            <div className="mt-1 text-sm text-text">{user?.email}</div>
-          </div>
-
-          <div>
-            <label className="text-xs text-text-muted uppercase tracking-widest">Name</label>
+            <label className="text-xs text-text-muted uppercase tracking-widest">Display name</label>
             <input
               className="input w-full mt-1"
               value={name}
@@ -390,13 +380,6 @@ export default function ProfilePage() {
             ))}
           </ul>
         )}
-
-        <button
-          onClick={handleLogout}
-          className="w-full btn-secondary flex items-center justify-center gap-2 text-red-400 hover:text-red-300"
-        >
-          <LogOut className="w-4 h-4" /> Sign out
-        </button>
 
         {/* Edit business dialog */}
         {editTarget && (

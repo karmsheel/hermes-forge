@@ -70,7 +70,7 @@ export function BusinessLogFeed() {
 
         const res = await fetch(`/api/business/log?${params.toString()}`);
         if (res.status === 401) {
-          window.location.href = "/login";
+          window.location.href = "/";
           return;
         }
         const data = await res.json();

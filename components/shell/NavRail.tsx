@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import iconImage from "@/icon.jpg";
+import iconImage from "@/assets/icon.jpg";
 import { usePathname } from "next/navigation";
 import {
   FolderKanban,

@@ -9,6 +9,9 @@ import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-st
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
+import { WorkspaceTabs, type WorkspaceTab } from "@/components/workshop/WorkspaceTabs";
+import { DetailsPanel } from "@/components/workshop/DetailsPanel";
+import { SourcePanel } from "@/components/workshop/SourcePanel";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
@@ -40,6 +43,8 @@ export default function WorkshopPage() {
   const [composerFocusKey, setComposerFocusKey] = useState(0);
   // 3.2 Node-level comments
   const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
+  // 3.6 Workspace tabs
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("diagram");
   const { openHermesConnection, currentBusiness, registerWorkshopNewProcess } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const pendingReplyProcessIdRef = useRef<string | null>(consumePendingHermesReply());
@@ -156,6 +161,7 @@ export default function WorkshopPage() {
       setActiveId(process.id);
       activeIdRef.current = process.id;
       setSelectedNode(null);
+      setActiveTab("diagram");
       if (businessId) setActiveProcessId(businessId, process.id);
       await loadProcessList();
       setComposerFocusKey((k) => k + 1);
@@ -184,6 +190,7 @@ export default function WorkshopPage() {
     setStreamingDiagram(null);
     setDiagramStreaming(false);
     setSelectedNode(null);
+    setActiveTab("diagram");
     setActiveId(id);
     activeIdRef.current = id; // keep ref in sync for any pending sends
   }
@@ -486,7 +493,7 @@ export default function WorkshopPage() {
               <h1 className="text-lg font-semibold tracking-tight">
                 {loadingProcess ? "Loading..." : processName}
               </h1>
-              {diagramChart && (
+              {diagramChart && activeTab === "diagram" && (
                 <div className="text-[10px] text-text-soft">Click any node to target a correction</div>
               )}
             </div>
@@ -536,42 +543,75 @@ export default function WorkshopPage() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 relative bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:24px_24px]">
-            {!activeId ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                <p className="text-text-muted text-sm mb-4">
-                  Select a process from the left, or create a new one to start mapping.
-                </p>
-                <button onClick={handleCreateProcess} disabled={creating} className="btn-primary text-sm">
-                  Create New Process
-                </button>
-              </div>
-            ) : loadingProcess && !activeProcess ? (
-              <div className="h-full flex items-center justify-center text-text-muted text-sm">
-                Loading process...
-              </div>
-            ) : (
-              <MermaidDiagram
-                chart={diagramChart}
-                isStreaming={diagramStreaming}
-                className="absolute inset-0 z-0"
-                onNodeClick={handleNodeClick}
-                selectedNodeLabel={selectedNode?.label}
-                selectedNode={selectedNode}
-                onDeselect={clearSelectedNode}
-              />
-            )}
-          </div>
+          <WorkspaceTabs
+            active={activeTab}
+            onChange={setActiveTab}
+            hasDiagram={!!diagramChart}
+            hasProcess={!!activeProcess}
+          />
 
-          {diagramChart && (
-            <details className="shrink-0 border-t border-border">
-              <summary className="px-5 py-2 text-[10px] uppercase tracking-widest text-text-muted cursor-pointer hover:text-text">
-                Mermaid source
-              </summary>
-              <pre className="px-5 pb-3 text-[11px] font-mono text-text-muted overflow-x-auto max-h-24">
-                {diagramChart}
-              </pre>
-            </details>
+          {/* Diagram tab */}
+          {(activeTab === "diagram" || !activeProcess) && (
+            <div className="flex-1 min-h-0 relative bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:24px_24px]">
+              {!activeId ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                  <p className="text-text-muted text-sm mb-4">
+                    Select a process from the left, or create a new one to start mapping.
+                  </p>
+                  <button onClick={handleCreateProcess} disabled={creating} className="btn-primary text-sm">
+                    Create New Process
+                  </button>
+                </div>
+              ) : loadingProcess && !activeProcess ? (
+                <div className="h-full flex items-center justify-center text-text-muted text-sm">
+                  Loading process...
+                </div>
+              ) : (
+                <MermaidDiagram
+                  chart={diagramChart}
+                  isStreaming={diagramStreaming}
+                  className="absolute inset-0 z-0"
+                  onNodeClick={handleNodeClick}
+                  selectedNodeLabel={selectedNode?.label}
+                  selectedNode={selectedNode}
+                  onDeselect={clearSelectedNode}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Details tab */}
+          {activeTab === "details" && activeProcess && (
+            <DetailsPanel process={activeProcess} />
+          )}
+
+          {/* Questions tab (placeholder — 3.3 will populate) */}
+          {activeTab === "questions" && activeProcess && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+              <p className="text-text-muted text-sm">
+                Discovery questions panel coming soon (backlog 3.3).
+              </p>
+              <p className="text-text-soft text-xs mt-1">
+                For now, ask questions directly in the chat.
+              </p>
+            </div>
+          )}
+
+          {/* Source tab */}
+          {activeTab === "source" && activeProcess && diagramChart && (
+            <SourcePanel chart={diagramChart} />
+          )}
+
+          {/* Export tab (placeholder — 3.8 will populate) */}
+          {activeTab === "export" && activeProcess && (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+              <p className="text-text-muted text-sm">
+                Export options coming soon (backlog 3.8).
+              </p>
+              <p className="text-text-soft text-xs mt-1">
+                Mermaid, PNG, PDF, and Markdown SOP export.
+              </p>
+            </div>
           )}
         </main>
 

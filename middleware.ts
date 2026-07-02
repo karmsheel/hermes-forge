@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth-session';
 
 const PUBLIC_PATHS = ['/', '/login', '/signup'];
+// `/login` and `/signup` redirect to `/` — kept public so old links don't loop.
 const AUTH_API_PREFIX = '/api/auth';
 
 export async function middleware(request: NextRequest) {

@@ -9,9 +9,8 @@ Built for the **Hermes Agent Accelerated Business Hackathon** (NVIDIA × Stripe 
 | Repo | What it is | Run locally | Deploy |
 |------|------------|-------------|--------|
 | **[hermes-forge](https://github.com/karmsheel/hermes-forge)** (this repo) | **Desktop / local app** — Next.js, auth, projects, process workshop, live Mermaid diagrams | `npm run dev` → http://localhost:3000 | Self-host or `npm run desktop:build` |
-| **[hermes-forge-website](https://github.com/karmsheel/hermes-forge-website)** | **Public marketing site** — landing page, GitHub link, desktop download CTA | Clone that repo separately | Static build to your domain |
 
-The app entry (`/`) is the welcome sign-in / sign-up page. Marketing lives in the separate [hermes-forge-website](https://github.com/karmsheel/hermes-forge-website) repo.
+The app entry (`/`) is the welcome sign-in / sign-up page.
 
 ## Quickstart (app)
 
@@ -60,4 +59,4 @@ npm run desktop:dev     # dev: Electron + Next on port 3847
 npm run desktop:build   # production installer → dist/desktop/
 ```
 
-Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forge/releases), then link them from the marketing site.
+Publish installers to [GitHub Releases](https://github.com/karmsheel/hermes-forge/releases).

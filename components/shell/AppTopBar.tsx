@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, LogOut, User } from "lucide-react";
+import { Building2, User } from "lucide-react";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { useShell } from "./ShellContext";
 
 export function AppTopBar() {
-  const { user, userLoading, currentBusiness, openBusinessSwitcher, openHermesConnection, logout } = useShell();
+  const { user, userLoading, currentBusiness, openBusinessSwitcher, openHermesConnection } = useShell();
 
   return (
     <header className="app-topbar shrink-0 border-b border-border bg-bg">
@@ -35,15 +35,9 @@ export function AppTopBar() {
               className="text-text-muted hover:text-text-strong flex items-center gap-1 max-w-[12rem] truncate"
             >
               <User className="w-4 h-4 shrink-0" />
-              <span className="truncate">{user.name || user.email}</span>
+              <span className="truncate">{user.name || "Local"}</span>
             </Link>
           )}
-          <button
-            onClick={() => void logout()}
-            className="text-text-muted hover:text-text-strong flex items-center gap-1"
-          >
-            <LogOut className="w-4 h-4" /> Logout
-          </button>
         </div>
       </div>
     </header>

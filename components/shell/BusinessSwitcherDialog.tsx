@@ -31,13 +31,7 @@ export function BusinessSwitcherDialog({
 
     setLoading(true);
     fetch("/api/businesses")
-      .then((r) => {
-        if (r.status === 401) {
-          router.push("/login");
-          return { businesses: [] };
-        }
-        return r.json();
-      })
+      .then((r) => r.json())
       .then((data) => {
         setBusinesses(data.businesses || []);
       })

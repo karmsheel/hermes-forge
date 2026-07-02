@@ -19,7 +19,7 @@ export default function FunctionsPage() {
     try {
       const res = await fetch("/api/processes");
       if (res.status === 401) {
-        router.push("/login");
+        router.push("/");
         return;
       }
       const data = await res.json();

@@ -17,6 +17,7 @@ export interface HermesEnvConfig {
   apiServerKey?: string;
   apiServerHost?: string;
   apiServerPort?: number;
+  apiServerCorsOrigins?: string;
 }
 
 export interface HermesProbeResult {
@@ -33,6 +34,10 @@ export function getHermesHomeDir(): string {
   return process.env.HERMES_HOME || path.join(os.homedir(), '.hermes');
 }
 
+/**
+ * Parse a .env file's KEY=VALUE lines for API_SERVER_* settings.
+ * Mirrors how Hermes' own env_loader reads ~/.hermes/.env.
+ */
 export function parseHermesEnv(content: string): HermesEnvConfig {
   const result: HermesEnvConfig = {};
 
@@ -45,6 +50,9 @@ export function parseHermesEnv(content: string): HermesEnvConfig {
 
     const key = trimmed.slice(0, eq).trim();
     let value = trimmed.slice(eq + 1).trim();
+
+    // Strip "export " prefix (bash-compatible, like Hermes does)
+    if (key.startsWith('export ')) continue;
 
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
@@ -68,20 +76,216 @@ export function parseHermesEnv(content: string): HermesEnvConfig {
         if (Number.isFinite(port)) result.apiServerPort = port;
         break;
       }
+      case 'API_SERVER_CORS_ORIGINS':
+        result.apiServerCorsOrigins = value;
+        break;
     }
   }
 
   return result;
 }
 
-export async function readHermesEnvFile(): Promise<HermesEnvConfig | null> {
-  try {
-    const envPath = path.join(getHermesHomeDir(), '.env');
-    const content = await fs.readFile(envPath, 'utf-8');
-    return parseHermesEnv(content);
-  } catch {
-    return null;
+/**
+ * Read config.yaml and extract top-level API_SERVER_* scalar keys.
+ *
+ * Hermes' gateway (gateway/run.py:1431-1434) has a bridge that iterates all
+ * top-level scalar keys in config.yaml and sets them as os.environ fallbacks.
+ * This means API_SERVER_KEY can live in config.yaml (not just .env) and the
+ * gateway will still pick it up. We mirror that here.
+ *
+ * Also reads platforms.api_server.extra for host/port/key (the structured
+ * config.yaml location), which takes precedence over top-level keys.
+ */
+export function parseHermesConfigYaml(content: string): HermesEnvConfig {
+  const result: HermesEnvConfig = {};
+
+  // Lightweight YAML parse for the keys we care about. We avoid a full YAML
+  // dependency by doing targeted extraction — these values are always simple
+  // scalars at the top level or under platforms.api_server.extra.
+  const lines = content.split('\n');
+
+  // Pass 1: top-level API_SERVER_* keys
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const match = trimmed.match(
+      /^API_SERVER_(ENABLED|KEY|HOST|PORT|CORS_ORIGINS)\s*:\s*(.*)$/
+    );
+    if (!match) continue;
+
+    const [, kind, rawValue] = match;
+    let value = rawValue.trim();
+
+    // Strip YAML quoting
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    switch (kind) {
+      case 'ENABLED':
+        result.apiServerEnabled =
+          value.toLowerCase() === 'true' || value === 'yes' || value === '1';
+        break;
+      case 'KEY':
+        result.apiServerKey = value;
+        break;
+      case 'HOST':
+        result.apiServerHost = value;
+        break;
+      case 'PORT': {
+        const port = Number.parseInt(value, 10);
+        if (Number.isFinite(port)) result.apiServerPort = port;
+        break;
+      }
+      case 'CORS_ORIGINS':
+        result.apiServerCorsOrigins = value;
+        break;
+    }
   }
+
+  // Pass 2: platforms.api_server.extra (structured config)
+  // Look for the `platforms:` → `api_server:` → `extra:` section
+  let inPlatforms = false;
+  let inApiServer = false;
+  let inExtra = false;
+  let platformsIndent = -1;
+  let apiServerIndent = -1;
+  let extraIndent = -1;
+
+  for (const line of lines) {
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+
+    const indent = line.search(/\S/);
+
+    // Track nesting
+    if (/^platforms:\s*$/.test(line.trim())) {
+      inPlatforms = true;
+      platformsIndent = indent;
+      continue;
+    }
+    if (inPlatforms && indent <= platformsIndent) {
+      inPlatforms = false;
+      inApiServer = false;
+      inExtra = false;
+    }
+
+    if (inPlatforms && /^api_server:\s*$/.test(line.trim())) {
+      inApiServer = true;
+      apiServerIndent = indent;
+      continue;
+    }
+    if (inApiServer && indent <= apiServerIndent && line.trim() !== 'extra:') {
+      inApiServer = false;
+      inExtra = false;
+    }
+
+    if (inApiServer && /^extra:\s*$/.test(line.trim())) {
+      inExtra = true;
+      extraIndent = indent;
+      continue;
+    }
+    if (inExtra && indent <= extraIndent) {
+      inExtra = false;
+    }
+
+    if (inExtra) {
+      const kvMatch = line.trim().match(
+        /^(host|port|key|cors_origins|enabled)\s*:\s*(.*)$/
+      );
+      if (kvMatch) {
+        const [, k, rawVal] = kvMatch;
+        let val = rawVal.trim();
+        if (
+          (val.startsWith('"') && val.endsWith('"')) ||
+          (val.startsWith("'") && val.endsWith("'"))
+        ) {
+          val = val.slice(1, -1);
+        }
+        if (k === 'host') result.apiServerHost = val;
+        else if (k === 'port') {
+          const p = Number.parseInt(val, 10);
+          if (Number.isFinite(p)) result.apiServerPort = p;
+        } else if (k === 'key') result.apiServerKey = val;
+        else if (k === 'cors_origins') result.apiServerCorsOrigins = val;
+        else if (k === 'enabled')
+          result.apiServerEnabled = val === 'true';
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Merge two HermesEnvConfig objects. Values in `override` win over `base`.
+ */
+function mergeConfig(
+  base: HermesEnvConfig,
+  override: HermesEnvConfig
+): HermesEnvConfig {
+  return {
+    apiServerEnabled: override.apiServerEnabled ?? base.apiServerEnabled,
+    apiServerKey: override.apiServerKey || base.apiServerKey,
+    apiServerHost: override.apiServerHost || base.apiServerHost,
+    apiServerPort: override.apiServerPort ?? base.apiServerPort,
+    apiServerCorsOrigins:
+      override.apiServerCorsOrigins || base.apiServerCorsOrigins,
+  };
+}
+
+export async function readHermesEnvFile(): Promise<HermesEnvConfig | null> {
+  const home = getHermesHomeDir();
+  let config: HermesEnvConfig = {};
+
+  // Source 1: config.yaml — Hermes' gateway bridges top-level scalar keys
+  // into os.environ, and platforms.api_server.extra holds the structured form.
+  // This is the primary source on most installs.
+  try {
+    const yamlPath = path.join(home, 'config.yaml');
+    const yamlContent = await fs.readFile(yamlPath, 'utf-8');
+    const yamlConfig = parseHermesConfigYaml(yamlContent);
+    config = mergeConfig(config, yamlConfig);
+  } catch {
+    // config.yaml may not exist on fresh installs
+  }
+
+  // Source 2: .env — user secrets. .env overrides config.yaml for keys it
+  // actually defines (matching Hermes' own precedence: env > config.yaml).
+  try {
+    const envPath = path.join(home, '.env');
+    const envContent = await fs.readFile(envPath, 'utf-8');
+    const envConfig = parseHermesEnv(envContent);
+    config = mergeConfig(config, envConfig);
+  } catch {
+    // .env may not exist
+  }
+
+  // Source 3: process.env — highest precedence (shell exports, HERMES_HOME, etc.)
+  if (process.env.API_SERVER_KEY) config.apiServerKey = process.env.API_SERVER_KEY;
+  if (process.env.API_SERVER_HOST) config.apiServerHost = process.env.API_SERVER_HOST;
+  if (process.env.API_SERVER_PORT) {
+    const port = Number.parseInt(process.env.API_SERVER_PORT, 10);
+    if (Number.isFinite(port)) config.apiServerPort = port;
+  }
+  if (process.env.API_SERVER_ENABLED) {
+    config.apiServerEnabled = process.env.API_SERVER_ENABLED.toLowerCase() === 'true';
+  }
+  if (process.env.API_SERVER_CORS_ORIGINS) {
+    config.apiServerCorsOrigins = process.env.API_SERVER_CORS_ORIGINS;
+  }
+
+  // If nothing was found at all, return null (caller shows "not configured")
+  const hasAny =
+    config.apiServerKey !== undefined ||
+    config.apiServerEnabled !== undefined ||
+    config.apiServerHost !== undefined ||
+    config.apiServerPort !== undefined;
+
+  return hasAny ? config : null;
 }
 
 export function buildCandidateUrls(env?: HermesEnvConfig | null): string[] {
@@ -150,7 +354,7 @@ export async function probeHermesConnection(
         baseUrl: normalized,
         latencyMs,
         kind: 'auth_failed',
-        error: 'Invalid API key. Check API_SERVER_KEY in ~/.hermes/.env',
+        error: 'Invalid API key. Check API_SERVER_KEY in ~/.hermes/config.yaml or ~/.hermes/.env',
       };
     }
 
@@ -220,7 +424,7 @@ export async function discoverHermes(): Promise<{
         baseUrl: candidates[0],
         latencyMs: 0,
         kind: 'misconfigured',
-        error: 'API server is disabled. Set API_SERVER_ENABLED=true in ~/.hermes/.env',
+        error: 'API server is disabled. Set API_SERVER_ENABLED=true in ~/.hermes/config.yaml or ~/.hermes/.env',
       },
     };
   }
@@ -236,7 +440,7 @@ export async function discoverHermes(): Promise<{
         baseUrl: candidates[0],
         latencyMs: 0,
         kind: 'misconfigured',
-        error: 'No API_SERVER_KEY found in ~/.hermes/.env',
+        error: 'No API_SERVER_KEY found. Check ~/.hermes/config.yaml (top-level key or platforms.api_server.extra.key) or ~/.hermes/.env',
       },
     };
   }
