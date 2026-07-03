@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
+import { parseNodeComment, normaliseLabel } from "@/lib/node-comment";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
@@ -28,6 +29,7 @@ import {
   setActiveConversationId as persistConversationId,
 } from "@/lib/workshop-storage";
 import type { ProcessSummary, ProcessWithMessages, ChatMessage } from "@/lib/types";
+import { buildNodeCommentPrefix } from "@/lib/node-comment";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
@@ -46,6 +48,17 @@ export default function WorkshopPage() {
     const [composerFocusKey, setComposerFocusKey] = useState(0);
     // 3.2 Node-level comments
     const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
+    // 3.5: nodes from the rendered diagram, surfaced as @-mention candidates
+    // in the rich composer. Refreshed on every diagram (re-)render.
+    const [diagramNodes, setDiagramNodes] = useState<MermaidNodeInfo[]>([]);
+    // 3.2: per-node user comment summary, derived from chat history and
+    // passed to the diagram so it can render the comment dots.
+    const [commentedNodes, setCommentedNodes] = useState<
+      Map<string, { count: number; firstLabel: string }>
+    >(new Map());
+    // 3.2: when the user clicks a comment dot on the diagram, we bump this
+    // so the chat scrolls to the first matching message.
+    const [chatScrollRequest, setChatScrollRequest] = useState<{ key: number; label: string | null } | null>(null);
     // 3.6 Workspace tabs
     const [activeTab, setActiveTab] = useState<WorkspaceTab>("diagram");
     // 3.4 Conversation fork
@@ -347,26 +360,36 @@ export default function WorkshopPage() {
     setSelectedNode(null);
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string, options?: { replyOnly?: boolean }) => {
-    const currentActiveId = activeIdRef.current ?? activeId;
-    const currentHermes = hermesConfigRef.current ?? hermesConfig;
-    if (!currentActiveId || !currentHermes) return;
+  // 3.2: clicking a comment dot on the diagram asks the chat to scroll to
+  // the first message targeting that node. The chat handles the actual
+  // scroll + brief highlight.
+  const handleNodeCommentClick = useCallback((label: string) => {
+    setChatScrollRequest({ key: Date.now(), label });
+  }, []);
 
-    setChatLoading(true);
+  const handleSendMessage = useCallback(async (content: string, options?: { replyOnly?: boolean; nodeContext?: { nodeId?: string; label: string } }) => {
+      const currentActiveId = activeIdRef.current ?? activeId;
+      const currentHermes = hermesConfigRef.current ?? hermesConfig;
+      if (!currentActiveId || !currentHermes) return;
 
-    // 3.2 Node context: if a node is selected, make the correction target explicit
-    // in the message (for conversation history + diagram agent) and for optimistic UI.
-    const currentSelected = selectedNodeRef.current;
-    let outgoingContent = content;
-    let nodeContext: { nodeId?: string; label: string } | undefined;
+      setChatLoading(true);
 
-    if (!options?.replyOnly && currentSelected) {
-      nodeContext = { nodeId: currentSelected.id, label: currentSelected.label };
-      const mentionsNode = content.toLowerCase().includes(currentSelected.label.toLowerCase());
-      if (!mentionsNode) {
-        outgoingContent = `Regarding "${currentSelected.label}": ${content}`;
+      // 3.2 / 3.5 Node context: if a node is selected OR the message contains a
+      // resolved @-node-mention, set the explicit nodeContext for the API.
+      // Make the correction target explicit in the message text for the
+      // conversation history + diagram agent.
+      const currentSelected = selectedNodeRef.current;
+      const explicitContext = options?.nodeContext;
+      const nodeContext: { nodeId?: string; label: string } | undefined =
+        explicitContext ?? (currentSelected ? { nodeId: currentSelected.id, label: currentSelected.label } : undefined);
+
+      let outgoingContent = content;
+      if (!options?.replyOnly && nodeContext) {
+        const prefix = buildNodeCommentPrefix(nodeContext.label);
+        if (!outgoingContent.startsWith(prefix)) {
+          outgoingContent = prefix + outgoingContent;
+        }
       }
-    }
 
     if (!options?.replyOnly) {
           const optimisticUser: ChatMessage = {
@@ -436,6 +459,21 @@ export default function WorkshopPage() {
       setChatLoading(false);
     }
   }, [activeId, businessId, hermesConfig, loadProcess, loadProcessList, runBackgroundAgents]);
+
+  // 3.5: Handle slash commands that the composer couldn't handle itself —
+  // e.g. /export switches the workspace tab to the export panel.
+  const handleSlashCommand = useCallback(
+    (command: string, _args: string): boolean => {
+      if (command === "export") {
+        setActiveTab("export");
+        toast.success("Opened export menu");
+        return true;
+      }
+      // Unknown commands fall through; the composer shows a built-in /help.
+      return false;
+    },
+    [],
+  );
 
   const trySendPendingReply = useCallback(() => {
     const pendingId = pendingReplyProcessIdRef.current;
@@ -601,6 +639,9 @@ export default function WorkshopPage() {
                   selectedNodeLabel={selectedNode?.label}
                   selectedNode={selectedNode}
                   onDeselect={clearSelectedNode}
+                  onNodesChange={setDiagramNodes}
+                  commentedNodes={commentedNodes}
+                  onNodeCommentClick={handleNodeCommentClick}
                 />
               )}
             </div>
@@ -667,6 +708,10 @@ export default function WorkshopPage() {
               composerFocusKey={composerFocusKey}
               selectedNode={selectedNode}
               onClearNodeContext={clearSelectedNode}
+              mentionables={diagramNodes.map((n) => ({ ref: n.id, label: n.label, kind: "node" as const }))}
+              onSlashCommand={handleSlashCommand}
+              onCommentsChange={setCommentedNodes}
+              scrollToRequest={chatScrollRequest}
             />
           </div>
         ) : (

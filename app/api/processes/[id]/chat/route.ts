@@ -13,6 +13,7 @@ import {
 import { executeProcessSplit, shouldExecuteSplit } from '@/lib/process-split';
 import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { buildNodeCommentPrefix } from '@/lib/node-comment';
 
 const ChatSchema = z
   .object({
@@ -95,9 +96,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       // 3.2 Node-level correction: ensure the stored message makes the target explicit
       // so the diagram subagent (which replays conversation) can focus the revision.
       if (body.nodeContext?.label) {
-        const hasReference = content.toLowerCase().includes(body.nodeContext.label.toLowerCase());
-        if (!hasReference) {
-          content = `Regarding "${body.nodeContext.label}": ${content}`;
+        const prefix = buildNodeCommentPrefix(body.nodeContext.label);
+        if (!content.startsWith(prefix)) {
+          content = prefix + content;
         }
       }
 

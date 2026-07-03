@@ -1,23 +1,65 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, Settings2 } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { Loader2, Settings2 } from "lucide-react";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import type { ChatMessage } from "@/lib/types";
-import { NodeContextPill } from "./DiagramComments";
+import {
+  RichComposer,
+  type Mentionable,
+  type ParsedMessage,
+} from "./rich-composer/RichComposer";
+import { NodeCommentBadge } from "./DiagramComments";
+import { parseNodeComment, normaliseLabel } from "@/lib/node-comment";
 import type { MermaidNodeInfo } from "./MermaidDiagram";
+
+/**
+ * Per-node summary of user comments. Computed from the message list each
+ * render and emitted to the parent so the diagram can decorate nodes that
+ * have user comments.
+ */
+export interface NodeCommentSummary {
+  /** Original (un-normalised) first label we saw for this node. */
+  firstLabel: string;
+  count: number;
+  firstMessageId: string;
+  lastMessageId: string;
+}
 
 interface ProcessChatProps {
   messages: ChatMessage[];
   processName: string;
   isLoading: boolean;
-  onSend: (content: string) => void;
+  /**
+   * Send a message. The composer produces a parsed message; we extract the
+   * first resolved node mention and pass it as `nodeContext` so the diagram
+   * subagent (3.2) can focus the revision. The raw text is sent as `content`.
+   */
+  onSend: (content: string, options?: { nodeContext?: { nodeId?: string; label: string } }) => void;
   onOpenConnection: () => void;
   /** Increment to focus the composer (e.g. after creating a new process). */
   composerFocusKey?: number;
   /** Current selected node for targeting corrections (3.2). */
   selectedNode?: MermaidNodeInfo | null;
   onClearNodeContext?: () => void;
+  /** Diagram nodes surfaced as @-mention candidates. */
+  mentionables?: Mentionable[];
+  /**
+   * Optional hook for slash commands owned by the parent page
+   * (e.g. /export switches to the Export tab). Return true to indicate handled.
+   */
+  onSlashCommand?: (command: string, args: string) => boolean;
+  /**
+   * Emits a map of normalised node label → comment summary whenever the
+   * message list changes. The parent passes this to MermaidDiagram so it
+   * can render the per-node comment dots.
+   */
+  onCommentsChange?: (comments: Map<string, NodeCommentSummary>) => void;
+  /**
+   * Increments when the parent wants the chat to scroll to a specific node
+   * label. Pair with `scrollToNodeLabel` to set the target.
+   */
+  scrollToRequest?: { key: number; label: string | null } | null;
 }
 
 export function ProcessChat({
@@ -29,73 +71,87 @@ export function ProcessChat({
   composerFocusKey = 0,
   selectedNode,
   onClearNodeContext,
+  mentionables,
+  onSlashCommand,
+  onCommentsChange,
+  scrollToRequest,
 }: ProcessChatProps) {
-  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { config: hermesConfig, isConnected } = useHermesConnection();
+  const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+  const highlightTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const lastScrollKey = useRef<number>(0);
+  const { isConnected } = useHermesConnection();
 
+  // 3.2: derive per-node comment summary from the message list.
+  const commentsByLabel = useMemo(() => {
+    const map = new Map<string, NodeCommentSummary>();
+    for (const msg of messages) {
+      if (msg.role !== "user") continue;
+      const parsed = parseNodeComment(msg.content);
+      if (!parsed) continue;
+      const key = normaliseLabel(parsed.label);
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+        existing.lastMessageId = msg.id;
+      } else {
+        map.set(key, {
+          firstLabel: parsed.label,
+          count: 1,
+          firstMessageId: msg.id,
+          lastMessageId: msg.id,
+        });
+      }
+    }
+    return map;
+  }, [messages]);
+
+  // Push the summary upward whenever it changes.
+  useEffect(() => {
+    onCommentsChange?.(commentsByLabel);
+  }, [commentsByLabel, onCommentsChange]);
+
+  // Auto-scroll to bottom on new messages.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
+  // 3.2: parent-driven scroll to a specific node's first comment.
   useEffect(() => {
-    if (!composerFocusKey) return;
-    const id = window.setTimeout(() => {
-      textareaRef.current?.focus({ preventScroll: true });
-    }, 50);
-    return () => window.clearTimeout(id);
-  }, [composerFocusKey]);
+    if (!scrollToRequest || scrollToRequest.label == null) return;
+    if (scrollToRequest.key === lastScrollKey.current) return;
+    lastScrollKey.current = scrollToRequest.key;
+    const key = normaliseLabel(scrollToRequest.label);
+    const summary = commentsByLabel.get(key);
+    if (!summary) return;
+    const el = messageRefs.current.get(summary.firstMessageId);
+    if (!el) return;
+    // Clear any existing highlight on this message.
+    const existing = highlightTimers.current.get(summary.firstMessageId);
+    if (existing) clearTimeout(existing);
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("node-comment-highlight");
+    const t = setTimeout(() => {
+      el.classList.remove("node-comment-highlight");
+      highlightTimers.current.delete(summary.firstMessageId);
+    }, 1800);
+    highlightTimers.current.set(summary.firstMessageId, t);
+  }, [scrollToRequest, commentsByLabel]);
 
-  // Track previous selection for smart prefix handling (3.2)
-  const prevSelectedRef = useRef<typeof selectedNode>(null);
-
-  // Handle node selection: set or replace the "Regarding" prefix.
-  // This reacts to the object reference (so duplicate labels still trigger update).
-  useEffect(() => {
-    const label = selectedNode?.label;
-    if (label) {
-      setInput((current) => {
-        const newPrefix = `Regarding "${label}": `;
-        if (!current.trim()) {
-          return newPrefix;
-        }
-        // If user already has a "Regarding ..." prefix, replace it with the new node's.
-        const existingMatch = current.match(/^Regarding "[^"]+": /);
-        if (existingMatch) {
-          return newPrefix + current.slice(existingMatch[0].length);
-        }
-        return current;
-      });
-    }
-    prevSelectedRef.current = selectedNode || null;
-  }, [selectedNode]);
-
-  // On deselect (background click), strip the old Regarding prefix if still present.
-  useEffect(() => {
-    if (!selectedNode && prevSelectedRef.current?.label) {
-      const oldLabel = prevSelectedRef.current.label;
-      const oldPrefix = `Regarding "${oldLabel}": `;
-      setInput((current) => {
-        if (current.startsWith(oldPrefix)) {
-          return current.slice(oldPrefix.length);
-        }
-        return current;
-      });
-    }
-  }, [selectedNode]);
-
-  function handleSend() {
-    if (!input.trim() || isLoading) return;
-    onSend(input.trim());
-    setInput("");
+  function handleComposerSend(parsed: ParsedMessage) {
+    // Find the first resolved node mention — that's our 3.2 nodeContext.
+    const firstNodeMention = parsed.mentions.find((m) => m.mentionable?.kind === "node");
+    const nodeContext = firstNodeMention?.mentionable?.ref
+      ? { nodeId: firstNodeMention.mentionable.ref, label: firstNodeMention.mentionable.label }
+      : firstNodeMention
+        ? { label: firstNodeMention.label }
+        : undefined;
+    onSend(parsed.raw, { nodeContext });
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  function setMessageRef(id: string, el: HTMLDivElement | null) {
+    if (el) messageRefs.current.set(id, el);
+    else messageRefs.current.delete(id);
   }
 
   return (
@@ -115,22 +171,33 @@ export function ProcessChat({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+        {messages.map((msg) => {
+          // 3.2: parse the "Regarding X:" prefix back out of the message so
+          // we can render a clean badge instead of the raw text.
+          const isUser = msg.role === "user";
+          const nodeComment = isUser ? parseNodeComment(msg.content) : null;
+          return (
             <div
-              className={`chat-message text-sm ${
-                msg.role === "user"
-                  ? "bg-accent text-white"
-                  : "bg-bg-elevated border border-border text-text"
-              }`}
+              key={msg.id}
+              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
-              <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+              <div
+                ref={(el) => setMessageRef(msg.id, el)}
+                data-message-id={msg.id}
+                className={`chat-message text-sm transition-shadow ${
+                  isUser
+                    ? "bg-accent text-white"
+                    : "bg-bg-elevated border border-border text-text"
+                }`}
+              >
+                {nodeComment && <NodeCommentBadge label={nodeComment.label} />}
+                <div className="whitespace-pre-wrap leading-relaxed">
+                  {nodeComment ? nodeComment.content : msg.content}
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {isLoading && (
           <div className="flex justify-start">
             <div className="chat-message bg-bg-elevated border border-border flex items-center gap-2 text-sm text-text-muted">
@@ -142,39 +209,17 @@ export function ProcessChat({
       </div>
 
       <div className="p-4 border-t border-border">
-        {!isConnected && (
-          <div className="mb-2 text-xs pill pill-amber rounded-lg px-3 py-2">
-            <button type="button" onClick={onOpenConnection} className="hover:underline">
-              Connect to Hermes
-            </button>{" "}
-            to start chatting.
-          </div>
-        )}
-        {selectedNode && onClearNodeContext && (
-          <NodeContextPill label={selectedNode.label} onClear={onClearNodeContext} />
-        )}
-        <div className="flex gap-2">
-          <textarea
-            ref={textareaRef}
-            className="input flex-1 resize-none min-h-[44px] max-h-32 text-sm"
-            placeholder="Describe steps, actors, tools..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={2}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading || !hermesConfig}
-            className="btn-primary self-end"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-        <p className="text-[10px] text-text-soft mt-2">
-          Each reply updates the diagram in the center. Correct anything that looks wrong.
-        </p>
+        <RichComposer
+          onSend={handleComposerSend}
+          onSlashCommand={onSlashCommand}
+          mentionables={mentionables}
+          selectedNode={selectedNode}
+          onClearNodeContext={onClearNodeContext}
+          composerFocusKey={composerFocusKey}
+          isLoading={isLoading}
+          isConnected={isConnected}
+          onOpenConnection={onOpenConnection}
+        />
       </div>
     </div>
   );

@@ -153,6 +153,12 @@ body {
   font-size: 0.875rem;
 }
 
+/* 3.2: brief glow applied to a chat bubble when the user clicks a node
+   comment dot. Tells the user which message corresponds to that node. */
+.chat-message.node-comment-highlight {
+  box-shadow: 0 0 0 3px var(--accent), 0 0 24px -4px var(--accent);
+}
+
 .score-bar {
   height: 0.5rem;
   background-color: var(--bg-muted);
