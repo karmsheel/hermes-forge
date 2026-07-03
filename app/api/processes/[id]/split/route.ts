@@ -65,6 +65,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       where: { id },
       include: {
         messages: { orderBy: { createdAt: 'asc' } },
+        conversations: { orderBy: { createdAt: 'asc' } },
         business: { select: { id: true, name: true } },
       },
     });

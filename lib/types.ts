@@ -60,9 +60,20 @@ export interface Process {
 export interface ChatMessage {
   id: string;
   processId: string;
+  conversationId: string | null;
   role: 'user' | 'assistant';
   content: string;
   createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  processId: string;
+  title: string;
+  forkedFromId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { messages: number };
 }
 
 export interface ProcessSummary {
@@ -86,6 +97,7 @@ export interface ApprovedProcessSummary extends ProcessSummary {
 
 export interface ProcessWithMessages extends Process {
   messages: ChatMessage[];
+  conversations?: Conversation[];
   business?: { id: string; name: string };
 }
 

@@ -9,8 +9,6 @@ import { AutomationSidebar } from "@/components/automations/AutomationSidebar";
 import { AutomationChat } from "@/components/automations/AutomationChat";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { N8nConnectionDialog } from "@/components/n8n/N8nConnectionDialog";
-import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
-import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { automationStatusToDeployStatus } from "@/lib/automation-types";
@@ -233,31 +231,29 @@ export default function AutomationStudioPage({ params }: PageProps) {
   const deployStatus = automationStatusToDeployStatus(studio.automation);
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-      <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-text-muted">Automation studio</div>
-          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
-            {businessName ? `${businessName} · ${studio.process.name}` : studio.process.name}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
-          {extracting && (
-            <div className="text-[10px] text-green flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
-              Updating plan…
-            </div>
-          )}
-          <HermesStatusBadge onClick={openHermesConnection} />
-          <button
-            onClick={loadStudio}
-            className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" /> Refresh
-          </button>
-        </div>
-      </header>
+      <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-text-muted">Automation studio</div>
+            <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+              {businessName ? `${businessName} · ${studio.process.name}` : studio.process.name}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            {extracting && (
+              <div className="text-[10px] text-green flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
+                Updating plan…
+              </div>
+            )}
+            <button
+              onClick={loadStudio}
+              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+        </header>
 
       <div className="flex-1 flex min-h-0">
         <AutomationSidebar

@@ -63,6 +63,20 @@ model BusinessEvent {
   @@index([businessId, createdAt(sort: Desc)])
 }
 
+model Conversation {
+  id          String   @id @default(cuid())
+  processId   String
+  process     Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  title       String   @default("Main")
+  forkedFromId String?  // conversation this was forked from
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages    ChatMessage[]
+
+  @@index([processId, createdAt(sort: Desc)])
+}
+
 model Process {
   id                 String   @id @default(cuid())
   businessId         String
@@ -92,6 +106,7 @@ model Process {
   diagramUpdatedAt   DateTime?
 
   messages           ChatMessage[]
+  conversations      Conversation[]
   automation         Automation?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -127,9 +142,11 @@ model AutomationMessage {
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  processId String
-  process   Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  processId      String
+  process        Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   role      String   // user | assistant
   content   String

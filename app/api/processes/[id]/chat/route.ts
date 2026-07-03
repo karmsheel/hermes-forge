@@ -18,8 +18,9 @@ const ChatSchema = z
   .object({
     content: z.string().min(1).optional(),
     replyOnly: z.boolean().optional(),
+    conversationId: z.string().optional(),
     baseUrl: z.string(),
-    apiKey: z.string(),
+    apiKey: z.string().optional(),
     model: z.string().optional(),
     // 3.2: explicit node targeting for corrections
     nodeContext: z
@@ -44,8 +45,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
+    // 3.4: Filter messages to the active conversation
+    const conversationId = body.conversationId || process.conversations?.[0]?.id || null;
+    const conversationMessages = conversationId
+      ? process.messages.filter((m) => m.conversationId === conversationId)
+      : process.messages;
+
     const replyOnly = body.replyOnly === true;
-    let allMessages = process.messages.map((m) => ({ role: m.role, content: m.content }));
+    let allMessages = conversationMessages.map((m) => ({ role: m.role, content: m.content }));
 
     const priorMessages = allMessages;
     const lastAssistant = [...priorMessages].reverse().find((m) => m.role === 'assistant');
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
 
       await prisma.chatMessage.create({
-        data: { processId: id, role: 'user', content },
+        data: { processId: id, conversationId, role: 'user', content },
       });
       await recordBusinessEvent({
         businessId: process.businessId,
@@ -122,7 +129,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       })
     ) {
       const splitResult = await executeProcessSplit(
-        { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
+        { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
         id,
         lastUserContent
       );
@@ -155,6 +162,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         where: { id },
         include: {
           messages: { orderBy: { createdAt: 'asc' } },
+          conversations: { orderBy: { createdAt: 'asc' } },
           business: { select: { id: true, name: true } },
         },
       });
@@ -173,7 +181,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .some((m) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
 
     const assistantContent = await callHermes(
-      { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
+      { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
         {
           role: 'system',
@@ -205,7 +213,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const assistantMessage = assistantContent || 'Thanks — tell me more about the next step.';
 
     await prisma.chatMessage.create({
-      data: { processId: id, role: 'assistant', content: assistantMessage },
+      data: { processId: id, conversationId, role: 'assistant', content: assistantMessage },
     });
 
     if (process.nameStatus === 'pending' && !/^untitled/i.test(process.name)) {
@@ -230,6 +238,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       where: { id },
       include: {
         messages: { orderBy: { createdAt: 'asc' } },
+        conversations: { orderBy: { createdAt: 'asc' } },
         business: { select: { id: true, name: true } },
       },
     });

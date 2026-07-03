@@ -10,6 +10,7 @@ const AgentSchema = z.object({
   baseUrl: z.string(),
   apiKey: z.string(),
   model: z.string().optional(),
+  conversationId: z.string().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -28,7 +29,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ updated: false, name: process.name });
     }
 
-    const conversation = process.messages.map((m) => ({
+    // 3.4: Filter messages to the active conversation
+    const conversationId = body.conversationId || process.conversations?.[0]?.id || null;
+    const conversationMessages = conversationId
+      ? process.messages.filter((m) => m.conversationId === conversationId)
+      : process.messages;
+
+    const conversation = conversationMessages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -75,6 +82,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       await prisma.chatMessage.create({
         data: {
           processId: id,
+          conversationId,
           role: 'assistant',
           content: confirmationMessage,
         },

@@ -99,7 +99,7 @@ export function ProcessChat({
   }
 
   return (
-    <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel text-text flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full text-text overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-widest text-text-muted">Chat</div>

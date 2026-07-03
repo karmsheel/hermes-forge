@@ -70,20 +70,27 @@ export async function POST(request: NextRequest) {
     const dept = body.department || categorizeWorkflow(`${body.name || ''} ${body.description || ''}`);
 
     const process = await prisma.process.create({
-      data: {
-        businessId: business.id,
-        name: body.name || 'Untitled Process',
-        description: body.description || '',
-        department: dept,
-        status: 'mapping',
-        diagramMermaid,
-        diagramUpdatedAt: diagramMermaid ? new Date() : null,
-      },
-    });
+          data: {
+            businessId: business.id,
+            name: body.name || 'Untitled Process',
+            description: body.description || '',
+            department: dept,
+            status: 'mapping',
+            diagramMermaid,
+            diagramUpdatedAt: diagramMermaid ? new Date() : null,
+            conversations: {
+              create: { title: 'Main' },
+            },
+          },
+          include: {
+            conversations: true,
+          },
+        });
 
     await prisma.chatMessage.create({
       data: {
         processId: process.id,
+        conversationId: process.conversations[0].id,
         role: 'assistant',
         content: WELCOME_MESSAGE,
       },
@@ -103,6 +110,7 @@ export async function POST(request: NextRequest) {
       where: { id: process.id },
       include: {
         messages: { orderBy: { createdAt: 'asc' } },
+        conversations: { orderBy: { createdAt: 'asc' } },
         business: { select: { id: true, name: true } },
       },
     });

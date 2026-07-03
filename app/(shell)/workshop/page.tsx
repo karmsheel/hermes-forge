@@ -12,8 +12,9 @@ import { ProcessChat } from "@/components/workshop/ProcessChat";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/workshop/WorkspaceTabs";
 import { DetailsPanel } from "@/components/workshop/DetailsPanel";
 import { SourcePanel } from "@/components/workshop/SourcePanel";
-import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
-import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { QuestionsPanel } from "@/components/workshop/QuestionsPanel";
+import { ConversationsMenu } from "@/components/workshop/ConversationsMenu";
+import { ExportMenu } from "@/components/export/ExportMenu";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
@@ -23,8 +24,10 @@ import {
   consumePendingNewProcess,
   getActiveProcessId,
   setActiveProcessId,
+  getActiveConversationId,
+  setActiveConversationId as persistConversationId,
 } from "@/lib/workshop-storage";
-import type { ProcessSummary, ProcessWithMessages } from "@/lib/types";
+import type { ProcessSummary, ProcessWithMessages, ChatMessage } from "@/lib/types";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
@@ -39,12 +42,15 @@ export default function WorkshopPage() {
   const [agentsRunning, setAgentsRunning] = useState(false);
   const [diagramStreaming, setDiagramStreaming] = useState(false);
   const [streamingDiagram, setStreamingDiagram] = useState<string | null>(null);
-  const [approving, setApproving] = useState(false);
-  const [composerFocusKey, setComposerFocusKey] = useState(0);
-  // 3.2 Node-level comments
-  const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
-  // 3.6 Workspace tabs
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("diagram");
+    const [approving, setApproving] = useState(false);
+    const [composerFocusKey, setComposerFocusKey] = useState(0);
+    // 3.2 Node-level comments
+    const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
+    // 3.6 Workspace tabs
+    const [activeTab, setActiveTab] = useState<WorkspaceTab>("diagram");
+    // 3.4 Conversation fork
+    const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+    const activeConversationIdRef = useRef<string | null>(null);
   const { openHermesConnection, currentBusiness, registerWorkshopNewProcess } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const pendingReplyProcessIdRef = useRef<string | null>(consumePendingHermesReply());
@@ -66,6 +72,10 @@ export default function WorkshopPage() {
   useEffect(() => {
     selectedNodeRef.current = selectedNode;
   }, [selectedNode]);
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
@@ -122,6 +132,16 @@ export default function WorkshopPage() {
       setActiveId(id);
       activeIdRef.current = id; // sync immediately so replyOnly / handle calls see fresh id
       setActiveProcessId(projectId, id);
+
+      // 3.4: Set active conversation (from storage or first conversation)
+      const savedConvId = getActiveConversationId(id);
+      const convId =
+        savedConvId && process.conversations?.some((c) => c.id === savedConvId)
+          ? savedConvId
+          : process.conversations?.[0]?.id ?? null;
+      setActiveConversationId(convId);
+      activeConversationIdRef.current = convId;
+      if (convId) persistConversationId(id, convId);
 
       if (pendingReplyProcessIdRef.current === id && !pendingReplySentRef.current) {
         setComposerFocusKey((k) => k + 1);
@@ -191,6 +211,8 @@ export default function WorkshopPage() {
     setDiagramStreaming(false);
     setSelectedNode(null);
     setActiveTab("diagram");
+    setActiveConversationId(null);
+    activeConversationIdRef.current = null;
     setActiveId(id);
     activeIdRef.current = id; // keep ref in sync for any pending sends
   }
@@ -202,7 +224,11 @@ export default function WorkshopPage() {
       setDiagramStreaming(true);
       setStreamingDiagram(null);
 
-      const agentBody = JSON.stringify({ ...hermesApiBody(hermesConfig), stream: true });
+      const agentBody = JSON.stringify({
+        ...hermesApiBody(hermesConfig),
+        stream: true,
+        ...(activeConversationIdRef.current ? { conversationId: activeConversationIdRef.current } : {}),
+      });
       const agentHeaders = {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
@@ -343,18 +369,19 @@ export default function WorkshopPage() {
     }
 
     if (!options?.replyOnly) {
-      const optimisticUser = {
-        id: `temp-${Date.now()}`,
-        processId: currentActiveId,
-        role: "user" as const,
-        content: outgoingContent,
-        createdAt: new Date().toISOString(),
-      };
+          const optimisticUser: ChatMessage = {
+            id: `temp-${Date.now()}`,
+            processId: currentActiveId,
+            conversationId: activeConversationIdRef.current,
+            role: "user",
+            content: outgoingContent,
+            createdAt: new Date().toISOString(),
+          };
 
-      setActiveProcess((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, optimisticUser] } : prev
-      );
-    }
+          setActiveProcess((prev) =>
+            prev ? { ...prev, messages: [...prev.messages, optimisticUser] } : prev
+          );
+        }
 
     try {
       const res = await fetch(`/api/processes/${currentActiveId}/chat`, {
@@ -363,6 +390,7 @@ export default function WorkshopPage() {
         body: JSON.stringify({
           ...(options?.replyOnly ? { replyOnly: true } : { content: outgoingContent }),
           ...(nodeContext ? { nodeContext } : {}),
+          ...(activeConversationIdRef.current ? { conversationId: activeConversationIdRef.current } : {}),
           ...hermesApiBody(currentHermes),
         }),
       });
@@ -450,28 +478,26 @@ export default function WorkshopPage() {
     activeProcess && canApproveForAutomation(activeProcess) && !approving;
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-      <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
-          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
-            {businessName || currentBusiness?.name || "Select a business"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
-          <HermesStatusBadge onClick={openHermesConnection} />
-          <button
-            onClick={() => {
-              loadProcessList();
-              if (activeId && businessId) loadProcess(activeId, businessId);
-            }}
-            className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" /> Refresh
-          </button>
-        </div>
-      </header>
+      <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
+            <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+              {businessName || currentBusiness?.name || "Select a business"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                loadProcessList();
+                if (activeId && businessId) loadProcess(activeId, businessId);
+              }}
+              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+        </header>
 
       <div className="flex-1 flex min-h-0">
         <ProcessSidebar
@@ -585,16 +611,12 @@ export default function WorkshopPage() {
             <DetailsPanel process={activeProcess} />
           )}
 
-          {/* Questions tab (placeholder — 3.3 will populate) */}
+          {/* Questions tab */}
           {activeTab === "questions" && activeProcess && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <p className="text-text-muted text-sm">
-                Discovery questions panel coming soon (backlog 3.3).
-              </p>
-              <p className="text-text-soft text-xs mt-1">
-                For now, ask questions directly in the chat.
-              </p>
-            </div>
+            <QuestionsPanel
+              process={activeProcess}
+              onUpdated={(updated) => setActiveProcess(updated)}
+            />
           )}
 
           {/* Source tab */}
@@ -602,30 +624,51 @@ export default function WorkshopPage() {
             <SourcePanel chart={diagramChart} />
           )}
 
-          {/* Export tab (placeholder — 3.8 will populate) */}
+          {/* Export tab — 3.8 */}
           {activeTab === "export" && activeProcess && (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <p className="text-text-muted text-sm">
-                Export options coming soon (backlog 3.8).
-              </p>
-              <p className="text-text-soft text-xs mt-1">
-                Mermaid, PNG, PDF, and Markdown SOP export.
-              </p>
-            </div>
+            <ExportMenu
+              processId={activeProcess.id}
+              processName={activeProcess.name}
+              mermaid={activeProcess.diagramMermaid}
+              messages={activeProcess.messages}
+            />
           )}
         </main>
 
         {activeProcess ? (
-          <ProcessChat
-            messages={activeProcess.messages}
-            processName={activeProcess.name}
-            isLoading={chatLoading}
-            onSend={handleSendMessage}
-            onOpenConnection={openHermesConnection}
-            composerFocusKey={composerFocusKey}
-            selectedNode={selectedNode}
-            onClearNodeContext={clearSelectedNode}
-          />
+          <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex flex-col h-full">
+            {activeProcess.conversations && activeProcess.conversations.length > 0 && (
+              <div className="px-4 py-2 border-b border-border flex items-center justify-between">
+                <ConversationsMenu
+                  conversations={activeProcess.conversations}
+                  activeConversationId={activeConversationId}
+                  processId={activeProcess.id}
+                  onSelect={(convId) => {
+                    setActiveConversationId(convId);
+                    activeConversationIdRef.current = convId;
+                    persistConversationId(activeProcess.id, convId);
+                  }}
+                  onForked={() => {
+                    if (activeId && businessId) void loadProcess(activeId, businessId);
+                  }}
+                />
+              </div>
+            )}
+            <ProcessChat
+              messages={
+                activeConversationId
+                  ? activeProcess.messages.filter((m) => m.conversationId === activeConversationId)
+                  : activeProcess.messages
+              }
+              processName={activeProcess.name}
+              isLoading={chatLoading}
+              onSend={handleSendMessage}
+              onOpenConnection={openHermesConnection}
+              composerFocusKey={composerFocusKey}
+              selectedNode={selectedNode}
+              onClearNodeContext={clearSelectedNode}
+            />
+          </div>
         ) : (
           <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex items-center justify-center p-6">
             <p className="text-xs text-text-muted text-center">

@@ -13,8 +13,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
-import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
-import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { hermesApiBody } from "@/lib/hermes-models";
 import {
@@ -50,7 +48,7 @@ function automationCtaLabel(status: AutomationDeployStatus): string {
 
 export default function AutomationsPage() {
   const router = useRouter();
-  const { openHermesConnection, currentBusiness } = useShell();
+  const { currentBusiness } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const [processes, setProcesses] = useState<ApprovedProcessSummary[]>([]);
   const [businessName, setBusinessName] = useState<string | null>(null);
@@ -102,25 +100,23 @@ export default function AutomationsPage() {
   }, [load, currentBusiness?.id]);
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-      <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
-        <div>
-          <div className="text-[10px] uppercase tracking-widest text-text-muted">Automations</div>
-          <h1 className="font-semibold text-sm text-text-strong">
-            {businessName ?? "Approved process maps"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
-          <HermesStatusBadge onClick={openHermesConnection} />
-          <button
-            onClick={load}
-            className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-          >
-            <RefreshCw className="w-3 h-3" /> Refresh
-          </button>
-        </div>
-      </header>
+      <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+        <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-text-muted">Automations</div>
+            <h1 className="font-semibold text-sm text-text-strong">
+              {businessName ?? "Approved process maps"}
+            </h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={load}
+              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+        </header>
 
       <main className="flex-1 overflow-y-auto max-w-6xl mx-auto px-6 py-10 w-full">
         {loading ? (

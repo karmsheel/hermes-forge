@@ -32,6 +32,26 @@ export function clearActiveProcessId(businessId: string) {
   localStorage.removeItem(LEGACY_ACTIVE_PROCESS_KEY);
 }
 
+// 3.4: Active conversation tracking
+function convKey(processId: string) {
+  return `activeConversationId:${processId}`;
+}
+
+export function getActiveConversationId(processId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(convKey(processId));
+}
+
+export function setActiveConversationId(processId: string, conversationId: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(convKey(processId), conversationId);
+}
+
+export function clearActiveConversationId(processId: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(convKey(processId));
+}
+
 export function clearLegacyActiveProcessId() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(LEGACY_ACTIVE_PROCESS_KEY);

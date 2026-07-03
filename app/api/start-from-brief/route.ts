@@ -65,6 +65,9 @@ export async function POST(request: NextRequest) {
           status: 'mapping',
           diagramMermaid,
           diagramUpdatedAt: diagramMermaid ? new Date() : null,
+          conversations: {
+            create: { title: 'Main' },
+          },
         },
         select: {
           id: true,
@@ -73,12 +76,16 @@ export async function POST(request: NextRequest) {
           diagramMermaid: true,
           createdAt: true,
           updatedAt: true,
+          conversations: { select: { id: true }, take: 1 },
         },
       });
+
+      const conversationId = createdProcess.conversations[0]?.id;
 
       await tx.chatMessage.create({
         data: {
           processId: createdProcess.id,
+          conversationId,
           role: 'assistant',
           content: WELCOME_MESSAGE,
         },
@@ -87,6 +94,7 @@ export async function POST(request: NextRequest) {
       await tx.chatMessage.create({
         data: {
           processId: createdProcess.id,
+          conversationId,
           role: 'user',
           content: trimmed,
         },

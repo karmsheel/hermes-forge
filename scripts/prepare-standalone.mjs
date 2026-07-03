@@ -25,4 +25,22 @@ copyDir(path.join(root, "public"), path.join(standaloneDir, "public"));
 copyDir(path.join(root, ".next", "static"), path.join(standaloneDir, ".next", "static"));
 copyDir(path.join(root, "prisma"), path.join(standaloneDir, "prisma"));
 
+// Copy Prisma Client and query engine into standalone for runtime access
+// The standalone server runs with ELECTRON_RUN_AS_NODE=1 and needs to find
+// @prisma/client and the query engine binary at runtime.
+const nodeModulesDest = path.join(standaloneDir, "node_modules");
+fs.mkdirSync(nodeModulesDest, { recursive: true });
+
+// Copy @prisma/client (generated client + runtime)
+copyDir(path.join(root, "node_modules", "@prisma", "client"), path.join(nodeModulesDest, "@prisma", "client"));
+
+// Copy .prisma/client (query engine binary + runtime files)
+copyDir(path.join(root, "node_modules", ".prisma", "client"), path.join(nodeModulesDest, ".prisma", "client"));
+
+// Copy prisma package (CLI for migrations)
+copyDir(path.join(root, "node_modules", "prisma"), path.join(nodeModulesDest, "prisma"));
+
+// Copy @prisma/engines (query engine binaries)
+copyDir(path.join(root, "node_modules", "@prisma", "engines"), path.join(nodeModulesDest, "@prisma", "engines"));
+
 console.log("Standalone bundle prepared for desktop packaging.");

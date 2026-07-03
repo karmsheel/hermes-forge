@@ -1,5 +1,5 @@
 import { app, BrowserWindow, shell } from "electron";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
@@ -55,15 +55,8 @@ function getUserDataEnv() {
     fs.writeFileSync(secretPath, authSecret, "utf8");
   }
 
-  // Ensure System32 is on PATH so cmd.exe and other system tools are resolvable.
-  const system32 = path.join(process.env.SystemRoot || "C:\\WINDOWS", "system32");
-  const pathSep = process.platform === "win32" ? ";" : ":";
-  const envPath = process.env.PATH || "";
-  const fullPath = envPath.includes(system32) ? envPath : system32 + pathSep + envPath;
-
   return {
     ...process.env,
-    PATH: fullPath,
     DATABASE_URL: `file:${dbPath}`,
     AUTH_SECRET: authSecret,
     PORT: SERVER_PORT,
@@ -73,12 +66,13 @@ function getUserDataEnv() {
 }
 
 function runProcess(command, args, options = {}) {
-  // execFile uses CreateProcessW directly on Windows — no cmd.exe needed,
-  // and it handles spaces in the exe path correctly.
+  const isCmd = command.endsWith(".cmd");
+  const isExeWithSpaces = process.platform === "win32" && command.endsWith(".exe") && command.includes(" ");
+  const needsShell = isCmd || isExeWithSpaces;
   return new Promise((resolve, reject) => {
-    const child = execFile(command, args, {
-      windowsHide: true,
-      maxBuffer: 10 * 1024 * 1024,
+    const child = spawn(command, args, {
+      shell: needsShell,
+      windowsVerbatimArguments: !needsShell,
       ...options,
     });
 
@@ -145,11 +139,11 @@ function startServer(env) {
 
   const serverDir = standaloneDir();
   const serverPath = path.join(serverDir, "server.js");
-  serverProcess = execFile(process.execPath, [serverPath], {
+  const exeHasSpaces = process.execPath.includes(" ");
+  serverProcess = spawn(process.execPath, [serverPath], {
     cwd: serverDir,
     env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-    windowsHide: true,
-    maxBuffer: 10 * 1024 * 1024,
+    shell: exeHasSpaces,
   });
 }
 
