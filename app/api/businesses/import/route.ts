@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = ImportPayloadSchema.parse(body);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
       const createdBusiness = await tx.business.create({
         data: {
           userId: session.userId,

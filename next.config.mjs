@@ -1,11 +1,11 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
 import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
+import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   output: "standalone",
   turbopack: {
     root: __dirname,

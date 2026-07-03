@@ -95,10 +95,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const items = processes.map(({ automation, ...proc }) => ({
-      ...proc,
-      automationStatus: automationStatusToDeployStatus(automation),
-    }));
+    const items = processes.map((process: typeof processes[0]) => {
+      const { automation, ...proc } = process;
+      return {
+        ...proc,
+        automationStatus: automationStatusToDeployStatus(
+          automation as { status: string; type: string | null; externalId?: string | null } | null
+        ),
+      };
+    });
 
     return NextResponse.json({
       linkedCount,

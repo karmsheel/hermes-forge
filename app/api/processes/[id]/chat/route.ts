@@ -48,14 +48,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 3.4: Filter messages to the active conversation
     const conversationId = body.conversationId || process.conversations?.[0]?.id || null;
     const conversationMessages = conversationId
-      ? process.messages.filter((m) => m.conversationId === conversationId)
+      ? process.messages.filter((m: typeof process.messages[0]) => m.conversationId === conversationId)
       : process.messages;
 
     const replyOnly = body.replyOnly === true;
-    let allMessages = conversationMessages.map((m) => ({ role: m.role, content: m.content }));
+    let allMessages = conversationMessages.map((m: typeof process.messages[0]) => ({ role: m.role, content: m.content }));
 
     const priorMessages = allMessages;
-    const lastAssistant = [...priorMessages].reverse().find((m) => m.role === 'assistant');
+    const lastAssistant = [...priorMessages].reverse().find((m: { role: string }) => m.role === 'assistant');
 
     let approvedFromChat = false;
     if (
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const lastUserContent =
-      allMessages.filter((m) => m.role === 'user').at(-1)?.content ?? '';
+      allMessages.filter((m: { role: string; content: string }) => m.role === 'user').at(-1)?.content ?? '';
 
     if (
       !replyOnly &&
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const hasDiagram = Boolean(process.diagramMermaid?.trim());
     const recentAccuracyAsk = priorMessages
       .slice(-4)
-      .some((m) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
+      .some((m: { role: string; content: string }) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
 
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },

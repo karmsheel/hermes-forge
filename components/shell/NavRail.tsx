@@ -5,6 +5,7 @@ import Link from "next/link";
 import iconImage from "@/assets/icon.jpg";
 import { usePathname } from "next/navigation";
 import {
+  Clock,
   FolderKanban,
   Hammer,
   Home,
@@ -73,6 +74,13 @@ export function NavRail() {
       label: "Business log",
       icon: ScrollText,
       match: (path) => path.startsWith("/log"),
+    },
+    {
+      id: "cronalytics",
+      href: "/cronalytics",
+      label: "Cronalytics",
+      icon: Clock,
+      match: (path) => path.startsWith("/cronalytics"),
     },
   ];
 
