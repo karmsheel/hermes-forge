@@ -8,25 +8,25 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
-const SERVER_PORT = process.env.FORGE_PORT || "3847";
 
-// When packaged, the standalone server is unpacked from the asar.
-// Electron rewrites asar paths to .asar.unpacked automatically for
-// file system operations, but spawn() needs the real path.
-function standaloneDir() {
-  if (isDev) return path.join(__dirname, "..", ".next", "standalone");
-  // app.getAppPath() -> .../resources/app.asar
-  // unpacked files live in .../resources/app.asar.unpacked
-  const appPath = app.getAppPath();
-  return path.join(appPath.replace("app.asar", "app.asar.unpacked"), ".next", "standalone");
+function resolveServerPort() {
+  const arg = process.argv.find((entry) => entry.startsWith("--forge-port="));
+  if (arg) return arg.slice("--forge-port=".length);
+  return process.env.FORGE_PORT || "3847";
 }
 
-// Resolve the Prisma CLI entry point for runtime migrations.
-// In packaged mode, prisma is in extraResources (resources/node_modules/prisma).
+const SERVER_PORT = resolveServerPort();
+
+// Packaged builds copy the Next standalone bundle to resources/standalone
+// (outside the asar) so electron-builder does not strip nested node_modules.
+function standaloneDir() {
+  if (isDev) return path.join(__dirname, "..", ".next", "standalone");
+  return path.join(process.resourcesPath, "standalone");
+}
+
 function prismaCliPath() {
   if (isDev) return null; // use npx in dev
-  const resourcesPath = process.resourcesPath;
-  return path.join(resourcesPath, "node_modules", "prisma", "build", "index.js");
+  return path.join(standaloneDir(), "node_modules", "prisma", "build", "index.js");
 }
 
 let serverProcess = null;
@@ -133,6 +133,12 @@ async function migrateDatabase(env) {
   });
 }
 
+function attachServerLogs(child, label = "server") {
+  child.stdout?.on("data", (chunk) => console.log(`[${label}]`, chunk.toString()));
+  child.stderr?.on("data", (chunk) => console.error(`[${label}]`, chunk.toString()));
+  child.on("error", (error) => console.error(`[${label}] failed to start`, error));
+}
+
 function startServer(env) {
   if (isDev) {
     serverProcess = spawn(
@@ -140,17 +146,19 @@ function startServer(env) {
       ["run", "dev", "--", "-p", SERVER_PORT, "-H", "127.0.0.1"],
       { cwd: path.join(__dirname, ".."), env }
     );
+    attachServerLogs(serverProcess);
     return;
   }
 
   const serverDir = standaloneDir();
   const serverPath = path.join(serverDir, "server.js");
-  serverProcess = execFile(process.execPath, [serverPath], {
+  serverProcess = spawn(process.execPath, [serverPath], {
     cwd: serverDir,
     env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
     windowsHide: true,
-    maxBuffer: 10 * 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
   });
+  attachServerLogs(serverProcess);
 }
 
 function createWindow() {
@@ -182,13 +190,17 @@ app.whenReady().then(async () => {
 
   try {
     await migrateDatabase(env);
+    startServer(env);
+    await waitForServer(`http://127.0.0.1:${SERVER_PORT}`);
+    createWindow();
   } catch (error) {
-    console.error("Database migration failed", error);
+    console.error("Desktop startup failed", error);
+    dialog.showErrorBox(
+      "Hermes Forge",
+      `Failed to start the desktop app.\n\n${error instanceof Error ? error.message : String(error)}`
+    );
+    app.quit();
   }
-
-  startServer(env);
-  await waitForServer(`http://127.0.0.1:${SERVER_PORT}`);
-  createWindow();
 });
 
 ipcMain.handle("theme:open-vscode-file", async () => {

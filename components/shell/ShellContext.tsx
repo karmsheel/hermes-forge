@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
-import { BusinessSwitcherDialog } from "@/components/shell/BusinessSwitcherDialog";
+
 import { clearLegacyActiveProcessId, setPendingNewProcess } from "@/lib/workshop-storage";
 import type { UserProfile } from "@/lib/types";
 
@@ -24,14 +24,11 @@ interface ShellContextValue {
   currentBusiness: { id: string; name: string } | null;
   newProjectOpen: boolean;
   connectionOpen: boolean;
-  businessSwitcherOpen: boolean;
   creatingProject: boolean;
   openNewProject: () => void;
   closeNewProject: () => void;
   openHermesConnection: () => void;
   closeHermesConnection: () => void;
-  openBusinessSwitcher: () => void;
-  closeBusinessSwitcher: () => void;
   switchBusiness: (id: string) => Promise<void>;
   refreshCurrentBusiness: () => Promise<void>;
   createProject: (name: string, description: string) => Promise<void>;
@@ -48,7 +45,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [currentBusiness, setCurrentBusiness] = useState<{ id: string; name: string } | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
-  const [businessSwitcherOpen, setBusinessSwitcherOpen] = useState(false);
   const [creatingProject, setCreatingProject] = useState(false);
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
@@ -130,9 +126,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     [router, refreshCurrentBusiness]
   );
 
-  const openBusinessSwitcher = () => setBusinessSwitcherOpen(true);
-  const closeBusinessSwitcher = () => setBusinessSwitcherOpen(false);
-
   const registerWorkshopNewProcess = useCallback(
     (handler: (() => void | Promise<void>) | null) => {
       workshopNewProcessRef.current = handler;
@@ -156,21 +149,18 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       currentBusiness,
       newProjectOpen,
       connectionOpen,
-      businessSwitcherOpen,
       creatingProject,
       openNewProject: () => setNewProjectOpen(true),
       closeNewProject: () => setNewProjectOpen(false),
       openHermesConnection: () => setConnectionOpen(true),
       closeHermesConnection: () => setConnectionOpen(false),
-      openBusinessSwitcher,
-      closeBusinessSwitcher,
       switchBusiness,
       refreshCurrentBusiness,
       createProject,
       requestNewProcess,
       registerWorkshopNewProcess,
     }),
-    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, businessSwitcherOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (
@@ -183,11 +173,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         onCreate={createProject}
       />
       <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
-      <BusinessSwitcherDialog
-        open={businessSwitcherOpen}
-        onClose={() => setBusinessSwitcherOpen(false)}
-        currentBusinessId={currentBusiness?.id ?? null}
-      />
     </ShellContext.Provider>
   );
 }

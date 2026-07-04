@@ -1,28 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, User } from "lucide-react";
+import { User } from "lucide-react";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
+import { BusinessSwitcher } from "./BusinessSwitcher";
 import { useShell } from "./ShellContext";
 
 export function AppTopBar() {
-  const { user, userLoading, currentBusiness, openBusinessSwitcher, openHermesConnection } = useShell();
+  const { user, userLoading, openHermesConnection } = useShell();
 
   return (
     <header className="app-topbar shrink-0 border-b border-border bg-bg">
       <div className="app-topbar__inner">
-        <button
-          type="button"
-          onClick={openBusinessSwitcher}
-          className="flex items-center gap-2 text-sm text-text-muted hover:text-text-strong max-w-[240px] truncate pr-3"
-          title="Switch business"
-        >
-          <Building2 className="w-4 h-4 shrink-0 text-accent" />
-          <span className="truncate font-medium">
-            {currentBusiness?.name || "Select business"}
-          </span>
-        </button>
+        <BusinessSwitcher />
 
         <div className="flex-1 min-w-0" />
 
