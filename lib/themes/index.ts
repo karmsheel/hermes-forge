@@ -14,4 +14,11 @@ export {
   removeUserTheme,
   USER_THEMES_STORAGE_KEY,
 } from "./user-themes";
+export { installThemeFromText, previewThemeFromText } from "./install";
 export { normalizeSkinColors, parseThemeInput, slugifySkinName } from "./validate";
+export {
+  convertVscodeColorTheme,
+  looksLikeVscodeTheme,
+  parseVscodeTheme,
+  vscodeThemeSlug,
+} from "./vscode";

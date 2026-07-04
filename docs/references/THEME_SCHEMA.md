@@ -46,8 +46,17 @@ User-installable themes use the same shape as Hermes Desktop `DesktopTheme` / Fo
 - Wrap as `{ "theme": { ... } }` is also accepted.
 - Stored in `localStorage` under `hermes-forge-user-themes-v1` with precomputed boot vars for flashless reload.
 
+## VS Code color themes (4.8)
+
+Forge also accepts VS Code `*-color-theme.json` files. Paste or upload in **VS Code theme** mode, or use **Browse…** in the Electron desktop app.
+
+The converter (`lib/themes/vscode.ts`) maps workbench tokens (`editor.background`, `button.background`, etc.) onto Forge `SkinColors`. JSON with comments (JSONC) is supported.
+
+Imported themes are stored as `vsc-<slug>` user skins with description `Imported from VS Code`.
+
 ## Install surfaces
 
-- Settings → Skin → **Install custom theme…** (paste or upload `.json`)
+- Settings → Skin → **Install custom theme…** (Forge JSON or VS Code theme)
+- Electron desktop: **Browse…** native file picker for `.json` themes
 
-See `lib/themes/validate.ts` for the authoritative parser.
+See `lib/themes/validate.ts` (Forge) and `lib/themes/vscode.ts` (VS Code) for parsers.

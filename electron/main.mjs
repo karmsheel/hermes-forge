@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { execFile, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -189,6 +189,18 @@ app.whenReady().then(async () => {
   startServer(env);
   await waitForServer(`http://127.0.0.1:${SERVER_PORT}`);
   createWindow();
+});
+
+ipcMain.handle("theme:open-vscode-file", async () => {
+  const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
+  const result = await dialog.showOpenDialog(win ?? undefined, {
+    title: "Open VS Code color theme",
+    filters: [{ name: "VS Code themes", extensions: ["json"] }],
+    properties: ["openFile"],
+  });
+
+  if (result.canceled || !result.filePaths[0]) return null;
+  return fs.readFileSync(result.filePaths[0], "utf8");
 });
 
 app.on("activate", () => {

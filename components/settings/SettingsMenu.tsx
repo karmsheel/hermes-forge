@@ -2,19 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Monitor, Moon, Palette, Plus, Settings, Sun, Trash2 } from "lucide-react";
+import { SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { resolveSkinPalette } from "@/lib/themes/presets";
 import type { ThemePreference } from "@/lib/theme";
 import { SkinInstallDialog } from "./SkinInstallDialog";
 
-const THEME_OPTIONS: {
-  value: ThemePreference;
-  label: string;
-  icon: typeof Sun;
-}[] = [
-  { value: "system", label: "System", icon: Monitor },
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
+const THEME_OPTIONS = [
+  { value: "system" as ThemePreference, label: "System", icon: <Monitor className="w-3.5 h-3.5 shrink-0" /> },
+  { value: "light" as ThemePreference, label: "Light", icon: <Sun className="w-3.5 h-3.5 shrink-0" /> },
+  { value: "dark" as ThemePreference, label: "Dark", icon: <Moon className="w-3.5 h-3.5 shrink-0" /> },
 ];
 
 interface SettingsMenuProps {
@@ -133,28 +130,15 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
                 <Palette className="w-3.5 h-3.5" />
                 <span>Appearance</span>
               </div>
-              <div className="settings-menu__theme-row">
-                {THEME_OPTIONS.map((option) => {
-                  const active = preference === option.value;
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={active}
-                      className={`settings-menu__theme-option${active ? " is-active" : ""}`}
-                      onClick={() => {
-                        setPreference(option.value);
-                        setOpen(false);
-                      }}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <span>{option.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <SegmentedControl
+              value={preference}
+              options={THEME_OPTIONS}
+              ariaLabel="Color mode"
+              onChange={(value) => {
+                setPreference(value);
+                setOpen(false);
+              }}
+            />
             </section>
 
             <section className="settings-menu__section">

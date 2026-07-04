@@ -442,17 +442,25 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 4.8 VS Code theme import (Electron)
+### 4.8 VS Code theme import (Electron) — **DONE**
 
 **Goal:** Import VS Code color themes when running packaged Electron; optional Marketplace IPC.
+
+**Files:** `lib/themes/vscode.ts`, `lib/themes/install.ts`, `electron/main.mjs`, `electron/preload.mjs`, `components/settings/SkinInstallDialog.tsx`
+
+**Shipped:** VS Code JSONC parser + workbench token converter; unified install path (Forge or VS Code); Electron native file picker via IPC. Marketplace deferred.
 
 **Depends on:** 4.7, desktop packaging
 
 ---
 
-### 4.9 UI primitive convergence (optional)
+### 4.9 UI primitive convergence (optional) — **DONE** (foundation)
 
 **Goal:** Gradually adopt Hermes Desktop primitives (`Button`, `ListRow`, `shadow-nous`) without blocking theme functionality.
+
+**Files:** `components/ui/*`, `app/tokens.css` (`--shadow-nous`, `--stroke-nous`), settings/theme dialogs
+
+**Shipped:** `Button`, `Overlay`, `SegmentedControl`, `ListRow` primitives; elevation tokens; Settings appearance control + skin install dialog migrated. Broader workshop/shell migration remains incremental.
 
 **Depends on:** 4.6
 
@@ -486,8 +494,8 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 4.5 | Integrations page | 4 | Pending |
 | 4.6 | Hermes Desktop skin engine | 4 | Done |
 | 4.7 | User theme install (JSON) | 4 | Done |
-| 4.8 | VS Code theme import (Electron) | 4 | Pending |
-| 4.9 | UI primitive convergence | 4 | Pending |
+| 4.8 | VS Code theme import (Electron) | 4 | Done |
+| 4.9 | UI primitive convergence | 4 | Done |
 
 ---
 

@@ -13,11 +13,8 @@ import { applySkin } from "@/lib/themes/apply-skin";
 import { DEFAULT_SKIN_NAME } from "@/lib/themes/presets";
 import { listAllSkins, resolveSkin } from "@/lib/themes/registry";
 import { getStoredSkinName, persistSkinName } from "@/lib/themes/storage";
-import {
-  installUserThemeFromJson,
-  isUserSkinName,
-  removeUserTheme,
-} from "@/lib/themes/user-themes";
+import { installThemeFromText } from "@/lib/themes/install";
+import { isUserSkinName, removeUserTheme } from "@/lib/themes/user-themes";
 import type { ForgeSkin } from "@/lib/themes/types";
 import {
   applyThemePreference,
@@ -124,7 +121,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const installSkin = useCallback(
     (json: string) => {
-      const theme = installUserThemeFromJson(json);
+      const theme = installThemeFromText(json);
       refreshUserThemes();
       setSkin(theme.name);
       return theme;

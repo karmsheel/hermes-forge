@@ -5,6 +5,7 @@ declare global {
     forgeDesktop?: {
       isDesktop: boolean;
       platform: string;
+      openVscodeThemeFile?: () => Promise<string | null>;
     };
   }
 }
