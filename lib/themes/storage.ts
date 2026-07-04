@@ -1,5 +1,6 @@
 import { ACCENT_STORAGE_KEY, type AccentId } from "@/lib/accent";
 import { DEFAULT_SKIN_NAME, isBuiltinSkinName } from "./presets";
+import { isUserSkinName } from "./user-themes";
 
 export const SKIN_STORAGE_KEY = "hermes-forge-skin";
 const MIGRATION_FLAG_KEY = "hermes-forge-skin-migrated-v1";
@@ -23,7 +24,7 @@ export function getStoredSkinName(): string {
     migrateAccentToSkinIfNeeded();
 
     const stored = localStorage.getItem(SKIN_STORAGE_KEY);
-    if (stored && isBuiltinSkinName(stored)) return stored;
+    if (stored && (isBuiltinSkinName(stored) || isUserSkinName(stored))) return stored;
   } catch {
     /* ignore */
   }

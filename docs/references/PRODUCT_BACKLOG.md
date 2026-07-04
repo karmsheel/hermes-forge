@@ -430,9 +430,13 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 4.7 User theme install (JSON)
+### 4.7 User theme install (JSON) — **DONE**
 
 **Goal:** Install custom skins from pasted or uploaded JSON (localStorage registry, same seam as Hermes Desktop `user-themes.ts`).
+
+**Files:** `lib/themes/user-themes.ts`, `lib/themes/validate.ts`, `components/settings/SkinInstallDialog.tsx`, `docs/references/THEME_SCHEMA.md`
+
+**Shipped:** JSON paste/upload install, installed-themes list with remove, merged skin registry, flashless boot for user themes.
 
 **Depends on:** 4.6
 
@@ -481,7 +485,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 4.4 | Automations page | 4 | Done |
 | 4.5 | Integrations page | 4 | Pending |
 | 4.6 | Hermes Desktop skin engine | 4 | Done |
-| 4.7 | User theme install (JSON) | 4 | Pending |
+| 4.7 | User theme install (JSON) | 4 | Done |
 | 4.8 | VS Code theme import (Electron) | 4 | Pending |
 | 4.9 | UI primitive convergence | 4 | Pending |
 
