@@ -9,12 +9,20 @@ interface ExportMenuProps {
   processId: string;
   processName: string;
   mermaid: string | null;
+  /** Active conversation thread only (not all forks on the process). */
   messages: ChatMessage[];
+  /** Shown in exports when the process has multiple conversation threads. */
+  conversationTitle?: string | null;
 }
 
 type TabKey = 'markdown' | 'mermaid' | 'cursor';
 
-function buildMarkdown(processName: string, mermaid: string | null, messages: ChatMessage[]): string {
+function buildMarkdown(
+  processName: string,
+  mermaid: string | null,
+  messages: ChatMessage[],
+  conversationTitle?: string | null,
+): string {
   const lines: string[] = [
     `# ${processName}`,
     '',
@@ -25,6 +33,10 @@ function buildMarkdown(processName: string, mermaid: string | null, messages: Ch
     '## Conversation',
     '',
   ];
+
+  if (conversationTitle) {
+    lines.push(`_Thread: ${conversationTitle}_`, '');
+  }
 
   if (messages.length === 0) {
     lines.push('_No conversation yet._');
@@ -44,13 +56,15 @@ function buildMarkdown(processName: string, mermaid: string | null, messages: Ch
 function buildCursorBundle(
   processName: string,
   mermaid: string | null,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  conversationTitle?: string | null,
 ): object {
   return {
     version: '1.0',
     exported: new Date().toISOString(),
     source: 'Hermes Forge',
     name: processName,
+    ...(conversationTitle ? { conversationTitle } : {}),
     diagram: mermaid ?? null,
     conversation: messages.map((m) => ({
       role: m.role,
@@ -60,11 +74,18 @@ function buildCursorBundle(
   };
 }
 
-function buildCursorPrompt(processName: string, mermaid: string | null, messages: ChatMessage[]): string {
+function buildCursorPrompt(
+  processName: string,
+  mermaid: string | null,
+  messages: ChatMessage[],
+  conversationTitle?: string | null,
+): string {
+  const threadNote = conversationTitle ? `\nConversation thread: **${conversationTitle}**` : '';
+
   return `# Process: ${processName}
 
 ## Context
-I am mapping a business process. Here is the current diagram and conversation history.
+I am mapping a business process. Here is the current diagram and conversation history.${threadNote}
 
 ## Diagram (Mermaid)
 \`\`\`mermaid
@@ -90,12 +111,22 @@ function download(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-export function ExportMenu({ processId: _processId, processName, mermaid, messages }: ExportMenuProps) {
+export function ExportMenu({
+  processId: _processId,
+  processName,
+  mermaid,
+  messages,
+  conversationTitle,
+}: ExportMenuProps) {
   const [tab, setTab] = useState<TabKey>('markdown');
   const [copied, setCopied] = useState(false);
 
-  const md = buildMarkdown(processName, mermaid, messages);
-  const bundle = JSON.stringify(buildCursorBundle(processName, mermaid, messages), null, 2);
+  const md = buildMarkdown(processName, mermaid, messages, conversationTitle);
+  const bundle = JSON.stringify(
+    buildCursorBundle(processName, mermaid, messages, conversationTitle),
+    null,
+    2,
+  );
   const mermaidSrc = mermaid ?? '';
 
   const content = tab === 'markdown' ? md : tab === 'mermaid' ? mermaidSrc : bundle;
@@ -113,7 +144,7 @@ export function ExportMenu({ processId: _processId, processName, mermaid, messag
 
   async function copyForCursor() {
     try {
-      const prompt = buildCursorPrompt(processName, mermaid, messages);
+      const prompt = buildCursorPrompt(processName, mermaid, messages, conversationTitle);
       await navigator.clipboard.writeText(prompt);
       toast.success('Copied for Cursor! Paste into the Composer.');
     } catch {
@@ -138,7 +169,8 @@ export function ExportMenu({ processId: _processId, processName, mermaid, messag
       <div>
         <h3 className="text-base font-semibold tracking-tight">Export</h3>
         <p className="text-xs text-text-muted mt-1">
-          Choose what to include, then copy or download.
+          Exports the active conversation thread
+          {conversationTitle ? ` (“${conversationTitle}”)` : ''} and the current diagram.
         </p>
       </div>
 

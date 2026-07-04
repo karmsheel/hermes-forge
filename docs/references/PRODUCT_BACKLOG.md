@@ -324,7 +324,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 **Remaining:**
 - [ ] Fork-from-specific-message UI (`forkAtMessageId` exists in API, not wired in chat)
 - [ ] Delete / rename conversation
-- [ ] Export tab should use active conversation messages when forks exist
+- [x] Export tab uses active conversation messages when forks exist
 
 ---
 
@@ -382,7 +382,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 **Remaining:**
 - [ ] PNG / PDF export
 - [ ] `app/api/processes/[id]/export/route.ts` (server-side render pipeline)
-- [ ] Scope export to active conversation when forks exist (see 3.4)
+- [x] Scope export to active conversation when forks exist
 
 ---
 

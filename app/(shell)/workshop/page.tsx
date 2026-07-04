@@ -688,6 +688,13 @@ export default function WorkshopPage() {
       : activeProcess.messages;
   }, [activeProcess, activeConversationId]);
 
+  const activeConversationTitle = useMemo(() => {
+    if (!activeProcess?.conversations?.length || !activeConversationId) return null;
+    return (
+      activeProcess.conversations.find((c) => c.id === activeConversationId)?.title ?? null
+    );
+  }, [activeProcess, activeConversationId]);
+
   const diagramMentionables = useMemo(
     () => diagramNodes.map((n) => ({ ref: n.id, label: n.label, kind: "node" as const })),
     [diagramNodes],
@@ -880,7 +887,12 @@ export default function WorkshopPage() {
               processId={activeProcess.id}
               processName={activeProcess.name}
               mermaid={activeProcess.diagramMermaid}
-              messages={activeProcess.messages}
+              messages={conversationMessages}
+              conversationTitle={
+                (activeProcess.conversations?.length ?? 0) > 1
+                  ? activeConversationTitle
+                  : null
+              }
             />
           )}
         </main>
