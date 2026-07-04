@@ -10,7 +10,7 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
-import { Send, Loader2, AtSign, Command } from "lucide-react";
+import { Send, Loader2, AtSign, Command, ListPlus } from "lucide-react";
 import { NodeContextPill } from "@/components/workshop/DiagramComments";
 import type { MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { filterMentionables, filterSlashCommands, SLASH_COMMANDS, findSlashCommand } from "./commands";
@@ -38,8 +38,10 @@ export interface RichComposerProps {
   /** Bump to programmatically focus the composer. */
   composerFocusKey?: number;
 
-  /** Disable input (e.g. while a message is in flight). */
+  /** True while a chat reply is in flight (shows thinking indicator). */
   isLoading?: boolean;
+  /** When true, Send queues the message instead of blocking the composer. */
+  willQueue?: boolean;
   isConnected?: boolean;
   onOpenConnection?: () => void;
 
@@ -57,6 +59,7 @@ export function RichComposer({
   onClearNodeContext,
   composerFocusKey = 0,
   isLoading = false,
+  willQueue = false,
   isConnected = true,
   onOpenConnection,
   placeholder = "Describe steps, actors, tools… try / for commands or @ to mention a step",
@@ -224,7 +227,7 @@ export function RichComposer({
 
   const handleSend = useCallback(() => {
     const text = value.trim();
-    if (!text || isLoading) return;
+    if (!text || (isLoading && !willQueue)) return;
     const parsed = parseMessage(text, mentionables);
 
     // Built-in slash commands with a handler expand the text before sending.
@@ -252,7 +255,7 @@ export function RichComposer({
     setMode("idle");
     setQuery("");
     setQueryStart(null);
-  }, [value, isLoading, mentionables, onSend, onSlashCommand]);
+  }, [value, isLoading, willQueue, mentionables, onSend, onSlashCommand]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -315,7 +318,6 @@ export function RichComposer({
             value={value}
             onChange={onChange}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
             rows={2}
           />
           <SuggestionPopover
@@ -334,11 +336,18 @@ export function RichComposer({
         </div>
         <button
           onClick={handleSend}
-          disabled={!value.trim() || isLoading || !isConnected}
+          disabled={!value.trim() || (!willQueue && isLoading) || !isConnected}
           className="btn-primary self-end"
-          aria-label="Send message"
+          aria-label={willQueue ? "Queue message" : "Send message"}
+          title={willQueue ? "Queue message" : "Send message"}
         >
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {willQueue ? (
+            <ListPlus className="w-4 h-4" />
+          ) : isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
         </button>
       </div>
 

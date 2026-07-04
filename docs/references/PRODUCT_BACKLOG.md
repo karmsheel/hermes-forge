@@ -349,11 +349,22 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 3.7 Queued messages while agent runs
+### 3.7 Queued messages while agent runs — **DONE**
 
 **Goal:** Queue clarifications during diagram/naming agent runs.
 
-**Files:** `components/workshop/MessageQueue.tsx`
+**Files:** `components/workshop/MessageQueue.tsx`, `lib/message-queue.ts`, `app/(shell)/workshop/page.tsx`
+
+**Implemented:**
+- While chat is loading or diagram/naming subagents run, the composer stays editable and Send queues instead of blocking.
+- `MessageQueue` panel above the composer shows queued items with node badges, remove, and clear-all.
+- FIFO drain sends queued messages once chat and background agents are idle; queue clears on process/conversation switch.
+
+**Acceptance criteria (met):**
+- [x] User can type clarifications while agents run
+- [x] Queued messages visible with remove/clear
+- [x] Queue drains automatically when idle
+- [x] Build passes
 
 ---
 
@@ -424,7 +435,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 3.4 | Conversation fork | 3 | Pending |
 | 3.5 | Rich composer | 3 | Pending |
 | 3.6 | Workspace tabs | 3 | Pending |
-| 3.7 | Queued messages | 3 | Pending |
+| 3.7 | Queued messages | 3 | Done |
 | 3.8 | Export handoff | 3 | Pending |
 | 4.1 | Template library | 4 | Pending |
 | 4.2 | PROCESS.md | 4 | Pending |

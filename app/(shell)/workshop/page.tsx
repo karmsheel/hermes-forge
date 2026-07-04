@@ -30,6 +30,11 @@ import {
 } from "@/lib/workshop-storage";
 import type { ProcessSummary, ProcessWithMessages, ChatMessage } from "@/lib/types";
 import { buildNodeCommentPrefix } from "@/lib/node-comment";
+import {
+  createQueuedMessage,
+  waitUntilAgentsIdle,
+  type QueuedMessage,
+} from "@/lib/message-queue";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
@@ -73,6 +78,12 @@ export default function WorkshopPage() {
   const hermesConfigRef = useRef(hermesConfig);
   const sendMessageRef = useRef<((content: string, options?: { replyOnly?: boolean }) => any) | null>(null);
   const selectedNodeRef = useRef<MermaidNodeInfo | null>(null);
+  // 3.7 Queued messages while agents run
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const messageQueueRef = useRef<QueuedMessage[]>([]);
+  const isDrainingQueueRef = useRef(false);
+  const chatLoadingRef = useRef(chatLoading);
+  const agentsRunningRef = useRef(agentsRunning);
 
   useEffect(() => {
     hermesConfigRef.current = hermesConfig;
@@ -89,6 +100,42 @@ export default function WorkshopPage() {
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId;
   }, [activeConversationId]);
+
+  useEffect(() => {
+    chatLoadingRef.current = chatLoading;
+  }, [chatLoading]);
+
+  useEffect(() => {
+    agentsRunningRef.current = agentsRunning;
+  }, [agentsRunning]);
+
+  const syncQueuedMessages = useCallback(() => {
+    setQueuedMessages([...messageQueueRef.current]);
+  }, []);
+
+  const clearMessageQueue = useCallback(() => {
+    messageQueueRef.current = [];
+    syncQueuedMessages();
+  }, [syncQueuedMessages]);
+
+  const removeQueuedMessage = useCallback(
+    (id: string) => {
+      messageQueueRef.current = messageQueueRef.current.filter((item) => item.id !== id);
+      syncQueuedMessages();
+    },
+    [syncQueuedMessages],
+  );
+
+  const enqueueChatMessage = useCallback(
+    (content: string, options?: { nodeContext?: { nodeId?: string; label: string } }) => {
+      messageQueueRef.current = [
+        ...messageQueueRef.current,
+        createQueuedMessage(content, options),
+      ];
+      syncQueuedMessages();
+    },
+    [syncQueuedMessages],
+  );
 
   const loadProcessList = useCallback(async () => {
     setLoadingList(true);
@@ -226,6 +273,8 @@ export default function WorkshopPage() {
     setActiveTab("diagram");
     setActiveConversationId(null);
     activeConversationIdRef.current = null;
+    messageQueueRef.current = [];
+    setQueuedMessages([]);
     setActiveId(id);
     activeIdRef.current = id; // keep ref in sync for any pending sends
   }
@@ -460,6 +509,77 @@ export default function WorkshopPage() {
     }
   }, [activeId, businessId, hermesConfig, loadProcess, loadProcessList, runBackgroundAgents]);
 
+  const drainMessageQueue = useCallback(async () => {
+    if (isDrainingQueueRef.current) return;
+    if (chatLoadingRef.current || agentsRunningRef.current) return;
+    if (messageQueueRef.current.length === 0) return;
+
+    isDrainingQueueRef.current = true;
+    try {
+      while (messageQueueRef.current.length > 0) {
+        await waitUntilAgentsIdle(
+          () => chatLoadingRef.current || agentsRunningRef.current,
+        );
+        if (messageQueueRef.current.length === 0) break;
+
+        const [next, ...rest] = messageQueueRef.current;
+        messageQueueRef.current = rest;
+        syncQueuedMessages();
+
+        await handleSendMessage(next.content, { nodeContext: next.nodeContext });
+        await waitUntilAgentsIdle(
+          () => chatLoadingRef.current || agentsRunningRef.current,
+        );
+      }
+    } finally {
+      isDrainingQueueRef.current = false;
+      if (
+        messageQueueRef.current.length > 0 &&
+        !chatLoadingRef.current &&
+        !agentsRunningRef.current
+      ) {
+        void drainMessageQueue();
+      }
+    }
+  }, [handleSendMessage, syncQueuedMessages]);
+
+  useEffect(() => {
+    void drainMessageQueue();
+  }, [chatLoading, agentsRunning, drainMessageQueue]);
+
+  const handleChatSend = useCallback(
+    (
+      content: string,
+      options?: { nodeContext?: { nodeId?: string; label: string } },
+    ) => {
+      const explicitContext = options?.nodeContext;
+      const nodeContext =
+        explicitContext ??
+        (selectedNodeRef.current
+          ? { nodeId: selectedNodeRef.current.id, label: selectedNodeRef.current.label }
+          : undefined);
+
+      if (chatLoading || agentsRunning) {
+        enqueueChatMessage(content, nodeContext ? { nodeContext } : undefined);
+        if (nodeContext) {
+          setSelectedNode(null);
+        }
+        return;
+      }
+      void handleSendMessage(content, options);
+    },
+    [agentsRunning, chatLoading, enqueueChatMessage, handleSendMessage],
+  );
+
+  const agentBusyLabel =
+    chatLoading && agentsRunning
+      ? "Hermes is replying and updating the diagram — new messages will queue"
+      : agentsRunning
+        ? "Updating diagram and process name — new messages will queue"
+        : chatLoading
+          ? "Hermes is thinking — new messages will queue"
+          : null;
+
   // 3.5: Handle slash commands that the composer couldn't handle itself —
   // e.g. /export switches the workspace tab to the export panel.
   const handleSlashCommand = useCallback(
@@ -688,6 +808,8 @@ export default function WorkshopPage() {
                     setActiveConversationId(convId);
                     activeConversationIdRef.current = convId;
                     persistConversationId(activeProcess.id, convId);
+                    messageQueueRef.current = [];
+                    setQueuedMessages([]);
                   }}
                   onForked={() => {
                     if (activeId && businessId) void loadProcess(activeId, businessId);
@@ -703,8 +825,12 @@ export default function WorkshopPage() {
               }
               processName={activeProcess.name}
               isLoading={chatLoading}
-              onSend={handleSendMessage}
+              onSend={handleChatSend}
               onOpenConnection={openHermesConnection}
+              queuedMessages={queuedMessages}
+              onRemoveQueued={removeQueuedMessage}
+              onClearQueue={clearMessageQueue}
+              agentBusyLabel={agentBusyLabel}
               composerFocusKey={composerFocusKey}
               selectedNode={selectedNode}
               onClearNodeContext={clearSelectedNode}

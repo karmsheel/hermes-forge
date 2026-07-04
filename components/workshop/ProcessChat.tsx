@@ -10,7 +10,9 @@ import {
   type ParsedMessage,
 } from "./rich-composer/RichComposer";
 import { NodeCommentBadge } from "./DiagramComments";
+import { MessageQueue } from "./MessageQueue";
 import { parseNodeComment, normaliseLabel } from "@/lib/node-comment";
+import type { QueuedMessage } from "@/lib/message-queue";
 import type { MermaidNodeInfo } from "./MermaidDiagram";
 
 /**
@@ -60,6 +62,12 @@ interface ProcessChatProps {
    * label. Pair with `scrollToNodeLabel` to set the target.
    */
   scrollToRequest?: { key: number; label: string | null } | null;
+  /** 3.7: messages waiting to send while agents are busy. */
+  queuedMessages?: ReadonlyArray<QueuedMessage>;
+  onRemoveQueued?: (id: string) => void;
+  onClearQueue?: () => void;
+  /** Shown in the queue panel while chat or background agents are running. */
+  agentBusyLabel?: string | null;
 }
 
 export function ProcessChat({
@@ -75,6 +83,10 @@ export function ProcessChat({
   onSlashCommand,
   onCommentsChange,
   scrollToRequest,
+  queuedMessages = [],
+  onRemoveQueued,
+  onClearQueue,
+  agentBusyLabel,
 }: ProcessChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -209,6 +221,12 @@ export function ProcessChat({
       </div>
 
       <div className="p-4 border-t border-border">
+        <MessageQueue
+          items={queuedMessages}
+          busyLabel={agentBusyLabel}
+          onRemove={onRemoveQueued ?? (() => {})}
+          onClear={onClearQueue}
+        />
         <RichComposer
           onSend={handleComposerSend}
           onSlashCommand={onSlashCommand}
@@ -217,6 +235,7 @@ export function ProcessChat({
           onClearNodeContext={onClearNodeContext}
           composerFocusKey={composerFocusKey}
           isLoading={isLoading}
+          willQueue={Boolean(agentBusyLabel)}
           isConnected={isConnected}
           onOpenConnection={onOpenConnection}
         />

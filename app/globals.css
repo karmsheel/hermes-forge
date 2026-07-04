@@ -159,6 +159,97 @@ body {
   box-shadow: 0 0 0 3px var(--accent), 0 0 24px -4px var(--accent);
 }
 
+/* 3.7: queued clarifications while background agents run */
+.message-queue {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  padding: 0.625rem 0.75rem;
+}
+
+.message-queue__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.message-queue__clear {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.message-queue__status {
+  margin-top: 0.375rem;
+}
+
+.message-queue__list {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.message-queue__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  padding: 0.375rem 0.5rem;
+}
+
+.message-queue__index {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-tint);
+  color: var(--accent);
+  font-size: 0.625rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.125rem;
+}
+
+.message-queue__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.message-queue__preview {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message-queue__remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.125rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: color var(--dur-quick) var(--ease-out);
+}
+
+.message-queue__remove:hover {
+  color: var(--text-strong);
+}
+
 .score-bar {
   height: 0.5rem;
   background-color: var(--bg-muted);
