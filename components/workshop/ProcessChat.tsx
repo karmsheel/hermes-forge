@@ -11,7 +11,11 @@ import {
 } from "./rich-composer/RichComposer";
 import { NodeCommentBadge } from "./DiagramComments";
 import { MessageQueue } from "./MessageQueue";
-import { parseNodeComment, normaliseLabel } from "@/lib/node-comment";
+import {
+  parseNodeComment,
+  normaliseLabel,
+  serializeNodeCommentSummary,
+} from "@/lib/node-comment";
 import type { QueuedMessage } from "@/lib/message-queue";
 import type { MermaidNodeInfo } from "./MermaidDiagram";
 
@@ -118,10 +122,19 @@ export function ProcessChat({
     return map;
   }, [messages]);
 
-  // Push the summary upward whenever it changes.
+  const commentsSummaryKey = useMemo(
+    () => serializeNodeCommentSummary(commentsByLabel),
+    [commentsByLabel],
+  );
+  const lastCommentsKeyRef = useRef("");
+
+  // Push the summary upward only when content actually changes — not when
+  // the parent passes a new messages array with the same data.
   useEffect(() => {
+    if (commentsSummaryKey === lastCommentsKeyRef.current) return;
+    lastCommentsKeyRef.current = commentsSummaryKey;
     onCommentsChange?.(commentsByLabel);
-  }, [commentsByLabel, onCommentsChange]);
+  }, [commentsByLabel, commentsSummaryKey, onCommentsChange]);
 
   // Auto-scroll to bottom on new messages.
   useEffect(() => {

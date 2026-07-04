@@ -9,13 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  applyAccent,
-  getStoredAccent,
-  ACCENT_STORAGE_KEY,
-  DEFAULT_ACCENT,
-  type AccentId,
-} from "@/lib/accent";
+import { applySkin } from "@/lib/themes/apply-skin";
+import { listBuiltinSkins, resolveSkin } from "@/lib/themes/registry";
+import { getStoredSkinName, persistSkinName } from "@/lib/themes/storage";
+import type { ForgeSkin } from "@/lib/themes/types";
 import {
   applyThemePreference,
   getStoredTheme,
@@ -28,8 +25,10 @@ interface ThemeContextValue {
   preference: ThemePreference;
   resolved: "light" | "dark";
   setPreference: (preference: ThemePreference) => void;
-  accent: AccentId;
-  setAccent: (accent: AccentId) => void;
+  skin: ForgeSkin;
+  skinName: string;
+  setSkin: (skinName: string) => void;
+  availableSkins: ForgeSkin[];
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -37,58 +36,84 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("dark");
   const [resolved, setResolved] = useState<"light" | "dark">("dark");
-  const [accent, setAccentState] = useState<AccentId>(DEFAULT_ACCENT);
+  const [skinName, setSkinNameState] = useState("forge");
+  const availableSkins = useMemo(() => listBuiltinSkins(), []);
 
   const syncResolved = useCallback((next: ThemePreference) => {
     setResolved(resolveThemePreference(next));
   }, []);
 
+  const applyCurrentSkin = useCallback((name: string, mode: "light" | "dark") => {
+    applySkin(resolveSkin(name), mode);
+  }, []);
+
   useEffect(() => {
-    const stored = getStoredTheme();
-    const storedAccent = getStoredAccent();
-    setPreferenceState(stored);
-    setAccentState(storedAccent);
-    applyThemePreference(stored);
-    applyAccent(storedAccent);
-    syncResolved(stored);
-  }, [syncResolved]);
+    const storedTheme = getStoredTheme();
+    const storedSkin = getStoredSkinName();
+    setPreferenceState(storedTheme);
+    setSkinNameState(storedSkin);
+    applyThemePreference(storedTheme);
+    const mode = resolveThemePreference(storedTheme);
+    setResolved(mode);
+    applyCurrentSkin(storedSkin, mode);
+  }, [applyCurrentSkin]);
 
   useEffect(() => {
     if (preference !== "system") return;
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => syncResolved("system");
+    const onChange = () => {
+      const mode = resolveThemePreference("system");
+      setResolved(mode);
+      applyCurrentSkin(skinName, mode);
+    };
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
-  }, [preference, syncResolved]);
+  }, [applyCurrentSkin, preference, skinName]);
+
+  useEffect(() => {
+    applyCurrentSkin(skinName, resolved);
+  }, [applyCurrentSkin, resolved, skinName]);
 
   const setPreference = useCallback(
     (next: ThemePreference) => {
       setPreferenceState(next);
       applyThemePreference(next);
+      const mode = resolveThemePreference(next);
       syncResolved(next);
+      applyCurrentSkin(skinName, mode);
       try {
         localStorage.setItem(THEME_STORAGE_KEY, next);
       } catch {
         /* ignore */
       }
     },
-    [syncResolved]
+    [applyCurrentSkin, skinName, syncResolved],
   );
 
-  const setAccent = useCallback((next: AccentId) => {
-    setAccentState(next);
-    applyAccent(next);
-    try {
-      localStorage.setItem(ACCENT_STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const setSkin = useCallback(
+    (nextName: string) => {
+      const skin = resolveSkin(nextName);
+      setSkinNameState(skin.name);
+      persistSkinName(skin.name);
+      applyCurrentSkin(skin.name, resolved);
+    },
+    [applyCurrentSkin, resolved],
+  );
+
+  const skin = useMemo(() => resolveSkin(skinName), [skinName]);
 
   const value = useMemo(
-    () => ({ preference, resolved, setPreference, accent, setAccent }),
-    [preference, resolved, setPreference, accent, setAccent]
+    () => ({
+      preference,
+      resolved,
+      setPreference,
+      skin,
+      skinName,
+      setSkin,
+      availableSkins,
+    }),
+    [availableSkins, preference, resolved, setPreference, skin, skinName, setSkin],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

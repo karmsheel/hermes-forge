@@ -416,6 +416,44 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
+### 4.6 Hermes Desktop skin engine (built-ins) — **DONE**
+
+**Goal:** Replace accent swatches with Hermes Desktop's built-in skins via a compatibility bridge that maps skin palettes onto existing Forge CSS vars (`--bg`, `--accent`, etc.).
+
+**Files:** `lib/themes/*`, `components/theme/ThemeProvider.tsx`, `components/theme/ThemeScript.tsx`, `components/settings/SettingsMenu.tsx`, `components/workshop/MermaidDiagram.tsx`
+
+**Shipped:** 7 built-in skins (Forge default + 6 Hermes Desktop presets), flashless boot script, accent→skin migration, Mermaid reads computed theme tokens.
+
+**Reference:** `docs/references/hermes-desktop-design-system.md`
+
+**Depends on:** 1.1
+
+---
+
+### 4.7 User theme install (JSON)
+
+**Goal:** Install custom skins from pasted or uploaded JSON (localStorage registry, same seam as Hermes Desktop `user-themes.ts`).
+
+**Depends on:** 4.6
+
+---
+
+### 4.8 VS Code theme import (Electron)
+
+**Goal:** Import VS Code color themes when running packaged Electron; optional Marketplace IPC.
+
+**Depends on:** 4.7, desktop packaging
+
+---
+
+### 4.9 UI primitive convergence (optional)
+
+**Goal:** Gradually adopt Hermes Desktop primitives (`Button`, `ListRow`, `shadow-nous`) without blocking theme functionality.
+
+**Depends on:** 4.6
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -442,6 +480,10 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 4.3 | Template marketplace | 4 | Pending |
 | 4.4 | Automations page | 4 | Done |
 | 4.5 | Integrations page | 4 | Pending |
+| 4.6 | Hermes Desktop skin engine | 4 | Done |
+| 4.7 | User theme install (JSON) | 4 | Pending |
+| 4.8 | VS Code theme import (Electron) | 4 | Pending |
+| 4.9 | UI primitive convergence | 4 | Pending |
 
 ---
 
@@ -460,5 +502,5 @@ When picking up a backlog item:
 - New Project modal (name + description)
 - Project isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
 - Workshop header: H + Hermes Forge → `/projects`, project name underneath
-- Settings popover on projects home (`components/settings/SettingsMenu.tsx`) with System / Light / Dark theme (`components/theme/ThemeProvider.tsx`, `lib/theme.ts`)
+- Settings popover with System / Light / Dark mode + Hermes Desktop skin picker (`components/settings/SettingsMenu.tsx`, `lib/themes/`)
 - Process approval + automation studio + n8n integration (see 4.4)

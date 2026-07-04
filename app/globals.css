@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "./tokens.css";
-@import "./accent-tokens.css";
 
 @theme inline {
   --color-bg: var(--bg);
@@ -250,6 +249,62 @@ body {
   color: var(--text-strong);
 }
 
+/* Workshop workflow row — three-dots context menu */
+.workflow-menu {
+  position: relative;
+}
+
+.workflow-menu__trigger.is-open {
+  color: var(--text-strong);
+  background: var(--bg-subtle);
+}
+
+.workflow-menu__popover {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 30;
+  min-width: 10.5rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+}
+
+.workflow-menu__popover--fixed {
+  position: fixed;
+  z-index: 40;
+}
+
+.workflow-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-xs);
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur-quick) var(--ease-out);
+}
+
+.workflow-menu__item:hover {
+  background: var(--bg-subtle);
+}
+
+.workflow-menu__item--danger {
+  color: var(--red);
+}
+
+.workflow-menu__item--danger:hover {
+  background: var(--red-bg);
+}
+
 .score-bar {
   height: 0.5rem;
   background-color: var(--bg-muted);
@@ -418,6 +473,62 @@ body {
 .settings-menu__accent-swatch.is-active {
   border-color: var(--text-strong);
   box-shadow: 0 0 0 2px var(--bg-elevated), 0 0 0 3px var(--swatch-color);
+}
+
+.settings-menu__skin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.375rem;
+}
+
+.settings-menu__skin-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  padding: 0.375rem 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-quick) var(--ease-out),
+    background var(--dur-quick) var(--ease-out);
+}
+
+.settings-menu__skin-option:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+
+.settings-menu__skin-option.is-active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--text-strong);
+}
+
+.settings-menu__skin-swatch {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-xs);
+  border: 1px solid color-mix(in srgb, var(--skin-primary) 40%, transparent);
+  background: linear-gradient(
+    135deg,
+    var(--skin-bg) 0%,
+    var(--skin-bg) 55%,
+    var(--skin-primary) 55%,
+    var(--skin-primary) 100%
+  );
+}
+
+.settings-menu__skin-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Inline Hermes model switcher */

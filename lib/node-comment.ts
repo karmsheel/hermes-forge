@@ -47,3 +47,14 @@ export function buildNodeCommentPrefix(label: string): string {
 export function normaliseLabel(label: string): string {
   return label.trim().toLowerCase();
 }
+
+/** Stable fingerprint for a per-node comment summary map. */
+export function serializeNodeCommentSummary(
+  map: ReadonlyMap<string, { count: number; firstLabel: string }>,
+): string {
+  if (map.size === 0) return "";
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}\t${value.count}\t${value.firstLabel}`)
+    .join("\n");
+}

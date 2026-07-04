@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
-import { parseNodeComment, normaliseLabel } from "@/lib/node-comment";
+import {
+  parseNodeComment,
+  normaliseLabel,
+  serializeNodeCommentSummary,
+} from "@/lib/node-comment";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
@@ -398,6 +402,54 @@ export default function WorkshopPage() {
     toast.success("Workflow renamed");
   }
 
+  async function handleDeleteProcess(id: string) {
+    const res = await fetch(`/api/processes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Delete failed");
+    }
+
+    const wasActive = activeId === id;
+    if (businessId && (wasActive || getActiveProcessId(businessId) === id)) {
+      clearActiveProcessId(businessId);
+    }
+
+    if (wasActive) {
+      setActiveProcess(null);
+      setActiveId(null);
+      activeIdRef.current = null;
+      setSelectedNode(null);
+      setStreamingDiagram(null);
+      setDiagramStreaming(false);
+      setActiveConversationId(null);
+      activeConversationIdRef.current = null;
+      messageQueueRef.current = [];
+      setQueuedMessages([]);
+    }
+
+    setLoadingList(true);
+    try {
+      const listRes = await fetch("/api/processes");
+      if (!listRes.ok) throw new Error("Failed to refresh workflows");
+      const data = await listRes.json();
+      const list: ProcessSummary[] = data.processes || [];
+      setProcesses(list);
+
+      if (wasActive) {
+        if (list.length > 0 && businessId) {
+          const nextId = list[0].id;
+          setActiveId(nextId);
+          activeIdRef.current = nextId;
+          setActiveProcessId(businessId, nextId);
+        }
+      }
+    } finally {
+      setLoadingList(false);
+    }
+
+    toast.success("Workflow deleted");
+  }
+
   // 3.2: User clicked a node in the diagram — target it for correction
   const handleNodeClick = useCallback((node: MermaidNodeInfo) => {
     setSelectedNode(node);
@@ -629,6 +681,42 @@ export default function WorkshopPage() {
     trySendPendingReply();
   }, [trySendPendingReply]);
 
+  const conversationMessages = useMemo(() => {
+    if (!activeProcess) return [];
+    return activeConversationId
+      ? activeProcess.messages.filter((m) => m.conversationId === activeConversationId)
+      : activeProcess.messages;
+  }, [activeProcess, activeConversationId]);
+
+  const diagramMentionables = useMemo(
+    () => diagramNodes.map((n) => ({ ref: n.id, label: n.label, kind: "node" as const })),
+    [diagramNodes],
+  );
+
+  const handleDiagramNodesChange = useCallback((nodes: MermaidNodeInfo[]) => {
+    setDiagramNodes((prev) => {
+      if (
+        prev.length === nodes.length &&
+        prev.every((item, index) => item.id === nodes[index]?.id && item.label === nodes[index]?.label)
+      ) {
+        return prev;
+      }
+      return nodes;
+    });
+  }, []);
+
+  const handleCommentsChange = useCallback(
+    (comments: Map<string, { count: number; firstLabel: string }>) => {
+      setCommentedNodes((prev) => {
+        const nextKey = serializeNodeCommentSummary(comments);
+        const prevKey = serializeNodeCommentSummary(prev);
+        if (nextKey === prevKey) return prev;
+        return new Map(comments);
+      });
+    },
+    [],
+  );
+
   const diagramChart = streamingDiagram ?? activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
   const isApproved = activeProcess?.status === "approved";
@@ -666,6 +754,7 @@ export default function WorkshopPage() {
           onSelect={handleSelectProcess}
           onCreate={handleCreateProcess}
           onRename={handleRenameProcess}
+          onDelete={handleDeleteProcess}
         />
 
         <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-bg">
@@ -759,7 +848,7 @@ export default function WorkshopPage() {
                   selectedNodeLabel={selectedNode?.label}
                   selectedNode={selectedNode}
                   onDeselect={clearSelectedNode}
-                  onNodesChange={setDiagramNodes}
+                  onNodesChange={handleDiagramNodesChange}
                   commentedNodes={commentedNodes}
                   onNodeCommentClick={handleNodeCommentClick}
                 />
@@ -818,11 +907,7 @@ export default function WorkshopPage() {
               </div>
             )}
             <ProcessChat
-              messages={
-                activeConversationId
-                  ? activeProcess.messages.filter((m) => m.conversationId === activeConversationId)
-                  : activeProcess.messages
-              }
+              messages={conversationMessages}
               processName={activeProcess.name}
               isLoading={chatLoading}
               onSend={handleChatSend}
@@ -834,9 +919,9 @@ export default function WorkshopPage() {
               composerFocusKey={composerFocusKey}
               selectedNode={selectedNode}
               onClearNodeContext={clearSelectedNode}
-              mentionables={diagramNodes.map((n) => ({ ref: n.id, label: n.label, kind: "node" as const }))}
+              mentionables={diagramMentionables}
               onSlashCommand={handleSlashCommand}
-              onCommentsChange={setCommentedNodes}
+              onCommentsChange={handleCommentsChange}
               scrollToRequest={chatScrollRequest}
             />
           </div>

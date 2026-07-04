@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { serializeNodeCommentSummary } from "@/lib/node-comment";
 import { Loader2, GitBranch, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { forgeMermaidThemeVariables, readCssVar } from "@/lib/themes/mermaid-vars";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 import { NodeCommentDot } from "./DiagramComments";
 
@@ -33,6 +35,57 @@ interface MermaidDiagramProps {
   }
 
 export type MermaidNodeInfo = { id: string; label: string };
+
+type CommentDot = { x: number; y: number; count: number; label: string };
+
+function commentDotsEqual(a: ReadonlyArray<CommentDot>, b: ReadonlyArray<CommentDot>): boolean {
+  if (a.length !== b.length) return false;
+  return a.every(
+    (dot, index) =>
+      dot.x === b[index].x &&
+      dot.y === b[index].y &&
+      dot.count === b[index].count &&
+      dot.label === b[index].label,
+  );
+}
+
+function measureCommentDots(
+  viewport: HTMLElement,
+  svg: SVGSVGElement,
+  commentedNodes: ReadonlyMap<string, { count: number; firstLabel: string }>,
+): CommentDot[] {
+  const nodeEls = Array.from(svg.querySelectorAll<SVGGElement>("g.node, g.cluster"));
+  const fallback = nodeEls.length
+    ? nodeEls
+    : (Array.from(svg.querySelectorAll<SVGGElement>("g")).filter(
+        (g) =>
+          g.querySelector("rect, circle, ellipse, polygon") && g.querySelector("text"),
+      ) as SVGGElement[]);
+
+  const labelToEls = new Map<string, SVGGElement[]>();
+  for (const el of fallback) {
+    const label = extractNodeLabel(el);
+    if (!label) continue;
+    const key = label.trim().toLowerCase();
+    const list = labelToEls.get(key) ?? [];
+    list.push(el);
+    labelToEls.set(key, list);
+  }
+
+  const viewportRect = viewport.getBoundingClientRect();
+  const next: CommentDot[] = [];
+  for (const [key, summary] of Array.from(commentedNodes.entries())) {
+    const els = labelToEls.get(key);
+    if (!els || els.length === 0) continue;
+    const el = els[0];
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    const x = r.right - viewportRect.left - 4;
+    const y = r.top - viewportRect.top + 4;
+    next.push({ x, y, count: summary.count, label: summary.firstLabel });
+  }
+  return next;
+}
 
 const ZOOM_STEP = 0.2;
 const MIN_ZOOM = 0.3;
@@ -84,8 +137,9 @@ function attachAndReport(
   onNodesChange: ((nodes: MermaidNodeInfo[]) => void) | undefined,
   onClick: ((node: { id: string; label: string }) => void) | undefined,
   highlight: MermaidNodeInfo | null | undefined,
+  accentColor?: string,
 ) {
-  const nodes = attachNodeInteractivity(svg, onClick, highlight ?? null);
+  const nodes = attachNodeInteractivity(svg, onClick, highlight ?? null, accentColor);
   onNodesChange?.(nodes);
   return nodes;
 }
@@ -94,6 +148,7 @@ function attachNodeInteractivity(
   svg: SVGSVGElement,
   onClick?: (node: { id: string; label: string }) => void,
   selectedForHighlight?: MermaidNodeInfo | null,
+  accentColor = "#d97a56",
 ): MermaidNodeInfo[] {
   // Clear previous selection classes
   svg.querySelectorAll(".node-selected").forEach((n) => n.classList.remove("node-selected"));
@@ -166,7 +221,7 @@ function attachNodeInteractivity(
         el.classList.add("node-selected");
         const shape = el.querySelector("rect, circle, ellipse, polygon");
         if (shape) {
-          shape.setAttribute("stroke", "#d97a56");
+          shape.setAttribute("stroke", accentColor);
           shape.setAttribute("stroke-width", "3");
         }
       }
@@ -188,7 +243,7 @@ export function MermaidDiagram({
   commentedNodes,
   onNodeCommentClick,
 }: MermaidDiagramProps) {
-  const { resolved } = useTheme();
+  const { resolved, skinName } = useTheme();
   const viewportRef = useRef<HTMLDivElement>(null);
   // Keep the latest onNodesChange in a ref so attachAndReport (which is
   // called from a non-React effect) always uses the freshest callback without
@@ -203,7 +258,11 @@ export function MermaidDiagram({
   const [rendering, setRendering] = useState(false);
   // 3.2: per-node comment dot positions, relative to the viewport container.
   // Recomputed on every render / zoom / scroll change.
-  const [commentDots, setCommentDots] = useState<Array<{ x: number; y: number; count: number; label: string }>>([]);
+  const [commentDots, setCommentDots] = useState<CommentDot[]>([]);
+  const commentedNodesKey = useMemo(
+    () => (commentedNodes ? serializeNodeCommentSummary(commentedNodes) : ""),
+    [commentedNodes],
+  );
   const [sanitizedChart, setSanitizedChart] = useState<string | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -292,32 +351,12 @@ export function MermaidDiagram({
         const mermaid = (await import("mermaid")).default;
 
         const isDark = resolved === "dark";
+        const accentColor = readCssVar("--accent") || "#d97a56";
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "loose",
           theme: isDark ? "dark" : "neutral",
-          themeVariables: isDark
-            ? {
-                darkMode: true,
-                background: "#1a1917",
-                primaryColor: "#2a2825",
-                primaryTextColor: "#e8e4dc",
-                primaryBorderColor: "#46433c",
-                lineColor: "#9a9690",
-                secondaryColor: "#222120",
-                tertiaryColor: "#333128",
-                fontFamily: "system-ui, sans-serif",
-              }
-            : {
-                background: "#faf9f7",
-                primaryColor: "#fffefc",
-                primaryTextColor: "#1a1916",
-                primaryBorderColor: "#c9d0da",
-                lineColor: "#74716b",
-                secondaryColor: "#f4f5f7",
-                tertiaryColor: "#e1e5eb",
-                fontFamily: "system-ui, sans-serif",
-              },
+          themeVariables: forgeMermaidThemeVariables(isDark),
           flowchart: {
             htmlLabels: false,
             curve: "basis",
@@ -348,7 +387,13 @@ export function MermaidDiagram({
 
             // Attach node click handlers + apply selection highlight (3.2)
             const highlightNode = selectedNode ?? (selectedNodeLabel ? { id: "", label: selectedNodeLabel } : null);
-            attachAndReport(svgEl, onNodesChangeRef.current, onNodeClickRef.current ?? onNodeClick, highlightNode);
+            attachAndReport(
+              svgEl,
+              onNodesChangeRef.current,
+              onNodeClickRef.current ?? onNodeClick,
+              highlightNode,
+              accentColor,
+            );
 
             // Attach deselect on the SVG itself for clicks on diagram background / edges (nodes stopPropagation)
             if (onDeselectRef.current) {
@@ -377,6 +422,7 @@ export function MermaidDiagram({
                     onNodesChangeRef.current,
                     onNodeClickRef.current ?? onNodeClick,
                     freshHighlight,
+                    accentColor,
                   );
                   // Re-attach deselect on fresh svg too
                   if (onDeselectRef.current) {
@@ -405,7 +451,7 @@ export function MermaidDiagram({
     return () => {
       cancelled = true;
     };
-  }, [debouncedChart, isStreaming, renderId, applyScale, resolved]);
+  }, [debouncedChart, isStreaming, renderId, applyScale, resolved, skinName]);
 
   useEffect(() => {
     if (!naturalSize) return;
@@ -423,111 +469,47 @@ export function MermaidDiagram({
     updateFit(zoom);
   }, [zoom, naturalSize, updateFit]);
 
+  const applyCommentDots = useCallback((next: CommentDot[]) => {
+    setCommentDots((prev) => (commentDotsEqual(prev, next) ? prev : next));
+  }, []);
+
   // 3.2: re-measure comment dot positions whenever the diagram, zoom, or
   // the set of commented nodes changes. We use a rAF so the browser has
   // applied the SVG's `style.width/height` (set by updateFit) before we read
   // the bounding boxes.
   useEffect(() => {
-    if (!commentedNodes || commentedNodes.size === 0) {
-      // Cheap no-op when the dots are already empty; resets them otherwise.
-      // Not a cascade trigger — dots are a pure derived view of the
-      // commentedNodes map.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCommentDots((prev) => (prev.length === 0 ? prev : []));
+    if (!commentedNodesKey) {
+      applyCommentDots([]);
       return;
     }
+    if (!commentedNodes) return;
+
     let cancelled = false;
     const id = requestAnimationFrame(() => {
       if (cancelled) return;
       const viewport = viewportRef.current;
       const svg = svgHostRef.current?.querySelector<SVGSVGElement>("svg");
       if (!viewport || !svg) return;
-
-      // Iterate over rendered node <g> elements. We use the same selector
-      // heuristic as attachNodeInteractivity to find them.
-      const nodeEls = Array.from(
-        svg.querySelectorAll<SVGGElement>("g.node, g.cluster"),
-      );
-      const fallback = nodeEls.length
-        ? nodeEls
-        : (Array.from(svg.querySelectorAll<SVGGElement>("g")).filter(
-            (g) =>
-              g.querySelector("rect, circle, ellipse, polygon") &&
-              g.querySelector("text"),
-          ) as SVGGElement[]);
-
-      const labelToEls = new Map<string, SVGGElement[]>();
-      for (const el of fallback) {
-        const label = extractNodeLabel(el);
-        if (!label) continue;
-        const key = label.trim().toLowerCase();
-        const list = labelToEls.get(key) ?? [];
-        list.push(el);
-        labelToEls.set(key, list);
-      }
-
-      const viewportRect = viewport.getBoundingClientRect();
-      const next: Array<{ x: number; y: number; count: number; label: string }> = [];
-      for (const [key, summary] of Array.from(commentedNodes.entries())) {
-        const els = labelToEls.get(key);
-        if (!els || els.length === 0) continue;
-        const el = els[0];
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;
-        // Anchor the dot at the top-right corner of the node's box, in
-        // the viewport's local coordinate space.
-        const x = r.right - viewportRect.left - 4;
-        const y = r.top - viewportRect.top + 4;
-        next.push({ x, y, count: summary.count, label: summary.firstLabel });
-      }
-      setCommentDots(next);
+      applyCommentDots(measureCommentDots(viewport, svg, commentedNodes));
     });
     return () => {
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [commentedNodes, naturalSize, zoom]);
+  }, [applyCommentDots, commentedNodesKey, naturalSize, zoom]);
 
   // Re-measure when the viewport scrolls, so dots stay aligned with nodes.
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    if (!viewport || !commentedNodesKey || !commentedNodes) return;
+
     let raf: number | null = null;
     const onScroll = () => {
       if (raf != null) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        if (!commentedNodes || commentedNodes.size === 0) return;
         const svg = svgHostRef.current?.querySelector<SVGSVGElement>("svg");
-        if (!svg) return;
-        // Re-run the same logic inline (cheap; small lists).
-        const nodeEls = Array.from(svg.querySelectorAll<SVGGElement>("g.node, g.cluster"));
-        const fallback = nodeEls.length
-          ? nodeEls
-          : (Array.from(svg.querySelectorAll<SVGGElement>("g")).filter(
-              (g) => g.querySelector("rect, circle, ellipse, polygon") && g.querySelector("text"),
-            ) as SVGGElement[]);
-        const labelToEls = new Map<string, SVGGElement[]>();
-        for (const el of fallback) {
-          const label = extractNodeLabel(el);
-          if (!label) continue;
-          const key = label.trim().toLowerCase();
-          const list = labelToEls.get(key) ?? [];
-          list.push(el);
-          labelToEls.set(key, list);
-        }
-        const viewportRect = viewport.getBoundingClientRect();
-        const next: Array<{ x: number; y: number; count: number; label: string }> = [];
-        for (const [key, summary] of Array.from(commentedNodes.entries())) {
-          const els = labelToEls.get(key);
-          if (!els || els.length === 0) continue;
-          const el = els[0];
-          const r = el.getBoundingClientRect();
-          if (r.width === 0 && r.height === 0) continue;
-          const x = r.right - viewportRect.left - 4;
-          const y = r.top - viewportRect.top + 4;
-          next.push({ x, y, count: summary.count, label: summary.firstLabel });
-        }
-        setCommentDots(next);
+        if (!svg || !viewportRef.current || !commentedNodes) return;
+        applyCommentDots(measureCommentDots(viewportRef.current, svg, commentedNodes));
       });
     };
     viewport.addEventListener("scroll", onScroll, { passive: true });
@@ -535,7 +517,7 @@ export function MermaidDiagram({
       viewport.removeEventListener("scroll", onScroll);
       if (raf != null) cancelAnimationFrame(raf);
     };
-  }, [commentedNodes]);
+  }, [applyCommentDots, commentedNodesKey]);
 
   // Re-apply node highlight + fresh interactivity when selection or handler identity changes (3.2)
   useEffect(() => {
@@ -544,8 +526,15 @@ export function MermaidDiagram({
     if (!svg) return;
     // Prefer full node for precise matching (handles duplicate labels via id)
     const highlight = selectedNode ?? (selectedNodeLabel ? { id: "", label: selectedNodeLabel } : null);
-    attachAndReport(svg as SVGSVGElement, onNodesChangeRef.current, onNodeClickRef.current ?? onNodeClick, highlight);
-  }, [selectedNode, selectedNodeLabel, onNodeClick]);
+    const accentColor = readCssVar("--accent") || "#d97a56";
+    attachAndReport(
+      svg as SVGSVGElement,
+      onNodesChangeRef.current,
+      onNodeClickRef.current ?? onNodeClick,
+      highlight,
+      accentColor,
+    );
+  }, [selectedNode, selectedNodeLabel, onNodeClick, skinName, resolved]);
 
   function zoomIn() {
     setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(2)));

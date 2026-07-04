@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Monitor, Moon, Palette, Settings, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { ACCENT_PRESETS } from "@/lib/accent";
+import { resolveSkinPalette } from "@/lib/themes/presets";
 import type { ThemePreference } from "@/lib/theme";
 
 const THEME_OPTIONS: {
@@ -21,7 +21,7 @@ interface SettingsMenuProps {
 }
 
 export function SettingsMenu({ className }: SettingsMenuProps) {
-  const { preference, setPreference, resolved, accent, setAccent } = useTheme();
+  const { preference, setPreference, resolved, skinName, setSkin, availableSkins } = useTheme();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -97,28 +97,37 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
           <section className="settings-menu__section">
             <div className="settings-menu__section-title">
               <Palette className="w-3.5 h-3.5" />
-              <span>Accent</span>
+              <span>Skin</span>
             </div>
             <p className="settings-menu__accent-hint">
-              {resolved === "dark" ? "Night palette" : "Day palette"}
+              {resolved === "dark" ? "Night palette" : "Day palette"} · Hermes Desktop themes
             </p>
-            <div className="settings-menu__accent-grid" role="group" aria-label="Accent color">
-              {ACCENT_PRESETS.map((preset) => {
-                const active = accent === preset.id;
-                const swatch =
-                  resolved === "dark" ? preset.swatchDark : preset.swatchLight;
+            <div className="settings-menu__skin-grid" role="group" aria-label="Theme skin">
+              {availableSkins.map((skin) => {
+                const active = skinName === skin.name;
+                const palette = resolveSkinPalette(skin, resolved);
                 return (
                   <button
-                    key={preset.id}
+                    key={skin.name}
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    aria-label={preset.label}
-                    title={preset.label}
-                    className={`settings-menu__accent-swatch${active ? " is-active" : ""}`}
-                    style={{ "--swatch-color": swatch } as CSSProperties}
-                    onClick={() => setAccent(preset.id)}
-                  />
+                    aria-label={skin.label}
+                    title={`${skin.label} — ${skin.description}`}
+                    className={`settings-menu__skin-option${active ? " is-active" : ""}`}
+                    onClick={() => setSkin(skin.name)}
+                  >
+                    <span
+                      className="settings-menu__skin-swatch"
+                      style={
+                        {
+                          "--skin-bg": palette.background,
+                          "--skin-primary": palette.primary,
+                        } as CSSProperties
+                      }
+                    />
+                    <span className="settings-menu__skin-label">{skin.label}</span>
+                  </button>
                 );
               })}
             </div>

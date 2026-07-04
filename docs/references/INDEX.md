@@ -32,6 +32,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 |----------------------------|----------------------------------------------|----------|--------------|
 | `PRODUCT_BACKLOG.md`       | Full product backlog, phases, and tasks     | High     | Before choosing or implementing any feature |
 | `INDEX.md` (this file)     | Manifest of all references                   | High     | At the start of any agent session |
+| `hermes-desktop-design-system.md` | Hermes Desktop tokens, primitives, theme engine reference | Medium | When working on skins, themes, or UI convergence (4.6+) |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
 | *(Future)* `PROCESS.md`    | Process notation standards & contracts      | Medium   | When building diagram/workflow features |
 | *(Future)* `DESIGN.md`     | Visual & interaction guidelines             | Low      | When working on UI components |
