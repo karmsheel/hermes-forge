@@ -43,7 +43,7 @@ try {
         exit 1
     }
 
-    $content | Out-File -FilePath $Name -Encoding utf8 -NoNewline
+    $content | Out-File -FilePath $Name -Encoding utf8
     Write-Host "✓ Wrote $Name (from main:$relativePath)" -ForegroundColor Green
 
     # Optional: show a short preview

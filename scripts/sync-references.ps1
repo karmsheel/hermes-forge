@@ -46,7 +46,7 @@ foreach ($file in $files) {
     try {
         $content = git show $gitPath 2>$null
         if ($content) {
-            $content | Out-File -FilePath $file -Encoding utf8 -NoNewline
+            $content | Out-File -FilePath $file -Encoding utf8
             Write-Host "  ✓ $file" -ForegroundColor Green
             $synced++
         }

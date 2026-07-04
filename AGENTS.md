@@ -35,6 +35,8 @@ git show main:docs/references/PRODUCT_BACKLOG.md
 
 This script pulls the version from `main` and writes it into your current folder.
 
+**Local copies are ephemeral.** Root-level `PRODUCT_BACKLOG.md` and `INDEX.md` (if present) are gitignored outputs from the helper scripts. Never edit or commit them — always change `docs/references/` on `main`.
+
 ### Required Reading Order at Start of Any Task
 
 1. `AGENTS.md` (this file)

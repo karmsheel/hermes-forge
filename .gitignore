@@ -51,3 +51,7 @@ next-env.d.ts
 # temp logs
 terminals/
 
+# Ephemeral local copies from scripts/get-reference.ps1 and scripts/sync-references.ps1
+/PRODUCT_BACKLOG.md
+/INDEX.md
+
