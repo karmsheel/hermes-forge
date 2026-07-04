@@ -14,6 +14,7 @@ import {
   Plus,
   ScrollText,
   User,
+  Users,
   Zap,
 } from "lucide-react";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
@@ -46,6 +47,13 @@ export function NavRail() {
       label: "Functions",
       icon: FolderKanban,
       match: (path) => path === "/projects",
+    },
+    {
+      id: "personnel",
+      href: "/personnel",
+      label: "Personnel",
+      icon: Users,
+      match: (path) => path.startsWith("/personnel"),
     },
     {
       id: "workshop",

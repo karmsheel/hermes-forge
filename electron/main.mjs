@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from "electron";
 import { execFile, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -16,6 +16,19 @@ function resolveServerPort() {
 }
 
 const SERVER_PORT = resolveServerPort();
+
+function resolveAppIcon() {
+  const candidates = [
+    path.join(__dirname, "icon.png"),
+    path.join(__dirname, "..", "resources", "icon.png"),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return nativeImage.createFromPath(candidate);
+    }
+  }
+  return null;
+}
 
 // Packaged builds copy the Next standalone bundle to resources/standalone
 // (outside the asar) so electron-builder does not strip nested node_modules.
@@ -162,12 +175,14 @@ function startServer(env) {
 }
 
 function createWindow() {
+  const icon = resolveAppIcon();
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 880,
     minWidth: 960,
     minHeight: 640,
     title: "Hermes Forge",
+    icon: icon ?? undefined,
     backgroundColor: "#09090b",
     autoHideMenuBar: true,
     webPreferences: {
@@ -183,6 +198,10 @@ function createWindow() {
     shell.openExternal(url);
     return { action: "deny" };
   });
+}
+
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.hermesforge.desktop");
 }
 
 app.whenReady().then(async () => {

@@ -38,9 +38,11 @@ model Business {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  processes Process[]
-  memories  Memory[]
-  events    BusinessEvent[]
+  processes        Process[]
+  memories         Memory[]
+  events           BusinessEvent[]
+  humanPersonnel   HumanPersonnel[]
+  hermesAgentProfiles HermesAgentProfile[]
 }
 
 model BusinessEvent {
@@ -162,4 +164,41 @@ model Memory {
   confidence  Float    @default(0.8)
   source      String?  // e.g. "interview-turn-3"
   lastUpdated DateTime @default(now())
+}
+
+model HumanPersonnel {
+  id              String   @id @default(cuid())
+  businessId      String
+  business        Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name            String
+  role            String
+  roleDescription String?
+  isOwner         Boolean  @default(false)
+  userId          String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([businessId, isOwner])
+  @@index([businessId, createdAt(sort: Desc)])
+}
+
+model HermesAgentProfile {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  profileKey  String
+  displayName String
+  description String?
+  model       String?
+  hermesHome  String
+  isDefault   Boolean  @default(false)
+
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([businessId, profileKey])
+  @@index([businessId, discoveredAt(sort: Desc)])
 }

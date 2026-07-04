@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession, setActiveBusinessCookie } from '@/lib/auth';
+import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +22,8 @@ export async function POST(request: NextRequest) {
         goals: 'Ship 3 major features this quarter and reduce support load by 60%.',
       },
     });
+
+    await ensureBusinessOwner(business.id, session.userId);
 
     const demoProcesses = [
       {

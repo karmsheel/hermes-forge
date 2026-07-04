@@ -50,6 +50,7 @@
   "build": {
     "appId": "com.hermesforge.desktop",
     "productName": "Hermes Forge",
+    "icon": "resources/icon.png",
     "directories": {
       "output": "dist/desktop"
     },
@@ -57,7 +58,7 @@
       "target": [
         "nsis"
       ],
-      "signAndEditExecutable": false
+      "icon": "resources/icon.ico"
     },
     "files": [
       "electron/**/*",

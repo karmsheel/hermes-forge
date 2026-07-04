@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { requireSession, setActiveBusinessCookie } from '@/lib/auth';
 import { recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
 const ImportMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
           industry: data.business.industry ?? null,
         },
       });
+
+      await ensureBusinessOwner(createdBusiness.id, session.userId, tx);
 
       for (const p of data.processes) {
         const proc = await tx.process.create({

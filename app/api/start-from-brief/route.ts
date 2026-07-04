@@ -8,6 +8,7 @@ import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
 import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
@@ -53,6 +54,8 @@ export async function POST(request: NextRequest) {
             updatedAt: true,
           },
         });
+
+        await ensureBusinessOwner(business.id, session.userId, tx);
       }
 
       const processTextForCat = `${body.processName || ''} ${trimmed}`;

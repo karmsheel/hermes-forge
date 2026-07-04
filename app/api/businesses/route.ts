@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth';
 import { recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
 const CreateBusinessSchema = z.object({
   name: z.string().max(120).optional(),
@@ -48,22 +49,28 @@ export async function POST(request: NextRequest) {
 
     const body = CreateBusinessSchema.parse(await request.json());
 
-    const business = await prisma.business.create({
-      data: {
-        userId: session.userId,
-        name: body.name?.trim() || 'Untitled Project',
-        description: body.description?.trim() || null,
-        industry: body.industry?.trim() || null,
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        industry: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: { select: { processes: true } },
-      },
+    const business = await prisma.$transaction(async (tx) => {
+      const created = await tx.business.create({
+        data: {
+          userId: session.userId,
+          name: body.name?.trim() || 'Untitled Project',
+          description: body.description?.trim() || null,
+          industry: body.industry?.trim() || null,
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          industry: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { processes: true } },
+        },
+      });
+
+      await ensureBusinessOwner(created.id, session.userId, tx);
+
+      return created;
     });
 
     await recordBusinessEvent({
