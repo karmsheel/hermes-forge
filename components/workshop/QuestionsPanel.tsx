@@ -101,7 +101,7 @@ export function QuestionsPanel({ process, onUpdated }: QuestionsPanelProps) {
           <div>
             <h2 className="text-sm font-semibold text-text">Discovery Questions</h2>
             <p className="text-xs text-text-muted mt-0.5">
-              Answer these to give the diagram agent better context. Answers feed directly into the process model.
+              Answers are saved on the process and injected into Hermes chat and diagram agents automatically.
             </p>
           </div>
         </div>

@@ -5,6 +5,10 @@ import {
   resolveProcessStandard,
   type ProcessStandardId,
 } from './process-standards';
+import {
+  formatDiscoveryContext,
+  type ProcessDiscoveryFields,
+} from './process-discovery';
 
 const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
 
@@ -36,6 +40,7 @@ export interface DiagramGenerationInput {
   conversation: { role: string; content: string }[];
   currentDiagram: string | null;
   processStandard?: ProcessStandardId;
+  discovery?: ProcessDiscoveryFields;
 }
 
 export function buildDiagramMessages(input: DiagramGenerationInput): {
@@ -46,9 +51,14 @@ export function buildDiagramMessages(input: DiagramGenerationInput): {
     input.processStandard ?? resolveProcessStandard(input.processDescription);
   const standard = getProcessStandard(standardId);
 
+  const discoveryBlock = input.discovery
+    ? formatDiscoveryContext(input.discovery)
+    : null;
+
   const context = [
     `Process name: ${input.processName}`,
     `Description: ${input.processDescription || 'Not yet described'}`,
+    discoveryBlock ? `\n${discoveryBlock}` : '',
     input.currentDiagram
       ? `\nCurrent diagram (update this incrementally):\n${input.currentDiagram}`
       : '\nNo diagram yet — create an initial skeleton.',
@@ -68,23 +78,11 @@ export function buildDiagramMessages(input: DiagramGenerationInput): {
 
 export async function generateDiagramMermaid(
   config: HermesConfig,
-  processName: string,
-  processDescription: string,
-  conversation: { role: string; content: string }[],
-  currentDiagram: string | null,
-  processStandard?: ProcessStandardId
+  input: DiagramGenerationInput,
 ): Promise<string> {
-  const content = await callHermes(
-    config,
-    buildDiagramMessages({
-      processName,
-      processDescription,
-      conversation,
-      currentDiagram,
-      processStandard,
-    }),
-    { temperature: 0.2 }
-  );
+  const content = await callHermes(config, buildDiagramMessages(input), {
+    temperature: 0.2,
+  });
 
   return sanitizeMermaidSource(content);
 }
@@ -97,6 +95,7 @@ export function buildChatSystemPrompt(context: {
   status: string;
   hasDiagram: boolean;
   shouldAskAccuracy: boolean;
+  discovery?: ProcessDiscoveryFields;
 }): string {
   const standardId = context.processStandard ?? resolveProcessStandard(context.description);
   const standard = getProcessStandard(standardId);
@@ -110,6 +109,13 @@ export function buildChatSystemPrompt(context: {
     context.status === 'approved'
       ? `\nThis process map is APPROVED for automation. Do not ask mapping questions — if the user wants changes, help them refine the map and remind them they can re-approve when ready. You may mention they can open Automations to design the automation.`
       : '';
+
+  const discoveryBlock = context.discovery
+    ? formatDiscoveryContext(context.discovery)
+    : null;
+  const discoveryNote = discoveryBlock
+    ? `\nThe user has already answered structured discovery questions. Use these as ground truth and avoid re-asking the same facts unless they contradict the chat:\n${discoveryBlock}\n`
+    : '\nIf key facts are missing (trigger, systems, manual steps, output), you may ask the user to fill in the Questions tab or answer in chat — one question at a time.\n';
 
   const accuracyNote = context.shouldAskAccuracy
     ? `\nThe diagram has enough detail now. In this reply, after your normal response, ask ONE clear question: "Does this diagram accurately represent how this process works in your business?" Do not mention automation or n8n yet — only accuracy of the map.`
@@ -139,7 +145,7 @@ Workflow splitting (important):
 - If the user asks to split, separate, or break apart flows, acknowledge and confirm which flow goes where.
 - After a split, the sidebar will show a new workflow — tell the user to check the left panel.
 
-${namingNote}${approvedNote}${accuracyNote}
+${namingNote}${approvedNote}${discoveryNote}${accuracyNote}
 
 ${standard.chatPromptAddon}
 

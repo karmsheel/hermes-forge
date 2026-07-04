@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { generateDiagramMermaid } from '@/lib/diagram';
+import { pickDiscoveryFields } from '@/lib/process-discovery';
 import { encodeDiagramSse, streamDiagramMermaid } from '@/lib/diagram-stream';
 import { requireProcessAccess } from '@/lib/auth';
 import { recordBusinessEvent } from '@/lib/business-log';
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       processDescription: process.description,
       conversation,
       currentDiagram: process.diagramMermaid,
+      discovery: pickDiscoveryFields(process),
     };
 
     const hermesConfig = {
@@ -112,13 +114,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       });
     }
 
-    const updatedDiagram = await generateDiagramMermaid(
-      hermesConfig,
-      process.name,
-      process.description,
-      conversation,
-      process.diagramMermaid
-    );
+    const updatedDiagram = await generateDiagramMermaid(hermesConfig, diagramInput);
 
     if (updatedDiagram) {
       await prisma.process.update({

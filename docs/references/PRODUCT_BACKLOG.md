@@ -291,61 +291,64 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 3.2 Node-level comments / corrections
+### 3.2 Node-level comments / corrections — **DONE**
 
 **Goal:** Click Mermaid node → annotate → agent revises that step.
 
-**Files:** `components/workshop/DiagramComments.tsx`, `components/workshop/MermaidDiagram.tsx`, extend chat API + workshop page
+**Files:** `components/workshop/DiagramComments.tsx`, `components/workshop/MermaidDiagram.tsx`, chat API + workshop page
 
-**Implemented:**
-- Mermaid nodes are now clickable (cursor + listeners post-render). Extracts best label + id.
-- Clicking a node highlights it (accent stroke), focuses the chat composer, and prefills with `Regarding "..."` context + shows a dismissible "Node:" pill.
-- User messages targeting a node are stored with explicit prefix so the diagram subagent sees the correction in conversation history.
-- Chat API accepts optional `nodeContext`; augments content for clarity.
-- Diagram updates continue to use full history → agent revises the targeted step.
-- No DB schema change required. Minimal UI following token system.
+**Shipped:** Clickable nodes, accent highlight, composer pill + `Regarding "…"` prefix, comment dots, `nodeContext` on chat API, diagram regen from conversation history.
 
 ---
 
-**Acceptance criteria (met):**
-- [x] Click node in diagram targets it for feedback
-- [x] Context is visible (pill + prefilled text)
-- [x] Correction message flows through normal chat → diagram regeneration
-- [x] Build passes
-
----
-
-### 3.3 Discovery Questions panel
+### 3.3 Discovery Questions panel — **DONE**
 
 **Goal:** Offload discovery from chat to dedicated tab (Open Design `QuestionsPanel`).
 
-**Files:** `components/workshop/QuestionsPanel.tsx`, workshop tab strip
+**Files:** `components/workshop/QuestionsPanel.tsx`, `WorkspaceTabs`, `lib/process-discovery.ts`, `lib/diagram.ts`, chat + diagram APIs
+
+**Shipped:** Questions tab (trigger, systems, manual steps, output); PATCH save on process; discovery answers injected into chat + diagram agent prompts.
 
 **Questions:** Who triggers this? What systems? What's manual? What's the output?
 
 ---
 
-### 3.4 Conversation fork / multiple threads
+### 3.4 Conversation fork / multiple threads — **MOSTLY DONE**
 
 **Goal:** Fork process mapping from any chat turn; multiple conversations per project.
 
-**Files:** DB schema (`Conversation` model), `components/workshop/ConversationsMenu.tsx`
+**Files:** `prisma/schema.prisma` (`Conversation`), `app/api/processes/[id]/conversations/route.ts`, `components/workshop/ConversationsMenu.tsx`, `lib/workshop-storage.ts`
+
+**Shipped:** Conversation model; fork API; conversation switcher in chat header; per-process active conversation persistence; chat/diagram filtered by `conversationId`.
+
+**Remaining:**
+- [ ] Fork-from-specific-message UI (`forkAtMessageId` exists in API, not wired in chat)
+- [ ] Delete / rename conversation
+- [ ] Export tab should use active conversation messages when forks exist
 
 ---
 
-### 3.5 Rich composer (mentions + slash commands)
+### 3.5 Rich composer (mentions + slash commands) — **MOSTLY DONE**
 
 **Goal:** `@department`, `@system` mentions; `/add-step`, `/export` slash commands.
 
-**Files:** `components/workshop/RichComposer.tsx` (Lexical or lightweight)
+**Files:** `components/workshop/rich-composer/*`, `ProcessChat.tsx`
+
+**Shipped:** `RichComposer` with `@` autocomplete (diagram step nodes), slash commands (`/help`, `/name`, `/add-step`, `/simplify`, `/export`, `/accuracy`), suggestion popover, node context pill.
+
+**Remaining:**
+- [ ] `@department` / `@system` / actor mentionables (beyond diagram nodes)
+- [ ] `/export` format args (e.g. pdf) if server export is added (3.8)
 
 ---
 
-### 3.6 Workspace tabs
+### 3.6 Workspace tabs — **DONE**
 
 **Goal:** Tab strip above diagram: Diagram | Details | Questions | Source | Export
 
-**Files:** Refactor `app/workshop/page.tsx` → `FileWorkspace` pattern
+**Files:** `components/workshop/WorkspaceTabs.tsx`, `DetailsPanel.tsx`, `SourcePanel.tsx`, `app/(shell)/workshop/page.tsx`
+
+**Shipped:** Full tab strip with all five panels wired in the workshop center column.
 
 ---
 
@@ -368,11 +371,18 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
-### 3.8 Export handoff
+### 3.8 Export handoff — **PARTIAL**
 
 **Goal:** Export Mermaid, PNG, PDF, Markdown SOP; optional "Open in Cursor" context bundle.
 
-**Files:** `app/api/processes/[id]/export/route.ts`, `components/workshop/ExportMenu.tsx`
+**Files:** `components/export/ExportMenu.tsx` (Export workspace tab)
+
+**Shipped:** Markdown SOP, Mermaid source, Cursor JSON bundle; copy/download; "Open in Cursor" prompt; `/export` slash command opens Export tab.
+
+**Remaining:**
+- [ ] PNG / PDF export
+- [ ] `app/api/processes/[id]/export/route.ts` (server-side render pipeline)
+- [ ] Scope export to active conversation when forks exist (see 3.4)
 
 ---
 
@@ -481,12 +491,12 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 2.4 | Function status lifecycle badges | 2 | Deferred |
 | 3.1 | Streaming diagram | 3 | Done |
 | 3.2 | Node comments | 3 | Done |
-| 3.3 | Questions panel | 3 | Pending |
-| 3.4 | Conversation fork | 3 | Pending |
-| 3.5 | Rich composer | 3 | Pending |
-| 3.6 | Workspace tabs | 3 | Pending |
+| 3.3 | Questions panel | 3 | Done |
+| 3.4 | Conversation fork | 3 | Mostly done |
+| 3.5 | Rich composer | 3 | Mostly done |
+| 3.6 | Workspace tabs | 3 | Done |
 | 3.7 | Queued messages | 3 | Done |
-| 3.8 | Export handoff | 3 | Pending |
+| 3.8 | Export handoff | 3 | Partial |
 | 4.1 | Template library | 4 | Pending |
 | 4.2 | PROCESS.md | 4 | Pending |
 | 4.3 | Template marketplace | 4 | Pending |

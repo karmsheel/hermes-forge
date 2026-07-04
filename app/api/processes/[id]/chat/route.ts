@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
 import { buildChatSystemPrompt } from '@/lib/diagram';
+import { formatDiscoveryContext, pickDiscoveryFields } from '@/lib/process-discovery';
 import { requireProcessAccess } from '@/lib/auth';
 import { buildApprovalUpdate } from '@/lib/process-approve';
 import {
@@ -181,6 +182,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .slice(-4)
       .some((m: { role: string; content: string }) => m.role === 'assistant' && assistantAskedAccuracyQuestion(m.content));
 
+    const discovery = pickDiscoveryFields(process);
+    const discoveryContext = formatDiscoveryContext(discovery);
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
@@ -192,6 +196,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             nameStatus: process.nameStatus,
             status: approvedFromChat ? 'approved' : process.status,
             hasDiagram,
+            discovery,
             shouldAskAccuracy:
               !approvedFromChat &&
               process.status !== 'approved' &&
@@ -205,7 +210,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         },
         {
           role: 'system',
-          content: `Current workflow: "${process.name}" — ${process.description || 'Not yet described'}`,
+          content: [
+            `Current workflow: "${process.name}" — ${process.description || 'Not yet described'}`,
+            discoveryContext ?? '',
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
         },
         ...allMessages,
       ]
