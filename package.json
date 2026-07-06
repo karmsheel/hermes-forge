@@ -1,6 +1,6 @@
 {
   "name": "hermes-forge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "electron/main.mjs",
   "scripts": {
@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "desktop:dev": "electron .",
+    "desktop:stop": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$p = (Get-NetTCPConnection -LocalPort 3847 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess; if ($p) { Stop-Process -Id $p -Force; Write-Host ('Stopped process ' + $p + ' on port 3847') } else { Write-Host 'No listener on port 3847' }\"",
     "desktop:prepare": "node scripts/prepare-standalone.mjs",
     "desktop:prebuild": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/desktop-prebuild.ps1",
     "desktop:test": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-packaged-desktop.ps1",
