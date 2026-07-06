@@ -12,16 +12,11 @@ import {
   Users,
 } from "lucide-react";
 import { AddHumanDialog } from "@/components/personnel/AddHumanDialog";
+import {
+  HumanPersonnelCard,
+  type HumanPersonnelItem,
+} from "@/components/personnel/HumanPersonnelCard";
 import { useShell } from "@/components/shell/ShellContext";
-
-interface HumanPersonnel {
-  id: string;
-  name: string;
-  role: string;
-  roleDescription: string | null;
-  isOwner: boolean;
-  createdAt: string;
-}
 
 interface HermesAgentProfile {
   id: string;
@@ -36,7 +31,7 @@ interface HermesAgentProfile {
 
 function PersonnelLists({ businessId }: { businessId: string | null }) {
   const router = useRouter();
-  const [humans, setHumans] = useState<HumanPersonnel[]>([]);
+  const [humans, setHumans] = useState<HumanPersonnelItem[]>([]);
   const [agents, setAgents] = useState<HermesAgentProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [addHumanOpen, setAddHumanOpen] = useState(false);
@@ -108,6 +103,16 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
     },
     []
   );
+
+  const handleDeleteHuman = useCallback(async (id: string) => {
+    const res = await fetch(`/api/personnel/humans/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to remove person");
+    }
+    setHumans((prev) => prev.filter((person) => person.id !== id));
+    toast.success("Person removed from organization");
+  }, []);
 
   const handleScanAgents = useCallback(async () => {
     if (scanning) return;
@@ -181,27 +186,11 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
           ) : (
             <ul className="grid gap-3">
               {humans.map((person) => (
-                <li key={person.id} className="card p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-bg-muted flex items-center justify-center shrink-0">
-                      <UserRound className="w-5 h-5 text-accent" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-medium text-lg">{person.name}</div>
-                        {person.isOwner && (
-                          <span className="text-[10px] uppercase tracking-widest text-text-soft border border-border rounded px-1.5 py-0.5">
-                            Owner
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-accent mt-0.5">{person.role}</div>
-                      {person.roleDescription && (
-                        <p className="text-sm text-text-muted mt-2">{person.roleDescription}</p>
-                      )}
-                    </div>
-                  </div>
-                </li>
+                <HumanPersonnelCard
+                  key={person.id}
+                  person={person}
+                  onDelete={handleDeleteHuman}
+                />
               ))}
             </ul>
           )}

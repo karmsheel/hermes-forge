@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { SettingsOverlay } from "@/components/settings/SettingsOverlay";
+import { DEFAULT_SETTINGS_VIEW, type SettingsViewId } from "@/lib/settings-views";
 
 import { clearLegacyActiveProcessId, setPendingNewProcess } from "@/lib/workshop-storage";
 import type { UserProfile } from "@/lib/types";
@@ -24,12 +26,17 @@ interface ShellContextValue {
   currentBusiness: { id: string; name: string } | null;
   newProjectOpen: boolean;
   connectionOpen: boolean;
+  settingsOpen: boolean;
+  settingsTab: SettingsViewId;
   creatingProject: boolean;
   openNewProject: () => void;
   closeNewProject: () => void;
   openHermesConnection: () => void;
   closeHermesConnection: () => void;
-  switchBusiness: (id: string) => Promise<void>;
+  openSettings: (tab?: SettingsViewId) => void;
+  closeSettings: () => void;
+  setSettingsTab: (tab: SettingsViewId) => void;
+  switchBusiness: (id: string) => Promise<boolean>;
   refreshCurrentBusiness: () => Promise<void>;
   createProject: (name: string, description: string) => Promise<void>;
   requestNewProcess: () => void;
@@ -45,6 +52,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [currentBusiness, setCurrentBusiness] = useState<{ id: string; name: string } | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTabState] = useState<SettingsViewId>(DEFAULT_SETTINGS_VIEW);
   const [creatingProject, setCreatingProject] = useState(false);
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
@@ -108,7 +117,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const switchBusiness = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<boolean> => {
       try {
         const res = await fetch("/api/businesses/active", {
           method: "POST",
@@ -119,8 +128,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         clearLegacyActiveProcessId();
         await refreshCurrentBusiness();
         router.refresh();
+        return true;
       } catch {
         toast.error("Could not switch business");
+        return false;
       }
     },
     [router, refreshCurrentBusiness]
@@ -149,18 +160,26 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       currentBusiness,
       newProjectOpen,
       connectionOpen,
+      settingsOpen,
+      settingsTab,
       creatingProject,
       openNewProject: () => setNewProjectOpen(true),
       closeNewProject: () => setNewProjectOpen(false),
       openHermesConnection: () => setConnectionOpen(true),
       closeHermesConnection: () => setConnectionOpen(false),
+      openSettings: (tab?: SettingsViewId) => {
+        setSettingsTabState(tab ?? DEFAULT_SETTINGS_VIEW);
+        setSettingsOpen(true);
+      },
+      closeSettings: () => setSettingsOpen(false),
+      setSettingsTab: setSettingsTabState,
       switchBusiness,
       refreshCurrentBusiness,
       createProject,
       requestNewProcess,
       registerWorkshopNewProcess,
     }),
-    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, settingsOpen, settingsTab, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (
@@ -173,6 +192,12 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         onCreate={createProject}
       />
       <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
+      <SettingsOverlay
+        open={settingsOpen}
+        activeView={settingsTab}
+        onViewChange={setSettingsTabState}
+        onClose={() => setSettingsOpen(false)}
+      />
     </ShellContext.Provider>
   );
 }

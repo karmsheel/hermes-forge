@@ -34,14 +34,30 @@ model Business {
   website     String?
   goals       String?
   constraints String?
-  backfillCompletedAt DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
 
-  processes        Process[]
-  memories         Memory[]
-  events           BusinessEvent[]
-  humanPersonnel   HumanPersonnel[]
+  // Immutable business log head
+  logHeadSequence  Int       @default(0)
+  logInitializedAt DateTime?
+
+  // Local Git mirror (future sync; inert until implemented)
+  gitRepoPath       String?
+  gitInitializedAt  DateTime?
+  gitHeadCommit     String?
+  gitHeadSequence   Int?
+  gitDirty          Boolean   @default(false)
+  gitRemoteUrl      String?
+  gitRemoteBranch   String?   @default("main")
+  gitLastPushedAt   DateTime?
+  gitLastPushError  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  processes           Process[]
+  memories            Memory[]
+  events              BusinessEvent[]
+  decisions           BusinessDecision[]
+  humanPersonnel      HumanPersonnel[]
   hermesAgentProfiles HermesAgentProfile[]
 }
 
@@ -51,18 +67,53 @@ model BusinessEvent {
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId     String?
 
-  type       String
-  entityType String?
-  entityId   String?
-  entityName String?
+  sequence            Int
+  type                String
+  entityType          String?
+  entityId            String?
+  entityName          String?
 
   summary  String
   metadata String?
 
-  source    String   @default("live")
-  createdAt DateTime @default(now())
+  recordedAt          DateTime
+  occurredAt          DateTime?
+  occurredAtPrecision String    @default("unknown") // exact | approximate | unknown
+  ingestion           String    @default("live")    // live | backfill | import
 
-  @@index([businessId, createdAt(sort: Desc)])
+  payloadHash    String?
+  prevPayloadHash String?
+  gitCommitSha   String?
+
+  @@unique([businessId, sequence])
+  @@index([businessId, recordedAt(sort: Desc)])
+}
+
+model BusinessDecision {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  decidedByUserId String?
+  title           String
+  statement       String
+  rationale       String?
+  context         String?
+
+  status                 String    @default("active") // active | superseded | revoked
+  decidedAt              DateTime?
+  recordedAt             DateTime  @default(now())
+  relatedEntityType      String?
+  relatedEntityId        String?
+  supersededByDecisionId String?
+  logSequence            Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, recordedAt(sort: Desc)])
+  @@index([businessId, status])
+  @@index([businessId, decidedAt(sort: Desc)])
 }
 
 model Conversation {

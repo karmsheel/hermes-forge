@@ -7,8 +7,6 @@ import { toast } from "sonner";
 import { useShell } from "@/components/shell/ShellContext";
 import { eventCategory, type BusinessEventRecord, type BusinessLogFilter } from "@/lib/business-log-types";
 import { parseEventMetadata } from "@/lib/business-log";
-import { timeAgo } from "@/lib/time-ago";
-import { setActiveProcessId } from "@/lib/workshop-storage";
 
 const FILTERS: { id: BusinessLogFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -17,6 +15,8 @@ const FILTERS: { id: BusinessLogFilter; label: string }[] = [
   { id: "chat", label: "Chat" },
   { id: "business", label: "Business" },
   { id: "memory", label: "Memory" },
+  { id: "personnel", label: "Personnel" },
+  { id: "decision", label: "Decisions" },
 ];
 
 function categoryLabel(type: string): string {
@@ -25,82 +25,270 @@ function categoryLabel(type: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
-function resolveProcessId(event: BusinessEventRecord): string | null {
-  if (
-    event.entityType === "process" ||
-    event.entityType === "chat" ||
-    event.entityType === "automation"
-  ) {
-    return event.entityId;
-  }
-  return null;
+function eventTimestamp(event: BusinessEventRecord): string {
+  return event.occurredAt ?? event.recordedAt;
 }
 
-function eventHref(event: BusinessEventRecord): string | null {
-  const processId = resolveProcessId(event);
-  if (!processId) return null;
-  if (event.entityType === "automation" || event.type.startsWith("automation.")) {
-    return `/automations/${processId}`;
-  }
-  if (event.entityType === "process" || event.type.startsWith("chat.")) {
-    return "/workshop";
-  }
-  return null;
+function dateKey(dateStr: string): string {
+  return new Date(dateStr).toDateString();
 }
 
-export function BusinessLogFeed() {
-  const { currentBusiness } = useShell();
+function formatTimelineDate(dateStr: string): { day: string; year: string } {
+  const date = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  let day: string;
+  if (date.toDateString() === today.toDateString()) {
+    day = "Today";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    day = "Yesterday";
+  } else {
+    day = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  return {
+    day,
+    year: date.toLocaleDateString(undefined, { year: "numeric" }),
+  };
+}
+
+function formatTimelineTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatRecordedNote(event: BusinessEventRecord): string | null {
+  if (!event.occurredAt) return null;
+  const occurredMs = new Date(event.occurredAt).getTime();
+  const recordedMs = new Date(event.recordedAt).getTime();
+  if (Math.abs(occurredMs - recordedMs) < 60_000) return null;
+  return `Recorded ${formatTimelineDate(event.recordedAt).day}, ${formatTimelineTime(event.recordedAt)}`;
+}
+
+function BusinessLogFeedList({
+  businessId,
+  filter,
+  fallbackName,
+}: {
+  businessId: string | null;
+  filter: BusinessLogFilter;
+  fallbackName: string | null;
+}) {
   const [events, setEvents] = useState<BusinessEventRecord[]>([]);
-  const [filter, setFilter] = useState<BusinessLogFilter>("all");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [bizName, setBizName] = useState<string | null>(null);
+  const [bizName, setBizName] = useState<string | null>(fallbackName);
 
-  const loadEvents = useCallback(
-    async (opts?: { cursor?: string | null; append?: boolean }) => {
-      const isAppend = opts?.append === true;
-      if (isAppend) setLoadingMore(true);
-      else setLoading(true);
+  useEffect(() => {
+    let cancelled = false;
 
-      try {
-        const params = new URLSearchParams();
-        if (filter !== "all") params.set("filter", filter);
-        if (opts?.cursor) params.set("cursor", opts.cursor);
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("filter", filter);
 
-        const res = await fetch(`/api/business/log?${params.toString()}`);
+    fetch(`/api/business/log?${params.toString()}`)
+      .then(async (res) => {
+        if (cancelled) return;
         if (res.status === 401) {
           window.location.href = "/";
           return;
         }
         const data = await res.json();
-        const page: BusinessEventRecord[] = data.events ?? [];
-
-        setBizName(data.business?.name ?? currentBusiness?.name ?? null);
+        if (cancelled) return;
+        setEvents((data.events ?? []) as BusinessEventRecord[]);
+        setBizName(data.business?.name ?? fallbackName ?? null);
         setNextCursor(data.nextCursor ?? null);
-        setEvents((prev) => (isAppend ? [...prev, ...page] : page));
-      } catch {
+      })
+      .catch(() => {
+        if (cancelled) return;
         toast.error("Failed to load business log");
-        if (!isAppend) setEvents([]);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        setEvents([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessId, filter, fallbackName]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const params = new URLSearchParams();
+      if (filter !== "all") params.set("filter", filter);
+      params.set("cursor", nextCursor);
+
+      const res = await fetch(`/api/business/log?${params.toString()}`);
+      if (res.status === 401) {
+        window.location.href = "/";
+        return;
       }
-    },
-    [filter, currentBusiness?.name]
-  );
-
-  useEffect(() => {
-    loadEvents();
-  }, [loadEvents, currentBusiness?.id]);
-
-  function openEvent(event: BusinessEventRecord) {
-    const processId = resolveProcessId(event);
-    const businessId = currentBusiness?.id ?? event.businessId;
-    if (processId && businessId) {
-      setActiveProcessId(businessId, processId);
+      const data = await res.json();
+      const page: BusinessEventRecord[] = data.events ?? [];
+      setNextCursor(data.nextCursor ?? null);
+      setEvents((prev) => [...prev, ...page]);
+    } catch {
+      toast.error("Failed to load more activity");
+    } finally {
+      setLoadingMore(false);
     }
+  }, [filter, loadingMore, nextCursor]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16 text-text-muted">
+        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+        Loading activity…
+      </div>
+    );
   }
+
+  if (events.length === 0) {
+    return (
+      <div className="card p-8 text-center text-text-muted">
+        <p className="mb-2">No activity yet.</p>
+        <p className="text-sm">
+          Start mapping a process from{" "}
+          <Link href="/home" className="text-accent hover:underline">
+            Home
+          </Link>
+          .
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="relative">
+        <div
+          className="absolute top-3 bottom-3 w-px bg-border"
+          style={{ left: "calc(5.75rem + 0.6875rem)" }}
+          aria-hidden
+        />
+        <ul>
+          {events.map((event, index) => {
+            const meta = parseEventMetadata(event.metadata);
+            const timestamp = eventTimestamp(event);
+            const currentDateKey = dateKey(timestamp);
+            const prevTimestamp =
+              index > 0 ? eventTimestamp(events[index - 1]) : null;
+            const showDate =
+              !prevTimestamp || dateKey(prevTimestamp) !== currentDateKey;
+            const { day, year } = formatTimelineDate(timestamp);
+            const recordedNote = formatRecordedNote(event);
+
+            return (
+              <li
+                key={event.id}
+                className="grid grid-cols-[5.75rem_1.375rem_1fr] gap-x-3"
+              >
+                <div className="text-right pt-0.5 pr-1">
+                  {showDate ? (
+                    <>
+                      <div className="text-xs font-medium text-text-muted leading-tight">
+                        {day}
+                      </div>
+                      <div className="text-[10px] text-text-faint mt-0.5">
+                        {year}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-text-faint leading-tight">
+                      {formatTimelineTime(timestamp)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-center pt-1.5 relative z-10">
+                  <div className="w-2.5 h-2.5 rounded-full bg-bg border-2 border-border-strong shrink-0" />
+                </div>
+
+                <div className="pb-10 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="pill text-[10px] uppercase tracking-wider">
+                      {categoryLabel(event.type)}
+                    </span>
+                    {event.ingestion === "backfill" && (
+                      <span className="text-[10px] text-text-faint uppercase tracking-wider">
+                        backfilled
+                      </span>
+                    )}
+                    {showDate && (
+                      <span className="text-[10px] text-text-faint">
+                        {formatTimelineTime(timestamp)}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-text leading-relaxed">
+                    {event.summary}
+                  </p>
+                  {recordedNote && (
+                    <p className="text-[10px] text-text-faint mt-1">
+                      {recordedNote}
+                    </p>
+                  )}
+                  {meta?.preview && (
+                    <p className="text-xs text-text-muted mt-2 leading-relaxed">
+                      &ldquo;{meta.preview}&rdquo;
+                    </p>
+                  )}
+                  {meta?.changes && meta.changes.length > 0 && (
+                    <ul className="text-xs text-text-muted mt-2 space-y-0.5">
+                      {meta.changes.map((change) => (
+                        <li key={change.field}>
+                          {change.field}: {String(change.before ?? "—")} →{" "}
+                          {String(change.after ?? "—")}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {nextCursor && (
+        <div className="flex justify-center mt-6">
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
+                Loading…
+              </>
+            ) : (
+              "Load more"
+            )}
+          </button>
+        </div>
+      )}
+
+      {bizName && (
+        <p className="text-xs text-text-faint text-center mt-6">
+          Showing activity for {bizName}
+        </p>
+      )}
+    </>
+  );
+}
+
+export function BusinessLogFeed() {
+  const { currentBusiness } = useShell();
+  const [filter, setFilter] = useState<BusinessLogFilter>("all");
 
   return (
     <div>
@@ -117,109 +305,12 @@ export function BusinessLogFeed() {
         ))}
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-text-muted">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Loading activity…
-        </div>
-      ) : events.length === 0 ? (
-        <div className="card p-8 text-center text-text-muted">
-          <p className="mb-2">No activity yet.</p>
-          <p className="text-sm">
-            Start mapping a process from{" "}
-            <Link href="/home" className="text-accent hover:underline">
-              Home
-            </Link>
-            .
-          </p>
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {events.map((event) => {
-            const meta = parseEventMetadata(event.metadata);
-            const href = eventHref(event);
-            const processId = resolveProcessId(event);
-
-            const content = (
-              <div className="card p-4 flex items-start gap-4 hover:bg-bg-subtle transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="pill text-[10px] uppercase tracking-wider">
-                      {categoryLabel(event.type)}
-                    </span>
-                    {event.source === "backfill" && (
-                      <span className="text-[10px] text-text-faint uppercase tracking-wider">
-                        imported
-                      </span>
-                    )}
-                    <span className="text-xs text-text-muted ml-auto shrink-0">
-                      {timeAgo(event.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-text leading-relaxed">{event.summary}</p>
-                  {meta?.preview && (
-                    <p className="text-xs text-text-muted mt-2 line-clamp-2">
-                      &ldquo;{meta.preview}&rdquo;
-                    </p>
-                  )}
-                  {meta?.changes && meta.changes.length > 0 && (
-                    <ul className="text-xs text-text-muted mt-2 space-y-0.5">
-                      {meta.changes.slice(0, 3).map((change) => (
-                        <li key={change.field}>
-                          {change.field}: {String(change.before ?? "—")} →{" "}
-                          {String(change.after ?? "—")}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            );
-
-            if (href && processId) {
-              return (
-                <li key={event.id}>
-                  <Link
-                    href={href}
-                    onClick={() => openEvent(event)}
-                    className="block"
-                  >
-                    {content}
-                  </Link>
-                </li>
-              );
-            }
-
-            return <li key={event.id}>{content}</li>;
-          })}
-        </ul>
-      )}
-
-      {nextCursor && !loading && (
-        <div className="flex justify-center mt-6">
-          <button
-            type="button"
-            className="btn-secondary text-sm"
-            disabled={loadingMore}
-            onClick={() => loadEvents({ cursor: nextCursor, append: true })}
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
-                Loading…
-              </>
-            ) : (
-              "Load more"
-            )}
-          </button>
-        </div>
-      )}
-
-      {bizName && events.length > 0 && (
-        <p className="text-xs text-text-faint text-center mt-6">
-          Showing activity for {bizName}
-        </p>
-      )}
+      <BusinessLogFeedList
+        key={`${currentBusiness?.id ?? "no-business"}-${filter}`}
+        businessId={currentBusiness?.id ?? null}
+        filter={filter}
+        fallbackName={currentBusiness?.name ?? null}
+      />
     </div>
   );
 }

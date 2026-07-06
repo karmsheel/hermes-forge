@@ -4,4 +4,13 @@ contextBridge.exposeInMainWorld("forgeDesktop", {
   isDesktop: true,
   platform: process.platform,
   openVscodeThemeFile: () => ipcRenderer.invoke("theme:open-vscode-file"),
+  getUpdateStatus: () => ipcRenderer.invoke("update:get-status"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  downloadUpdate: () => ipcRenderer.invoke("update:download"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateStatus: (callback) => {
+    const handler = (_event, status) => callback(status);
+    ipcRenderer.on("update:status", handler);
+    return () => ipcRenderer.removeListener("update:status", handler);
+  },
 });

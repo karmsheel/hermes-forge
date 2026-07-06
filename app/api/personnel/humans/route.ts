@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const CreateHumanSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -59,6 +61,18 @@ export async function POST(request: NextRequest) {
         role: body.role,
         roleDescription: body.roleDescription || null,
       },
+    });
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.PERSONNEL_ADDED,
+      entityType: 'personnel',
+      entityId: human.id,
+      entityName: human.name,
+      summary: `Added "${human.name}" as ${human.role}`,
+      metadata: { role: human.role },
+      ...liveOccurredNow(),
     });
 
     return NextResponse.json(human);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireSession, setActiveBusinessCookie } from '@/lib/auth';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, markBusinessLogInitialized, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
@@ -117,7 +117,10 @@ export async function POST(request: NextRequest) {
       metadata: {
         count: data.processes?.length ?? 0,
       },
+      ingestion: 'import',
+      ...liveOccurredNow(),
     });
+    await markBusinessLogInitialized(result.id);
 
     const response = NextResponse.json({ business: result });
     // Do not auto-activate on import — let user choose

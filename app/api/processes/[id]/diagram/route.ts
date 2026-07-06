@@ -5,7 +5,7 @@ import { generateDiagramMermaid } from '@/lib/diagram';
 import { pickDiscoveryFields } from '@/lib/process-discovery';
 import { encodeDiagramSse, streamDiagramMermaid } from '@/lib/diagram-stream';
 import { requireProcessAccess } from '@/lib/auth';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
                   entityId: id,
                   entityName: process.name,
                   summary: `Updated diagram for "${process.name}"`,
+                  ...liveOccurredNow(),
                 });
               }
 
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Updated diagram for "${process.name}"`,
+        ...liveOccurredNow(),
       });
     }
 

@@ -1,13 +1,25 @@
+import { mix } from "./color";
 import type { ForgeSkin, SkinColors } from "./types";
 
-const NOUS_BLUE = "#0053FD";
+/** Muzli Nous palette — https://colors.muz.li/palette/0000f2/002aa9/bfcfff/809fff/ffffff */
+const NOUS = {
+  blue: "#0000f2",
+  dark: "#002aa9",
+  light: "#bfcfff",
+  mid: "#809fff",
+  white: "#ffffff",
+} as const;
 
-function nousTint(pct: number): string {
-  return `color-mix(in srgb, ${NOUS_BLUE} ${pct}%, #FFFFFF)`;
+function nousLine(pct: number): string {
+  return mix(NOUS.blue, NOUS.white, (100 - pct) / 100);
 }
 
-function nousTintTransparent(pct: number): string {
-  return `color-mix(in srgb, ${NOUS_BLUE} ${pct}%, transparent)`;
+function nousLineDark(pct: number): string {
+  return mix(NOUS.mid, NOUS.dark, (100 - pct) / 100);
+}
+
+function nousSurfaceTint(pct: number): string {
+  return `color-mix(in srgb, ${NOUS.light} ${pct}%, ${NOUS.white})`;
 }
 
 /** Preserves the original Hermes Forge terracotta palette (Phase 1.1 default). */
@@ -68,30 +80,33 @@ export const forgeSkin: ForgeSkin = {
 export const nousSkin: ForgeSkin = {
   name: "nous",
   label: "Nous",
-  description: "Glass neutrals with Nous blue accents",
+  description: "Crisp blue on white — the Nous palette",
   colors: {
-    background: "#F8FAFF",
-    foreground: "#17171A",
-    card: "#FFFFFF",
-    cardForeground: "#17171A",
-    muted: nousTint(5),
-    mutedForeground: "#666678",
-    popover: "#FFFFFF",
-    popoverForeground: "#17171A",
-    primary: NOUS_BLUE,
-    primaryForeground: "#FCFCFC",
-    secondary: nousTint(7),
-    secondaryForeground: "#242432",
-    accent: nousTint(10),
-    accentForeground: "#202030",
-    border: nousTintTransparent(22),
-    input: nousTintTransparent(30),
-    ring: NOUS_BLUE,
-    midground: NOUS_BLUE,
+    background: NOUS.white,
+    foreground: NOUS.dark,
+    card: NOUS.white,
+    cardForeground: NOUS.dark,
+    muted: NOUS.light,
+    mutedForeground: NOUS.mid,
+    popover: NOUS.white,
+    popoverForeground: NOUS.dark,
+    primary: NOUS.blue,
+    primaryForeground: NOUS.white,
+    secondary: NOUS.light,
+    secondaryForeground: NOUS.dark,
+    accent: nousSurfaceTint(50),
+    accentForeground: NOUS.dark,
+    border: nousLine(28),
+    input: nousLine(35),
+    ring: NOUS.blue,
+    midground: NOUS.blue,
+    composerRing: NOUS.blue,
     destructive: "#C72E4D",
-    destructiveForeground: "#FFFFFF",
-    sidebarBackground: "#F3F7FF",
-    sidebarBorder: nousTintTransparent(18),
+    destructiveForeground: NOUS.white,
+    sidebarBackground: nousSurfaceTint(35),
+    sidebarBorder: nousLine(28),
+    userBubble: NOUS.dark,
+    userBubbleBorder: nousLine(40),
   },
   darkColors: {
     background: "#0D2F86",
@@ -111,7 +126,7 @@ export const nousSkin: ForgeSkin = {
     border: "#3158AD",
     input: "#0B2566",
     ring: "#FFE6CB",
-    midground: NOUS_BLUE,
+    midground: "#0053FD",
     destructive: "#C0473A",
     destructiveForeground: "#FEF2F2",
     sidebarBackground: "#09286F",

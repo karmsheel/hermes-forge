@@ -5,10 +5,13 @@ import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 export async function backfillBusinessLog(businessId: string): Promise<void> {
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { backfillCompletedAt: true },
+    select: {
+      logInitializedAt: true,
+      _count: { select: { events: true } },
+    },
   });
 
-  if (!business || business.backfillCompletedAt) return;
+  if (!business || business.logInitializedAt || business._count.events > 0) return;
 
   const full = await prisma.business.findUnique({
     where: { id: businessId },
@@ -33,8 +36,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
     entityId: full.id,
     entityName: full.name,
     summary: `Created business "${full.name}"`,
-    source: 'backfill',
-    createdAt: full.createdAt,
+    ingestion: 'backfill',
+    occurredAt: full.createdAt,
+    occurredAtPrecision: 'approximate',
   });
 
   for (const process of full.processes) {
@@ -45,8 +49,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
       entityId: process.id,
       entityName: process.name,
       summary: `Created process "${process.name}"`,
-      source: 'backfill',
-      createdAt: process.createdAt,
+      ingestion: 'backfill',
+      occurredAt: process.createdAt,
+      occurredAtPrecision: 'approximate',
     });
 
     if (process.diagramUpdatedAt && process.diagramMermaid) {
@@ -57,8 +62,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
         entityId: process.id,
         entityName: process.name,
         summary: `Updated diagram for "${process.name}"`,
-        source: 'backfill',
-        createdAt: process.diagramUpdatedAt,
+        ingestion: 'backfill',
+        occurredAt: process.diagramUpdatedAt,
+        occurredAtPrecision: 'approximate',
       });
     }
 
@@ -70,8 +76,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
         entityId: process.id,
         entityName: process.name,
         summary: `Approved process "${process.name}"`,
-        source: 'backfill',
-        createdAt: process.approvedAt,
+        ingestion: 'backfill',
+        occurredAt: process.approvedAt,
+        occurredAtPrecision: 'approximate',
       });
     }
 
@@ -83,8 +90,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
         entityId: process.id,
         entityName: process.name,
         summary: `Confirmed name "${process.name}"`,
-        source: 'backfill',
-        createdAt: process.updatedAt,
+        ingestion: 'backfill',
+        occurredAt: null,
+        occurredAtPrecision: 'unknown',
       });
     }
 
@@ -97,8 +105,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
         entityName: process.name,
         summary: `Message in "${process.name}"`,
         metadata: { preview: truncatePreview(message.content), role: 'user' },
-        source: 'backfill',
-        createdAt: message.createdAt,
+        ingestion: 'backfill',
+        occurredAt: message.createdAt,
+        occurredAtPrecision: 'approximate',
       });
     }
 
@@ -111,8 +120,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
         entityId: process.id,
         entityName: process.name,
         summary: `Opened automation studio for "${process.name}"`,
-        source: 'backfill',
-        createdAt: automation.createdAt,
+        ingestion: 'backfill',
+        occurredAt: automation.createdAt,
+        occurredAtPrecision: 'approximate',
       });
 
       if (automation.deployedAt) {
@@ -124,8 +134,9 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
           entityName: process.name,
           summary: `Deployed automation for "${process.name}"`,
           metadata: { type: automation.type ?? undefined, status: automation.status },
-          source: 'backfill',
-          createdAt: automation.deployedAt,
+          ingestion: 'backfill',
+          occurredAt: automation.deployedAt,
+          occurredAtPrecision: 'approximate',
         });
       }
     }
@@ -153,14 +164,15 @@ export async function backfillBusinessLog(businessId: string): Promise<void> {
           count: memories.length,
           preview: truncatePreview(memories[0].fact),
         },
-        source: 'backfill',
-        createdAt: first.lastUpdated,
+        ingestion: 'backfill',
+        occurredAt: first.lastUpdated,
+        occurredAtPrecision: 'approximate',
       });
     }
   }
 
   await prisma.business.update({
     where: { id: businessId },
-    data: { backfillCompletedAt: new Date() },
+    data: { logInitializedAt: new Date() },
   });
 }

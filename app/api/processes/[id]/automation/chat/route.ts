@@ -14,7 +14,7 @@ import {
   type AutomationWithMessages,
 } from '@/lib/automation-types';
 import { syncProcessCronLink } from '@/lib/automation-sync';
-import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ChatSchema = z.object({
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       entityName: process.name,
       summary: `Automation message in "${process.name}"`,
       metadata: { preview: truncatePreview(body.content), role: 'user' },
+      ...liveOccurredNow(),
     });
 
     const allMessages = [

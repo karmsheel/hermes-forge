@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireProcessAccess } from '@/lib/auth';
 import { executeProcessSplit } from '@/lib/process-split';
 import { prisma } from '@/lib/prisma';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const SplitSchema = z.object({
@@ -49,6 +49,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         parentProcessId: splitResult.parentProcessId,
         childProcessId: splitResult.childProcessId,
       },
+      ...liveOccurredNow(),
     });
     await recordBusinessEvent({
       businessId: result.process.businessId,
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       entityName: splitResult.childName,
       summary: `Created process "${splitResult.childName}" from split`,
       metadata: { parentProcessId: splitResult.parentProcessId },
+      ...liveOccurredNow(),
     });
 
     const updated = await prisma.process.findUnique({

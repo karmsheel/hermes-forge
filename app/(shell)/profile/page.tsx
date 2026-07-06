@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, GitBranch, Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import type { BusinessGitStatus } from "@/lib/business-git";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessSummary, BusinessExportPayload, UserProfile } from "@/lib/types";
 import { buildBusinessExportPayload, createBusinessExportZip, downloadBlob, makeExportFilename } from "@/lib/business-export";
@@ -19,6 +20,8 @@ export default function ProfilePage() {
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [bizLoading, setBizLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [syncingGitId, setSyncingGitId] = useState<string | null>(null);
+  const [gitStatusById, setGitStatusById] = useState<Record<string, BusinessGitStatus>>({});
   const [importing, setImporting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -50,11 +53,53 @@ export default function ProfilePage() {
         return;
       }
       const data = await res.json();
-      setBusinesses(data.businesses || []);
+      const list: BusinessSummary[] = data.businesses || [];
+      setBusinesses(list);
+      void loadGitStatuses(list);
     } catch {
       // non-fatal for list
     } finally {
       setBizLoading(false);
+    }
+  }
+
+  async function loadGitStatuses(list: BusinessSummary[]) {
+    const entries = await Promise.all(
+      list.map(async (b) => {
+        try {
+          const res = await fetch(`/api/businesses/${b.id}/git`);
+          if (!res.ok) return null;
+          const status = (await res.json()) as BusinessGitStatus;
+          return [b.id, status] as const;
+        } catch {
+          return null;
+        }
+      })
+    );
+    const next: Record<string, BusinessGitStatus> = {};
+    for (const entry of entries) {
+      if (entry) next[entry[0]] = entry[1];
+    }
+    setGitStatusById(next);
+  }
+
+  async function handleGitSync(business: BusinessSummary) {
+    setSyncingGitId(business.id);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Git sync failed");
+      toast.success(data.committed ? `Synced to Git (${data.message})` : data.message);
+      const statusRes = await fetch(`/api/businesses/${business.id}/git`);
+      if (statusRes.ok) {
+        const status = (await statusRes.json()) as BusinessGitStatus;
+        setGitStatusById((prev) => ({ ...prev, [business.id]: status }));
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Git sync failed";
+      toast.error(message);
+    } finally {
+      setSyncingGitId(null);
     }
   }
 
@@ -229,8 +274,21 @@ export default function ProfilePage() {
     const { id, name } = deleteConfirm;
     setDeletingId(id);
     try {
+      const exportRes = await fetch(`/api/businesses/${id}/log/export`);
+      if (!exportRes.ok) {
+        const err = await exportRes.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to export business log archive");
+      }
+      const bundle = await exportRes.json();
+      const archiveBlob = new Blob([JSON.stringify(bundle, null, 2)], {
+        type: "application/json",
+      });
+      downloadBlob(archiveBlob, `${name.replace(/[^\w.-]+/g, "_")}-business-log.json`);
+
       const res = await fetch(`/api/businesses/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ exportChecksum: bundle.checksum }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -338,9 +396,36 @@ export default function ProfilePage() {
                   )}
                   <div className="text-xs text-text-soft mt-1">
                     {b._count?.processes ?? 0} workflow{(b._count?.processes ?? 0) !== 1 ? "s" : ""}
+                    {gitStatusById[b.id] && (
+                      <>
+                        {" · "}
+                        {gitStatusById[b.id].gitAvailable
+                          ? gitStatusById[b.id].initialized
+                            ? gitStatusById[b.id].dirty
+                              ? "Git out of date"
+                              : "Git synced"
+                            : "Git not initialized"
+                          : "Git unavailable"}
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => void handleGitSync(b)}
+                    disabled={
+                      syncingGitId === b.id || gitStatusById[b.id]?.gitAvailable === false
+                    }
+                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                    title="Sync business to local Git repo"
+                  >
+                    {syncingGitId === b.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <GitBranch className="w-3.5 h-3.5" />
+                    )}
+                    <span className="hidden sm:inline">Git</span>
+                  </button>
                   <button
                     onClick={() => openEdit(b)}
                     className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
@@ -440,7 +525,7 @@ export default function ProfilePage() {
               <h2 className="text-xl font-semibold tracking-tight">Delete Business?</h2>
               <p className="text-sm text-text-muted mt-2">
                 This will permanently delete <span className="font-medium text-text">"{deleteConfirm.name}"</span> and all its workflows, diagrams, chats, and data.
-                This action cannot be undone.
+                A business log archive will be downloaded first. This action cannot be undone.
               </p>
               <div className="flex justify-end gap-3 mt-6">
                 <button

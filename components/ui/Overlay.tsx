@@ -12,6 +12,7 @@ export function Overlay({
   children,
   size = "md",
   closeDisabled = false,
+  elevated = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -20,6 +21,7 @@ export function Overlay({
   children: ReactNode;
   size?: "sm" | "md" | "lg";
   closeDisabled?: boolean;
+  elevated?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -36,7 +38,9 @@ export function Overlay({
     size === "lg" ? "max-w-2xl" : size === "sm" ? "max-w-md" : "max-w-lg";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div
+      className={`fixed inset-0 flex items-center justify-center p-4${elevated ? " z-[80]" : " z-[60]"}`}
+    >
       <button
         type="button"
         className="absolute inset-0 bg-black/70"

@@ -10,10 +10,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
+  const isGodMode = pathname.startsWith("/god-mode");
   const isHome = pathname === "/home";
   const layoutClass = [
     "app-shell-layout",
-    (isWorkshop || isAutomation) && "app-shell-layout--full",
+    (isWorkshop || isAutomation || isGodMode) && "app-shell-layout--full",
     isHome && "app-shell-layout--home",
   ]
     .filter(Boolean)

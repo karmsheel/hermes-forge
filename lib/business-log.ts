@@ -1,10 +1,12 @@
 import { prisma } from '@/lib/prisma';
+import { backfillBusinessLog } from '@/lib/business-log-backfill';
 import type {
   BusinessEventMetadata,
   BusinessEventRecord,
   BusinessLogFilter,
   RecordBusinessEventInput,
 } from '@/lib/business-log-types';
+import { resolveOccurredAtPrecision } from '@/lib/business-log-types';
 
 const TRACKED_PROCESS_FIELDS = [
   'name',
@@ -16,6 +18,14 @@ const TRACKED_PROCESS_FIELDS = [
   'outputs',
   'manualSteps',
 ] as const;
+
+/** Live event that happened at request time. */
+export function liveOccurredNow() {
+  return {
+    occurredAt: new Date(),
+    occurredAtPrecision: 'exact' as const,
+  };
+}
 
 export function truncatePreview(text: string, max = 120): string {
   const trimmed = text.replace(/\s+/g, ' ').trim();
@@ -58,25 +68,73 @@ export function diffBusinessFields(
 
 export async function recordBusinessEvent(
   input: RecordBusinessEventInput
-): Promise<void> {
+): Promise<{ sequence: number } | null> {
+  const recordedAt = new Date();
+  const occurredAt = input.occurredAt ?? null;
+  const occurredAtPrecision = resolveOccurredAtPrecision(input, occurredAt);
+  const ingestion = input.ingestion ?? 'live';
+
   try {
-    await prisma.businessEvent.create({
-      data: {
-        businessId: input.businessId,
-        userId: input.userId ?? null,
-        type: input.type,
-        entityType: input.entityType ?? null,
-        entityId: input.entityId ?? null,
-        entityName: input.entityName ?? null,
-        summary: input.summary,
-        metadata: input.metadata ? JSON.stringify(input.metadata) : null,
-        source: input.source ?? 'live',
-        createdAt: input.createdAt,
-      },
+    return await prisma.$transaction(async (tx) => {
+      const head = await tx.business.update({
+        where: { id: input.businessId },
+        data: {
+          logHeadSequence: { increment: 1 },
+          gitDirty: true,
+        },
+        select: { logHeadSequence: true },
+      });
+
+      await tx.businessEvent.create({
+        data: {
+          businessId: input.businessId,
+          userId: input.userId ?? null,
+          sequence: head.logHeadSequence,
+          type: input.type,
+          entityType: input.entityType ?? null,
+          entityId: input.entityId ?? null,
+          entityName: input.entityName ?? null,
+          summary: input.summary,
+          metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+          recordedAt,
+          occurredAt,
+          occurredAtPrecision,
+          ingestion,
+        },
+      });
+
+      return { sequence: head.logHeadSequence };
     });
   } catch (error) {
     console.error('Failed to record business event', error);
+    return null;
   }
+}
+
+export async function ensureBusinessLogInitialized(businessId: string): Promise<void> {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { logInitializedAt: true, _count: { select: { events: true } } },
+  });
+
+  if (!business || business.logInitializedAt) return;
+
+  if (business._count.events === 0) {
+    await backfillBusinessLog(businessId);
+    return;
+  }
+
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { logInitializedAt: new Date() },
+  });
+}
+
+export async function markBusinessLogInitialized(businessId: string): Promise<void> {
+  await prisma.business.update({
+    where: { id: businessId },
+    data: { logInitializedAt: new Date() },
+  });
 }
 
 export async function getBusinessEvents(
@@ -88,7 +146,7 @@ export async function getBusinessEvents(
   } = {}
 ): Promise<{ events: BusinessEventRecord[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
-  const cursorDate = options.cursor ? new Date(options.cursor) : null;
+  const cursorSequence = options.cursor ? Number.parseInt(options.cursor, 10) : null;
 
   const typePrefix =
     options.filter && options.filter !== 'all' ? options.filter : null;
@@ -97,16 +155,18 @@ export async function getBusinessEvents(
     where: {
       businessId,
       ...(typePrefix ? { type: { startsWith: `${typePrefix}.` } } : {}),
-      ...(cursorDate ? { createdAt: { lt: cursorDate } } : {}),
+      ...(cursorSequence != null && Number.isFinite(cursorSequence)
+        ? { sequence: { lt: cursorSequence } }
+        : {}),
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ recordedAt: 'desc' }, { sequence: 'desc' }],
     take: limit + 1,
   });
 
   const hasMore = events.length > limit;
   const page = hasMore ? events.slice(0, limit) : events;
   const nextCursor = hasMore
-    ? page[page.length - 1].createdAt.toISOString()
+    ? String(page[page.length - 1].sequence)
     : null;
 
   return {
@@ -114,14 +174,17 @@ export async function getBusinessEvents(
       id: event.id,
       businessId: event.businessId,
       userId: event.userId,
+      sequence: event.sequence,
       type: event.type,
       entityType: event.entityType,
       entityId: event.entityId,
       entityName: event.entityName,
       summary: event.summary,
       metadata: event.metadata,
-      source: event.source,
-      createdAt: event.createdAt.toISOString(),
+      recordedAt: event.recordedAt.toISOString(),
+      occurredAt: event.occurredAt?.toISOString() ?? null,
+      occurredAtPrecision: event.occurredAtPrecision,
+      ingestion: event.ingestion,
     })),
     nextCursor,
   };

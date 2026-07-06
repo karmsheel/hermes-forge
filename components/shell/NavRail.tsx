@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import iconImage from "@/assets/icon.jpg";
+import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { usePathname } from "next/navigation";
 import {
   Clock,
@@ -12,12 +12,16 @@ import {
   LayoutDashboard,
   PlugZap,
   Plus,
+  Scale,
+  ScanEye,
   ScrollText,
   User,
   Users,
   Zap,
 } from "lucide-react";
-import { SettingsMenu } from "@/components/settings/SettingsMenu";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
+import { APP_VERSION } from "@/lib/app-meta";
+import { isForgeDesktop } from "@/lib/forge-desktop";
 import { useShell } from "./ShellContext";
 
 type NavItem = {
@@ -32,6 +36,12 @@ type NavItem = {
 export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
+  const { showCronalyticsPage, showDecisionsPage } = useDeveloperSettings();
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    setIsDesktop(isForgeDesktop());
+  }, []);
 
   const mainItems: NavItem[] = [
     {
@@ -63,6 +73,13 @@ export function NavRail() {
       match: (path) => path.startsWith("/workshop"),
     },
     {
+      id: "god-mode",
+      href: "/god-mode",
+      label: "God Mode",
+      icon: ScanEye,
+      match: (path) => path.startsWith("/god-mode"),
+    },
+    {
       id: "automations",
       href: "/automations",
       label: "Automations",
@@ -84,6 +101,13 @@ export function NavRail() {
       match: (path) => path.startsWith("/log"),
     },
     {
+      id: "decisions",
+      href: "/decisions",
+      label: "Decisions",
+      icon: Scale,
+      match: (path) => path.startsWith("/decisions"),
+    },
+    {
       id: "cronalytics",
       href: "/cronalytics",
       label: "Cronalytics",
@@ -100,15 +124,13 @@ export function NavRail() {
   return (
     <nav className="nav-rail" aria-label="Main navigation">
       <div className="nav-rail__section">
-        <Link href="/home" className="nav-rail__logo" title="Hermes Forge">
-          <Image
-            src={iconImage}
-            alt="Hermes Forge"
-            className="nav-rail__logo-mark"
-            width={36}
-            height={36}
-            priority
-          />
+        <Link
+          href="/business-manager"
+          className={`nav-rail__logo${pathname.startsWith("/business-manager") ? " is-active" : ""}`}
+          title="Business Manager"
+          aria-label="Business Manager"
+        >
+          <HermesForgeMark className="hermes-forge-mark nav-rail__logo-art" />
         </Link>
 
         <button
@@ -123,7 +145,10 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--grow">
-        {mainItems.map((item) => {
+        {mainItems
+          .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
+          .filter((item) => item.id !== "decisions" || showDecisionsPage)
+          .map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
 
@@ -159,9 +184,6 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--footer">
-        <div className="nav-rail__settings-wrap">
-          <SettingsMenu className="nav-rail__settings" />
-        </div>
         <button
           type="button"
           className="nav-rail__item"
@@ -180,6 +202,11 @@ export function NavRail() {
         >
           <User className="w-5 h-5" />
         </Link>
+        {isDesktop ? (
+          <span className="nav-rail__version" title={`Version ${APP_VERSION}`}>
+            v{APP_VERSION}
+          </span>
+        ) : null}
       </div>
     </nav>
   );

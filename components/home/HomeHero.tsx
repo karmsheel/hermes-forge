@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useShell } from "@/components/shell/ShellContext";
 import { getStoredProcessStandard, type ProcessStandardId } from "@/lib/process-standards";
 import { startFromBrief } from "@/lib/start-from-brief";
 import type { WorkflowTemplate, WorkflowTemplateId } from "@/lib/workflow-templates";
+import steampunkGirl from "@/assets/girl_steampunk.svg";
 import { ProcessStandardPicker } from "./ProcessStandardPicker";
 import { PromptComposer } from "./PromptComposer";
 import { TemplateCards } from "./TemplateCards";
+
+const heroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
 export function HomeHero() {
   const router = useRouter();
@@ -74,7 +77,16 @@ export function HomeHero() {
   return (
     <section className="home-hero">
       <div className="home-hero__intro">
-        <h1 className="home-hero__title">What process will you FORGE today?</h1>
+        <div
+          className="home-hero__art"
+          aria-hidden="true"
+          style={
+            {
+              "--home-hero-art-url": `url(${heroArtUrl})`,
+            } as CSSProperties
+          }
+        />
+        <h1 className="home-hero__title">What will you FORGE today?</h1>
         <p className="home-hero__subtitle">Map, monitor and automate your business with Hermes Agent</p>
       </div>
 

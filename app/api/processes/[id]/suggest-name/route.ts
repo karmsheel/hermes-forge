@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { isUntitledProcessName, suggestProcessName } from '@/lib/naming';
 import { requireProcessAccess } from '@/lib/auth';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       metadata: {
         changes: [{ field: 'name', before: process.name, after: suggestedName }],
       },
+      ...liveOccurredNow(),
     });
 
     const confirmationMessage = `I've named this workflow **${suggestedName}** based on what you've shared — does that work, or would you like to call it something else?`;

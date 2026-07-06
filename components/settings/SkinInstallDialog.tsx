@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { FolderOpen, Loader2, Upload } from "lucide-react";
 import { Button, Overlay, SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -32,9 +32,21 @@ const VSCODE_HINT = `// Paste a VS Code *-color-theme.json file
 interface SkinInstallDialogProps {
   open: boolean;
   onClose: () => void;
+  elevated?: boolean;
 }
 
-export function SkinInstallDialog({ open, onClose }: SkinInstallDialogProps) {
+export function SkinInstallDialog({ open, onClose, elevated = false }: SkinInstallDialogProps) {
+  if (!open) return null;
+  return <SkinInstallDialogBody onClose={onClose} elevated={elevated} />;
+}
+
+function SkinInstallDialogBody({
+  onClose,
+  elevated,
+}: {
+  onClose: () => void;
+  elevated: boolean;
+}) {
   const { resolved, installSkin } = useTheme();
   const [mode, setMode] = useState<InstallMode>("forge");
   const [json, setJson] = useState("");
@@ -43,14 +55,6 @@ export function SkinInstallDialog({ open, onClose }: SkinInstallDialogProps) {
   const fileInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const desktop = isForgeDesktop();
-
-  useEffect(() => {
-    if (!open) return;
-    setMode("forge");
-    setJson("");
-    setError(null);
-    setInstalling(false);
-  }, [open]);
 
   const preview = useMemo(() => previewThemeFromText(json), [json]);
 
@@ -103,8 +107,9 @@ export function SkinInstallDialog({ open, onClose }: SkinInstallDialogProps) {
 
   return (
     <Overlay
-      open={open}
+      open
       onClose={onClose}
+      elevated={elevated}
       title="Install custom theme"
       description={
         mode === "vscode"

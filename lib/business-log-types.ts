@@ -23,6 +23,13 @@ export const BUSINESS_EVENT_TYPES = {
   AUTOMATION_STATUS_CHANGED: 'automation.status_changed',
 
   MEMORY_FACT_ADDED: 'memory.fact_added',
+
+  PERSONNEL_ADDED: 'personnel.added',
+  PERSONNEL_REMOVED: 'personnel.removed',
+
+  DECISION_RECORDED: 'decision.recorded',
+  DECISION_SUPERSEDED: 'decision.superseded',
+  DECISION_REVOKED: 'decision.revoked',
 } as const;
 
 export type BusinessEventType =
@@ -33,7 +40,13 @@ export type BusinessEntityType =
   | 'process'
   | 'automation'
   | 'memory'
-  | 'chat';
+  | 'chat'
+  | 'personnel'
+  | 'decision';
+
+export type OccurredAtPrecision = 'exact' | 'approximate' | 'unknown';
+
+export type BusinessEventIngestion = 'live' | 'backfill' | 'import';
 
 export interface FieldChange {
   field: string;
@@ -51,6 +64,16 @@ export interface BusinessEventMetadata {
   planReady?: boolean;
   parentProcessId?: string;
   childProcessId?: string;
+  decisionId?: string;
+  title?: string;
+  statement?: string;
+  rationale?: string | null;
+  context?: string | null;
+  decidedAt?: string | null;
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+  supersededByDecisionId?: string | null;
+  supersededDecisionId?: string;
 }
 
 export interface RecordBusinessEventInput {
@@ -62,22 +85,26 @@ export interface RecordBusinessEventInput {
   entityName?: string | null;
   summary: string;
   metadata?: BusinessEventMetadata | null;
-  source?: 'live' | 'backfill';
-  createdAt?: Date;
+  occurredAt?: Date | null;
+  occurredAtPrecision?: OccurredAtPrecision;
+  ingestion?: BusinessEventIngestion;
 }
 
 export interface BusinessEventRecord {
   id: string;
   businessId: string;
   userId: string | null;
+  sequence: number;
   type: string;
   entityType: string | null;
   entityId: string | null;
   entityName: string | null;
   summary: string;
   metadata: string | null;
-  source: string;
-  createdAt: string;
+  recordedAt: string;
+  occurredAt: string | null;
+  occurredAtPrecision: string;
+  ingestion: string;
 }
 
 export type BusinessLogFilter =
@@ -86,7 +113,9 @@ export type BusinessLogFilter =
   | 'process'
   | 'automation'
   | 'chat'
-  | 'memory';
+  | 'memory'
+  | 'personnel'
+  | 'decision';
 
 export function eventCategory(type: string): BusinessLogFilter {
   const prefix = type.split('.')[0];
@@ -95,9 +124,23 @@ export function eventCategory(type: string): BusinessLogFilter {
     prefix === 'process' ||
     prefix === 'automation' ||
     prefix === 'chat' ||
-    prefix === 'memory'
+    prefix === 'memory' ||
+    prefix === 'personnel' ||
+    prefix === 'decision'
   ) {
     return prefix;
   }
   return 'all';
+}
+
+export function resolveOccurredAtPrecision(
+  input: RecordBusinessEventInput,
+  occurredAt: Date | null
+): OccurredAtPrecision {
+  if (input.occurredAtPrecision) return input.occurredAtPrecision;
+  if (!occurredAt) return 'unknown';
+  const ingestion = input.ingestion ?? 'live';
+  if (ingestion === 'live') return 'exact';
+  if (ingestion === 'import') return 'approximate';
+  return 'approximate';
 }

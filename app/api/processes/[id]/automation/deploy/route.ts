@@ -21,7 +21,7 @@ import { createHermesJob } from '@/lib/hermes-jobs';
 import { createN8nWorkflow } from '@/lib/n8n-client';
 import { generateN8nWorkflow } from '@/lib/n8n-workflow-gen';
 import { parseAutomationPlan, parseCredentialMap, parseIntegrations } from '@/lib/automation-types';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const DeploySchema = z.object({
@@ -123,6 +123,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityName: process.name,
         summary: `Deployed n8n automation for "${process.name}"`,
         metadata: { type: 'n8n_workflow', status: 'needs_credentials' },
+        ...liveOccurredNow(),
       });
 
       return NextResponse.json({
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       entityName: process.name,
       summary: `Deployed Hermes cron for "${process.name}"`,
       metadata: { type: 'hermes_cron', status: 'active' },
+      ...liveOccurredNow(),
     });
 
     return NextResponse.json({

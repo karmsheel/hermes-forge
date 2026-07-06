@@ -9,7 +9,7 @@ import {
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
 import { syncProcessCronLink } from '@/lib/automation-sync';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const AgentSchema = z.object({
@@ -89,6 +89,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         status: updatedAutomation.status,
         planReady: extraction.planReady,
       },
+      ...liveOccurredNow(),
     });
 
     if (syncResult.linked) {
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Synced Hermes cron for "${process.name}"`,
+        ...liveOccurredNow(),
       });
     }
 

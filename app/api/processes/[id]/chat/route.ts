@@ -12,7 +12,7 @@ import {
   userConfirmsAccuracy,
 } from '@/lib/process-approval';
 import { executeProcessSplit, shouldExecuteSplit } from '@/lib/process-split';
-import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { buildNodeCommentPrefix } from '@/lib/node-comment';
 
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Approved process "${process.name}"`,
+        ...liveOccurredNow(),
       });
     }
 
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityName: process.name,
         summary: `Message in "${process.name}"`,
         metadata: { preview: truncatePreview(content), role: 'user' },
+        ...liveOccurredNow(),
       });
       allMessages = [...allMessages, { role: 'user', content }];
     }
@@ -148,6 +150,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           parentProcessId: splitResult.parentProcessId,
           childProcessId: splitResult.childProcessId,
         },
+        ...liveOccurredNow(),
       });
       await recordBusinessEvent({
         businessId: process.businessId,
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityName: splitResult.childName,
         summary: `Created process "${splitResult.childName}" from split`,
         metadata: { parentProcessId: splitResult.parentProcessId },
+        ...liveOccurredNow(),
       });
 
       const updated = await prisma.process.findUnique({

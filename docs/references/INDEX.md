@@ -34,6 +34,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `INDEX.md` (this file)     | Manifest of all references                   | High     | At the start of any agent session |
 | `hermes-desktop-design-system.md` | Hermes Desktop tokens, primitives, theme engine reference | Medium | When working on skins, themes, or UI convergence (4.6+) |
 | `THEME_SCHEMA.md` | JSON schema for user-installable Forge themes | Medium | When building or documenting custom theme install (4.7) |
+| `BUSINESS_LOG_AND_GIT.md` | Immutable business log + per-business Git versioning architecture | High | When implementing business log, export, sync, or GitHub integration |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
 | *(Future)* `PROCESS.md`    | Process notation standards & contracts      | Medium   | When building diagram/workflow features |
 | *(Future)* `DESIGN.md`     | Visual & interaction guidelines             | Low      | When working on UI components |

@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from "electron";
+import { scheduleUpdateCheck, setupAutoUpdate } from "./auto-update.mjs";
 import { execFile, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -38,8 +39,13 @@ function standaloneDir() {
 }
 
 function prismaCliPath() {
-  if (isDev) return null; // use npx in dev
-  return path.join(standaloneDir(), "node_modules", "prisma", "build", "index.js");
+  const root = isDev ? path.join(__dirname, "..") : standaloneDir();
+  return path.join(root, "node_modules", "prisma", "build", "index.js");
+}
+
+function prismaSchemaPath() {
+  const root = isDev ? path.join(__dirname, "..") : standaloneDir();
+  return path.join(root, "prisma", "schema.prisma");
 }
 
 let serverProcess = null;
@@ -49,8 +55,14 @@ function npmCommand() {
   return process.platform === "win32" ? "npm.cmd" : "npm";
 }
 
-function npxCommand() {
-  return process.platform === "win32" ? "npx.cmd" : "npx";
+function spawnCommand(command, args, options = {}) {
+  const useShell =
+    process.platform === "win32" && /\.(cmd|bat)$/i.test(command);
+  return spawn(command, args, {
+    windowsHide: true,
+    shell: useShell,
+    ...options,
+  });
 }
 
 function getUserDataEnv() {
@@ -82,6 +94,7 @@ function getUserDataEnv() {
     PORT: SERVER_PORT,
     HOSTNAME: "127.0.0.1",
     FORGE_DESKTOP: "1",
+    HERMES_FORGE_DATA_DIR: path.join(userData, "businesses"),
   };
 }
 
@@ -129,21 +142,17 @@ async function waitForServer(url, timeoutMs = 90000) {
 }
 
 async function migrateDatabase(env) {
-  if (isDev) {
-    await runProcess(npxCommand(), ["prisma", "migrate", "deploy"], {
-      cwd: path.join(__dirname, ".."),
-      env,
-    });
-    return;
-  }
-  // In packaged mode, run prisma CLI directly with Electron's bundled Node.
-  // ELECTRON_RUN_AS_NODE makes the Electron exe behave as plain Node.js.
-  const cli = prismaCliPath();
-  const schemaPath = path.join(standaloneDir(), "prisma", "schema.prisma");
-  await runProcess(process.execPath, [cli, "migrate", "deploy", "--schema", schemaPath], {
-    cwd: standaloneDir(),
-    env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-  });
+  // Run prisma CLI directly with Electron's bundled Node — avoids Windows
+  // EINVAL when spawning npx.cmd via execFile.
+  const root = isDev ? path.join(__dirname, "..") : standaloneDir();
+  await runProcess(
+    process.execPath,
+    [prismaCliPath(), "migrate", "deploy", "--schema", prismaSchemaPath()],
+    {
+      cwd: root,
+      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+    }
+  );
 }
 
 function attachServerLogs(child, label = "server") {
@@ -154,7 +163,7 @@ function attachServerLogs(child, label = "server") {
 
 function startServer(env) {
   if (isDev) {
-    serverProcess = spawn(
+    serverProcess = spawnCommand(
       npmCommand(),
       ["run", "dev", "--", "-p", SERVER_PORT, "-H", "127.0.0.1"],
       { cwd: path.join(__dirname, ".."), env }
@@ -204,6 +213,8 @@ if (process.platform === "win32") {
   app.setAppUserModelId("com.hermesforge.desktop");
 }
 
+setupAutoUpdate(app, () => mainWindow);
+
 app.whenReady().then(async () => {
   const env = getUserDataEnv();
 
@@ -212,6 +223,7 @@ app.whenReady().then(async () => {
     startServer(env);
     await waitForServer(`http://127.0.0.1:${SERVER_PORT}`);
     createWindow();
+    scheduleUpdateCheck();
   } catch (error) {
     console.error("Desktop startup failed", error);
     dialog.showErrorBox(

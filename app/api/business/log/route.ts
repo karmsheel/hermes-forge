@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
-import { backfillBusinessLog } from '@/lib/business-log-backfill';
-import { getBusinessEvents } from '@/lib/business-log';
+import { ensureBusinessLogInitialized, getBusinessEvents } from '@/lib/business-log';
 import type { BusinessLogFilter } from '@/lib/business-log-types';
 
 const VALID_FILTERS = new Set<BusinessLogFilter>([
@@ -11,6 +10,8 @@ const VALID_FILTERS = new Set<BusinessLogFilter>([
   'automation',
   'chat',
   'memory',
+  'personnel',
+  'decision',
 ]);
 
 export async function GET(request: NextRequest) {
@@ -23,9 +24,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ events: [], nextCursor: null, business: null });
     }
 
-    if (!business.backfillCompletedAt) {
-      await backfillBusinessLog(business.id);
-    }
+    await ensureBusinessLogInitialized(business.id);
 
     const { searchParams } = request.nextUrl;
     const cursor = searchParams.get('cursor');

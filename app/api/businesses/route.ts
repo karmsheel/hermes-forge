@@ -6,7 +6,7 @@ import {
   requireSession,
   setActiveBusinessCookie,
 } from '@/lib/auth';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { markBusinessLogInitialized, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       return created;
     });
 
+    const now = new Date();
     await recordBusinessEvent({
       businessId: business.id,
       userId: session.userId,
@@ -81,7 +82,10 @@ export async function POST(request: NextRequest) {
       entityId: business.id,
       entityName: business.name,
       summary: `Created business "${business.name}"`,
+      occurredAt: now,
+      occurredAtPrecision: 'exact',
     });
+    await markBusinessLogInitialized(business.id);
 
     const response = NextResponse.json(business);
     setActiveBusinessCookie(response, business.id);

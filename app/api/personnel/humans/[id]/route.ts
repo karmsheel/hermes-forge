@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
+import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 export async function DELETE(
   request: NextRequest,
@@ -33,6 +35,18 @@ export async function DELETE(
     }
 
     await prisma.humanPersonnel.delete({ where: { id: human.id } });
+
+    await recordBusinessEvent({
+      businessId: business.id,
+      userId: session.userId,
+      type: BUSINESS_EVENT_TYPES.PERSONNEL_REMOVED,
+      entityType: 'personnel',
+      entityId: human.id,
+      entityName: human.name,
+      summary: `Removed "${human.name}" from the organization [FIRE]`,
+      metadata: { role: human.role },
+      ...liveOccurredNow(),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

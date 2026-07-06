@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { AUTOMATION_WELCOME_MESSAGE } from '@/lib/automation-chat';
 import {
@@ -65,6 +65,7 @@ export async function getOrCreateAutomation(
       entityId: processId,
       entityName: process.name,
       summary: `Opened automation studio for "${process.name}"`,
+      ...liveOccurredNow(),
     });
   }
 

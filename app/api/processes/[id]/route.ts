@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
 import { buildApprovalUpdate } from '@/lib/process-approve';
 import { canApproveForAutomation, isProcessStatus } from '@/lib/process-status';
-import { diffProcessFields, recordBusinessEvent } from '@/lib/business-log';
+import { diffProcessFields, liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -76,6 +76,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         entityName: process.name,
         summary: `Updated process "${process.name}"`,
         metadata: { changes },
+        ...liveOccurredNow(),
       });
     }
 
@@ -88,6 +89,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Approved process "${process.name}"`,
+        occurredAt: process.approvedAt ?? new Date(),
+        occurredAtPrecision: 'exact',
       });
     }
 
@@ -100,6 +103,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Updated diagram for "${process.name}"`,
+        occurredAt: process.diagramUpdatedAt ?? new Date(),
+        occurredAtPrecision: 'exact',
       });
     }
 
@@ -112,6 +117,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Confirmed name "${process.name}"`,
+        ...liveOccurredNow(),
       });
     }
 
@@ -136,6 +142,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       entityId: id,
       entityName: result.process.name,
       summary: `Deleted process "${result.process.name}"`,
+      ...liveOccurredNow(),
     });
 
     await prisma.process.delete({ where: { id } });

@@ -76,7 +76,7 @@ export function PromptComposer({
         />
         <div className="home-composer__footer">
           <div className="home-composer__footer-meta">
-            <p className="home-composer__hint text-text-soft">
+            <p className="home-composer__hint">
               {!isConnected ? (
                 <>
                   <button type="button" onClick={onOpenConnection} className="text-accent hover:underline">

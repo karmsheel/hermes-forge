@@ -3,9 +3,14 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireBusinessAccess } from '@/lib/auth';
 import { diffBusinessFields, recordBusinessEvent } from '@/lib/business-log';
+import { consumeExportAck } from '@/lib/business-log-export-cache';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+const DeleteBusinessSchema = z.object({
+  exportChecksum: z.string().length(64),
+});
 
 const UpdateBusinessSchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -65,6 +70,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           entityName: business.name,
           summary: `Updated business "${business.name}"`,
           metadata: { changes },
+          occurredAt: new Date(),
+          occurredAtPrecision: 'exact',
         });
       }
     }
@@ -85,6 +92,34 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const session = await requireBusinessAccess(request, id);
     if (session instanceof NextResponse) return session;
 
+    let body: unknown = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+
+    const parsed = DeleteBusinessSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error:
+            'Export the business log and confirm archive before deleting. Call GET /api/businesses/[id]/log/export first.',
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!consumeExportAck(id, session.userId, parsed.data.exportChecksum)) {
+      return NextResponse.json(
+        {
+          error:
+            'Invalid or expired export checksum. Export the business log again before deleting.',
+        },
+        { status: 400 }
+      );
+    }
+
     const business = await prisma.business.findUnique({
       where: { id },
       select: { name: true },
@@ -98,6 +133,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       entityId: id,
       entityName: business?.name ?? 'Business',
       summary: `Deleted business "${business?.name ?? 'Business'}"`,
+      occurredAt: new Date(),
+      occurredAtPrecision: 'exact',
     });
 
     await prisma.business.delete({ where: { id } });

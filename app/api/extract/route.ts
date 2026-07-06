@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { requireBusinessAccess } from '@/lib/auth';
 import { resolveHermesModel } from '@/lib/hermes-models';
-import { diffBusinessFields, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import { diffBusinessFields, liveOccurredNow, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const ExtractSchema = z.object({
@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
             entityName: business.name,
             summary: `Updated business "${business.name}" from interview`,
             metadata: { changes },
+            ...liveOccurredNow(),
           });
         }
       }
@@ -176,6 +177,8 @@ export async function POST(request: NextRequest) {
           entityId: created.id,
           entityName: created.name,
           summary: `Discovered process "${created.name}" from interview`,
+          occurredAt: created.createdAt,
+          occurredAtPrecision: 'exact',
         });
         processesCreated++;
       }
@@ -206,6 +209,7 @@ export async function POST(request: NextRequest) {
             count: facts.length,
             preview: truncatePreview(facts[0]),
           },
+          ...liveOccurredNow(),
         });
       }
     }

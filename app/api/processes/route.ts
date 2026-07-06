@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession } from '@/lib/auth';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 export async function GET(request: NextRequest) {
@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
       entityId: process.id,
       entityName: process.name,
       summary: `Created process "${process.name}"`,
+      ...liveOccurredNow(),
     });
 
     const full = await prisma.process.findUnique({

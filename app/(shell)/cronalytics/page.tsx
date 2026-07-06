@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { DaySelector } from "@/components/cronalytics/DaySelector";
 import { OutcomeToggle } from "@/components/cronalytics/OutcomeToggle";
 import { ModeToggle } from "@/components/cronalytics/ModeToggle";
@@ -23,6 +25,8 @@ import type {
 type JobsResponse = { jobs: JobAggregate[] };
 
 export default function CronalyticsPage() {
+  const router = useRouter();
+  const { hydrated, showCronalyticsPage } = useDeveloperSettings();
   const [filters, setFilters] = useState<CommonFilters>({ days: 30, outcome: "all", mode: "all" });
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [jobs, setJobs] = useState<JobAggregate[]>([]);
@@ -57,8 +61,15 @@ export default function CronalyticsPage() {
   );
 
   useEffect(() => {
+    if (hydrated && !showCronalyticsPage) {
+      router.replace("/home");
+    }
+  }, [hydrated, showCronalyticsPage, router]);
+
+  useEffect(() => {
+    if (!hydrated || !showCronalyticsPage) return;
     load(true);
-  }, [load]);
+  }, [hydrated, showCronalyticsPage, load]);
 
   const onSync = useCallback(async () => {
     if (syncing) return;
@@ -89,6 +100,10 @@ export default function CronalyticsPage() {
   const handleDaysChange = (days: number) => setFilters((f) => ({ ...f, days }));
   const handleOutcomeChange = (outcome: OutcomeFilter) => setFilters((f) => ({ ...f, outcome }));
   const handleModeChange = (mode: ModeFilter) => setFilters((f) => ({ ...f, mode }));
+
+  if (!hydrated || !showCronalyticsPage) {
+    return null;
+  }
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 w-full">

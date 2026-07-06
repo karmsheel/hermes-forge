@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { Monitor, Moon, Palette, Plus, Settings, Sun, Trash2 } from "lucide-react";
+import { ChevronRight, Monitor, Moon, Palette, Settings, Sun, Trash2 } from "lucide-react";
+import { useShell } from "@/components/shell/ShellContext";
 import { SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { resolveSkinPalette } from "@/lib/themes/presets";
 import type { ThemePreference } from "@/lib/theme";
-import { SkinInstallDialog } from "./SkinInstallDialog";
 
 const THEME_OPTIONS = [
   { value: "system" as ThemePreference, label: "System", icon: <Monitor className="w-3.5 h-3.5 shrink-0" /> },
@@ -19,6 +19,7 @@ interface SettingsMenuProps {
 }
 
 export function SettingsMenu({ className }: SettingsMenuProps) {
+  const { openSettings } = useShell();
   const {
     preference,
     setPreference,
@@ -30,7 +31,6 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
     removeSkin,
   } = useTheme();
   const [open, setOpen] = useState(false);
-  const [installOpen, setInstallOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -108,8 +108,7 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
   }
 
   return (
-    <>
-      <div className={`settings-menu ${className ?? ""}`} ref={wrapRef}>
+    <div className={`settings-menu ${className ?? ""}`} ref={wrapRef}>
         <button
           ref={triggerRef}
           type="button"
@@ -134,10 +133,7 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
               value={preference}
               options={THEME_OPTIONS}
               ariaLabel="Color mode"
-              onChange={(value) => {
-                setPreference(value);
-                setOpen(false);
-              }}
+              onChange={setPreference}
             />
             </section>
 
@@ -163,24 +159,23 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
                   </div>
                 </>
               )}
+            </section>
 
+            <footer className="settings-menu__footer">
               <button
                 type="button"
-                className="settings-menu__install-skin"
+                className="settings-menu__all-settings"
                 onClick={() => {
-                  setInstallOpen(true);
+                  openSettings("appearance");
                   setOpen(false);
                 }}
               >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>Install custom theme…</span>
+                <span>All settings</span>
+                <ChevronRight className="w-3.5 h-3.5 shrink-0" aria-hidden />
               </button>
-            </section>
+            </footer>
           </div>
         )}
-      </div>
-
-      <SkinInstallDialog open={installOpen} onClose={() => setInstallOpen(false)} />
-    </>
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   getOrCreateAutomation,
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
-import { recordBusinessEvent } from '@/lib/business-log';
+import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 
 const SaveSchema = z.object({
@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       entityName: result.process.name,
       summary: `Mapped credentials for "${result.process.name}"`,
       metadata: { count: Object.keys(body.credentialMap).length },
+      ...liveOccurredNow(),
     });
 
     return NextResponse.json(buildAutomationStudioData(result.process, updated));

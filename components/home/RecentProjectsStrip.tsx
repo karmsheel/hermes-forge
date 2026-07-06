@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { getProjectCardThumbStyle } from "@/lib/home/project-card-thumb";
 import { setActiveProcessId } from "@/lib/workshop-storage";
 import type { ProcessSummary } from "@/lib/types";
 
@@ -17,24 +19,9 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
-function hashToHue(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = str.charCodeAt(i) + ((h << 5) - h);
-  }
-  return Math.abs(h % 360);
-}
-
-function getThumbStyle(name: string): React.CSSProperties {
-  const hue = hashToHue(name);
-  const hue2 = (hue + 42) % 360;
-  return {
-    background: `linear-gradient(135deg, hsl(${hue}, 42%, 40%), hsl(${hue2}, 38%, 32%))`,
-  };
-}
-
 export function RecentProcessesStrip() {
   const router = useRouter();
+  const { skin, resolved } = useTheme();
   const { currentBusiness } = useShell();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [business, setBusiness] = useState<{ id: string; name: string } | null>(null);
@@ -96,7 +83,10 @@ export function RecentProcessesStrip() {
             className="project-card"
             aria-label={`Open ${proc.name}`}
           >
-            <div className="project-card__thumb" style={getThumbStyle(proc.name)}>
+            <div
+              className="project-card__thumb"
+              style={getProjectCardThumbStyle(proc.name, skin, resolved)}
+            >
               <span className="project-card__initial">{proc.name[0]?.toUpperCase() || "P"}</span>
             </div>
             <div className="project-card__body">

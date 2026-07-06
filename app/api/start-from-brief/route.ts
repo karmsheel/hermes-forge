@@ -6,7 +6,12 @@ import { deriveProjectName } from '@/lib/home-prompt';
 import { formatStandardTag } from '@/lib/process-standards';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
-import { recordBusinessEvent, truncatePreview } from '@/lib/business-log';
+import {
+  liveOccurredNow,
+  markBusinessLogInitialized,
+  recordBusinessEvent,
+  truncatePreview,
+} from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
@@ -115,7 +120,9 @@ export async function POST(request: NextRequest) {
         entityId: business.id,
         entityName: business.name,
         summary: `Created business "${business.name}"`,
+        ...liveOccurredNow(),
       });
+      await markBusinessLogInitialized(business.id);
     }
 
     await recordBusinessEvent({
@@ -126,6 +133,7 @@ export async function POST(request: NextRequest) {
       entityId: process.id,
       entityName: process.name,
       summary: `Created process "${process.name}"`,
+      ...liveOccurredNow(),
     });
 
     await recordBusinessEvent({
@@ -137,6 +145,7 @@ export async function POST(request: NextRequest) {
       entityName: process.name,
       summary: `Message in "${process.name}"`,
       metadata: { preview: truncatePreview(trimmed), role: 'user' },
+      ...liveOccurredNow(),
     });
 
     const response = NextResponse.json({
