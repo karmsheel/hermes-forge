@@ -218,7 +218,7 @@ function createWindow() {
     backgroundColor: "#09090b",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
