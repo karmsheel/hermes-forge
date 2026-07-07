@@ -150,11 +150,37 @@ export function setupAutoUpdate(app, getWindow) {
   });
 }
 
+const SKIP_RECHECK_PHASES = new Set(["checking", "available", "downloading", "downloaded"]);
+
+/** @type {ReturnType<typeof setInterval> | null} */
+let periodicTimer = null;
+
+async function runUpdateCheck() {
+  if (!appRef?.isPackaged) return;
+  if (SKIP_RECHECK_PHASES.has(currentStatus.phase)) return;
+  try {
+    await autoUpdater.checkForUpdates();
+  } catch (error) {
+    console.error("[auto-update] check failed", error);
+    setStatus({
+      phase: "error",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 export function scheduleUpdateCheck(delayMs = 8000) {
   if (!appRef?.isPackaged) return;
-  setTimeout(() => {
-    void autoUpdater.checkForUpdates().catch((error) => {
-      console.error("[auto-update] startup check failed", error);
-    });
-  }, delayMs);
+  setTimeout(() => void runUpdateCheck(), delayMs);
+}
+
+/** Re-poll GitHub so users see updates after a draft release is published. */
+export function schedulePeriodicUpdateChecks(intervalMs = 30 * 60 * 1000) {
+  if (!appRef?.isPackaged) return;
+  if (periodicTimer) clearInterval(periodicTimer);
+  periodicTimer = setInterval(() => void runUpdateCheck(), intervalMs);
+}
+
+export function checkForUpdatesOnFocus() {
+  void runUpdateCheck();
 }

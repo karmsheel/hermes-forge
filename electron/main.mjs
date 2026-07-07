@@ -1,5 +1,10 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell } from "electron";
-import { scheduleUpdateCheck, setupAutoUpdate } from "./auto-update.mjs";
+import {
+  checkForUpdatesOnFocus,
+  schedulePeriodicUpdateChecks,
+  scheduleUpdateCheck,
+  setupAutoUpdate,
+} from "./auto-update.mjs";
 import { execFile, spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -225,6 +230,10 @@ function createWindow() {
     shell.openExternal(url);
     return { action: "deny" };
   });
+
+  mainWindow.on("focus", () => {
+    checkForUpdatesOnFocus();
+  });
 }
 
 if (process.platform === "win32") {
@@ -242,6 +251,7 @@ app.whenReady().then(async () => {
     await waitForServer(serverUrl());
     createWindow();
     scheduleUpdateCheck();
+    schedulePeriodicUpdateChecks();
   } catch (error) {
     console.error("Desktop startup failed", error);
     dialog.showErrorBox(
