@@ -110,7 +110,127 @@ When working in a worktree:
 
 ---
 
-## 6. Adding or Updating Reference Material
+## 6. Desktop Release Workflow (Manual)
+
+Desktop builds and GitHub Releases are **not automated**. There is no CI workflow and `desktop:build` does **not** publish. Agents asked to cut a desktop release must follow this checklist end-to-end — do not hand steps back to the user unless blocked (e.g. missing GitHub credentials).
+
+### When this applies
+
+- User asks to package, release, or ship a new desktop version.
+- Bumping `package.json` version for a desktop build.
+
+### Version sources (keep in sync)
+
+Update all three before building:
+
+| File | Field |
+|------|-------|
+| `package.json` | `"version"` |
+| `package-lock.json` | root `"version"` and `packages[""].version` |
+| `lib/app-meta.ts` | `APP_VERSION` |
+
+Tag format: `v{version}` (e.g. `v0.2.1`). Electron and the in-app About screen read from these.
+
+### Pre-flight
+
+1. Work from `main` (or merge feature work first).
+2. Stop running dev/desktop instances — or run prebuild cleanup:
+   ```powershell
+   npm run desktop:prebuild
+   ```
+   This kills stale Hermes Forge / Next dev processes and deletes `dist/desktop/`.
+
+3. **Lint caveat:** ESLint does not ignore `dist/`. Always run `desktop:prebuild` (or delete `dist/desktop/`) before `npm run lint`, or eslint will scan packaged artifacts and report thousands of false positives. Lint has pre-existing source warnings/errors; **production build + desktop smoke tests are the release gate**, not a clean lint run.
+
+### Build and verify
+
+```powershell
+npm run build                              # TypeScript + Next.js — must pass
+npm run desktop:build                      # prebuild → build → prepare → electron-builder
+npm run desktop:test                       # launches win-unpacked, expects /login on port 3857
+powershell -File scripts/test-standalone-prisma.ps1
+powershell -File scripts/test-packaged-prisma.ps1
+```
+
+All of the above must pass before publishing.
+
+### Build outputs (`dist/desktop/`)
+
+| Artifact | Purpose |
+|----------|---------|
+| `Hermes Forge Setup {version}.exe` | NSIS installer (local filename has spaces) |
+| `Hermes Forge Setup {version}.exe.blockmap` | Delta-update block map |
+| `latest.yml` | Auto-updater manifest (`electron-updater`) |
+| `win-unpacked/` | Unpacked app (used by `desktop:test`) |
+
+`package.json` → `build.publish` points at `karmsheel/hermes-forge`, but publishing only happens if you explicitly run `electron-builder --publish` with `GH_TOKEN` — **not** part of the current workflow.
+
+### Git: commit and tag
+
+```powershell
+git add package.json package-lock.json lib/app-meta.ts
+git commit -m "chore: bump version to {version} for desktop release"
+git tag -a v{version} -m "Hermes Forge {version}"
+git push origin main
+git push origin v{version}
+```
+
+Summarize changes since the previous tag (`git log v{prev}..HEAD --oneline`) for release notes.
+
+### GitHub Release: manual asset upload
+
+Create (or update) a release at `https://github.com/karmsheel/hermes-forge/releases` for tag `v{version}`.
+
+**Upload these three assets** — names matter for auto-update:
+
+| Upload as | Source file |
+|-----------|-------------|
+| `Hermes-Forge-Setup-{version}.exe` | Copy/rename from `Hermes Forge Setup {version}.exe` |
+| `Hermes-Forge-Setup-{version}.exe.blockmap` | Copy/rename from `Hermes Forge Setup {version}.exe.blockmap` |
+| `latest.yml` | `dist/desktop/latest.yml` as-is |
+
+`latest.yml` references the **hyphenated** installer name (`Hermes-Forge-Setup-…`), not the spaced local NSIS output. If the blockmap on GitHub does not match `{installer-name}.blockmap`, delta updates will fail.
+
+Release notes template:
+
+```markdown
+## Hermes Forge {version}
+
+Desktop release.
+
+### Highlights
+- (bullets from git log since previous tag)
+
+### Install
+Download **Hermes-Forge-Setup-{version}.exe** and run the installer.
+Existing installs receive this update via the in-app updater.
+
+### Notes
+- Requires Hermes Agent for AI/chat features (`hermes gateway` on port 8642)
+- Data and SQLite DB are stored in the Electron user-data folder
+```
+
+### Publishing without `gh` CLI
+
+`gh` may be installed but not authenticated. Alternatives agents should use:
+
+- **GitHub REST API** with a token from `git credential fill` (host `github.com`).
+- **`gh auth login --with-token`** if the stored token has sufficient scopes.
+
+Upload endpoint: `POST {release.upload_url}?name={filename}` with `Content-Type: application/octet-stream`. The installer is ~400+ MB — allow several minutes for upload.
+
+### Client auto-update (already automatic)
+
+Installed desktop apps use `electron-updater` (`electron/auto-update.mjs`) to poll GitHub Releases and read `latest.yml`. No extra step after assets are uploaded correctly.
+
+### Do not commit
+
+- `dist/desktop/` (build output)
+- Ephemeral one-off publish scripts created during a release session
+
+---
+
+## 7. Adding or Updating Reference Material
 
 1. Place the file in `docs/references/`
 2. Update `docs/references/INDEX.md`
@@ -119,7 +239,7 @@ When working in a worktree:
 
 ---
 
-## 7. Next.js Specific Notes
+## 8. Next.js Specific Notes
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
