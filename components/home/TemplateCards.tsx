@@ -5,13 +5,14 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  FilePlus,
   ClipboardList,
   Route,
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { getTemplateCardArtStyle } from "@/lib/home/project-card-thumb";
 import type { WorkflowTemplate, WorkflowTemplateId } from "@/lib/workflow-templates";
 import { WORKFLOW_TEMPLATES } from "@/lib/workflow-templates";
 
@@ -21,7 +22,6 @@ const TEMPLATE_ICONS: Record<WorkflowTemplateId, LucideIcon> = {
   "approval-flow": CheckCircle2,
   onboarding: UserPlus,
   incident: AlertTriangle,
-  blank: FilePlus,
 };
 
 interface TemplateCardsProps {
@@ -30,6 +30,7 @@ interface TemplateCardsProps {
 }
 
 export function TemplateCards({ selectedId, onSelect }: TemplateCardsProps) {
+  const { skin, resolved } = useTheme();
   const [expanded, setExpanded] = useState(false);
 
   // Auto-reveal when a template is selected (e.g. user picked one or pre-filled)
@@ -88,9 +89,13 @@ export function TemplateCards({ selectedId, onSelect }: TemplateCardsProps) {
               >
                 <div
                   className="home-template-card__art"
-                  style={{
-                    background: `linear-gradient(135deg, ${template.gradientFrom} 0%, ${template.gradientTo} 100%)`,
-                  }}
+                  style={getTemplateCardArtStyle(
+                    template.id,
+                    skin,
+                    resolved,
+                    template.gradientFrom,
+                    template.gradientTo,
+                  )}
                   aria-hidden
                 >
                   <Icon className="home-template-card__icon" />

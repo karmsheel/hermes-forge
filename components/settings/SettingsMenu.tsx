@@ -5,7 +5,7 @@ import { ChevronRight, Monitor, Moon, Palette, Settings, Sun, Trash2 } from "luc
 import { useShell } from "@/components/shell/ShellContext";
 import { SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { resolveSkinPalette } from "@/lib/themes/presets";
+import { filterSkinsForPreference, resolveSkinPalette } from "@/lib/themes/presets";
 import type { ThemePreference } from "@/lib/theme";
 
 const THEME_OPTIONS = [
@@ -35,14 +35,20 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   const { builtinSkins, installedSkins } = useMemo(() => {
-    const installed: typeof availableSkins = [];
-    const builtin: typeof availableSkins = [];
-    for (const skin of availableSkins) {
+    const modeSkins = filterSkinsForPreference(availableSkins, preference);
+    const installed: typeof modeSkins = [];
+    const builtin: typeof modeSkins = [];
+    for (const skin of modeSkins) {
       if (userSkinNames.has(skin.name)) installed.push(skin);
       else builtin.push(skin);
     }
     return { builtinSkins: builtin, installedSkins: installed };
-  }, [availableSkins, userSkinNames]);
+  }, [availableSkins, preference, userSkinNames]);
+
+  const skinHint =
+    preference === "system"
+      ? "Follows system appearance · day & night palettes"
+      : `${resolved === "dark" ? "Night" : "Day"} palette · Hermes Desktop themes`;
 
   useEffect(() => {
     if (!open) return;
@@ -142,9 +148,7 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
                 <Palette className="w-3.5 h-3.5" />
                 <span>Skin</span>
               </div>
-              <p className="settings-menu__accent-hint">
-                {resolved === "dark" ? "Night palette" : "Day palette"} · Hermes Desktop themes
-              </p>
+              <p className="settings-menu__accent-hint">{skinHint}</p>
               <div className="settings-menu__skin-grid" role="group" aria-label="Built-in skins">
                 {builtinSkins.map((skin) => renderSkinOption(skin, false))}
               </div>

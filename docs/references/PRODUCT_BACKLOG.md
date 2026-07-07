@@ -16,26 +16,89 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | Skill / plugin scenario | Workflow template (onboarding, ops, sales, etc.) |
 | Studio preview panel | Mermaid diagram (workshop center) |
 | Chat with agent | Hermes process chat (workshop right) |
-| Recent projects | Recent projects on home |
+| Recent projects | Recent businesses on home (`RecentProjectsStrip` — legacy "project" label) |
 | Design system picker | Process notation / industry standards picker |
+
+---
+
+## Terminology (read before coding)
+
+The codebase uses three names for related concepts. **Prefer these in new code and docs:**
+
+| Concept | Database / API | UI label | Notes |
+|---------|----------------|----------|-------|
+| Tenant (one mapped business) | `Business` | "business" | Cookie-scoped active business per user |
+| Workflow map | `Process` | "process" | Lives under a function (department) |
+| Business area / department | `Process.department` | "function" | `/functions` aggregates processes by department |
+
+**Legacy aliases still in UI copy:** "project" (`RecentProjectsStrip`, `NewProjectDialog`) — means `Business`, not a separate entity. `/projects` redirects to `/functions`.
+
+**Deprecated routes (do not extend):** `/interview`, `/dashboard` — legacy discovery loop; primary flow is Home → workshop.
 
 ---
 
 ## Current codebase (baseline)
 
+*Last aligned with codebase: v0.2.0 + post-release WIP (personnel, themes).*
+
+### Shell & navigation
+
 | Area | Path | Notes |
 |------|------|-------|
-| Projects list | `app/projects/page.tsx` | New Project modal; project cards |
-| Workshop | `app/workshop/page.tsx` | 3-column: sidebar / diagram / chat |
-| Process sidebar | `components/workshop/ProcessSidebar.tsx` | Workflow list |
-| Process chat | `components/workshop/ProcessChat.tsx` | Hermes chat |
-| Mermaid diagram | `components/workshop/MermaidDiagram.tsx` | Live diagram |
-| New project modal | `components/projects/NewProjectDialog.tsx` | Name + description |
-| Hermes connection | `components/hermes/*` | BYOK connection |
-| Project isolation | `lib/workshop-storage.ts` | Per-project `activeProcessId` |
-| Auth / API | `lib/auth.ts`, `app/api/**` | Cookie-scoped active business |
-| Global styles | `app/globals.css`, `app/tokens.css` | Design tokens (Phase 1.1) |
-| DB schema | `prisma/schema.prisma` | Business, Process, ChatMessage |
+| App shell | `app/(shell)/layout.tsx`, `components/shell/AppShell.tsx` | Left nav rail + content area |
+| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Workshop, God Mode, Automations, Dashboard, Business log (+ dev-gated Decisions, Cronalytics) |
+| Business manager | `app/(shell)/business-manager/page.tsx` | Multi-business switcher; logo links here |
+| Settings | `app/(shell)/settings/page.tsx`, `components/settings/*` | Appearance, About, Developer panels |
+| Theme engine | `lib/themes/*`, `components/theme/ThemeProvider.tsx` | Built-in skins, JSON/VS Code install, boot script (4.6–4.8) |
+
+### Core product loop
+
+| Area | Path | Notes |
+|------|------|-------|
+| Home | `app/(shell)/home/page.tsx` | Hero composer, templates, recent businesses strip |
+| Start from brief | `app/api/start-from-brief/route.ts`, `lib/start-from-brief.ts` | Atomic business + process + seed messages |
+| Functions list | `app/(shell)/functions/page.tsx` | Processes grouped by `Process.department`; replaces old `/projects` |
+| Workshop | `app/(shell)/workshop/page.tsx` | 3-column: sidebar / diagram+tabs / chat |
+| Process sidebar | `components/workshop/ProcessSidebar.tsx` | Process list + function filter |
+| Process chat | `components/workshop/ProcessChat.tsx` | Hermes chat, rich composer, message queue |
+| Mermaid diagram | `components/workshop/MermaidDiagram.tsx` | Streaming diagram, node comments |
+| Workspace tabs | `components/workshop/WorkspaceTabs.tsx` | Diagram, Details, Questions, Source, Export |
+| New business modal | `components/projects/NewProjectDialog.tsx` | Name + description (legacy "project" naming) |
+| Hermes connection | `components/hermes/*`, `app/api/hermes/**` | BYOK OpenAI-compatible proxy |
+| Client state | `lib/workshop-storage.ts` | Per-business `activeProcessId`, conversation, function filter |
+
+### Automations & governance
+
+| Area | Path | Notes |
+|------|------|-------|
+| Automations list | `app/(shell)/automations/page.tsx` | Approved processes → automation studio |
+| Automation studio | `app/(shell)/automations/[processId]/page.tsx` | Design chat, n8n deploy, credentials |
+| Business log | `app/(shell)/log/page.tsx`, `lib/business-log.ts` | Append-only immutable event feed |
+| Git materialize | `lib/business-git/materialize.ts` | Per-business repo snapshot (export; remote sync partial) |
+| Decisions | `app/(shell)/decisions/page.tsx` | **Scaffold** — dev-gated placeholder; `BusinessDecision` model has no API |
+| God Mode | `app/(shell)/god-mode/page.tsx` | Canvas overview of all process diagrams by department |
+| Dashboard | `app/(shell)/dashboard/page.tsx` | **Legacy** — automation scores; links to deprecated `/interview` |
+| Cronalytics | `app/(shell)/cronalytics/page.tsx` | **Dev-gated** — Hermes cron observability; separate SQLite DB |
+
+### Personnel (scaffold — not integrated)
+
+| Area | Path | Notes |
+|------|------|-------|
+| Personnel page | `app/(shell)/personnel/page.tsx` | Human roster + Hermes agent scan/hire/fire |
+| Personnel API | `app/api/personnel/**` | Humans CRUD; agents scan/hire/fire; icon PATCH |
+| Personnel lib | `lib/personnel/*` | Owner bootstrap, Hermes profile scan, icon catalog |
+| DB models | `HumanPersonnel`, `HermesAgentProfile` in `prisma/schema.prisma` | **Not wired** to workshop, swimlanes, automations, or chat mentions |
+
+### Platform
+
+| Area | Path | Notes |
+|------|------|-------|
+| Auth / session | `lib/auth.ts`, `lib/auth-session.ts`, `middleware.ts` | Cookie JWT; active business cookie |
+| API surface | `app/api/**` | ~52 route handlers |
+| Global styles | `app/globals.css`, `app/tokens.css` | Design tokens + skin overrides |
+| DB schema | `prisma/schema.prisma` | User, Business, Process, Conversation, ChatMessage, Automation, Memory, BusinessEvent, BusinessDecision, HumanPersonnel, HermesAgentProfile |
+| Desktop | `electron/main.mjs`, `electron/preload.mjs` | Electron wrapper; standalone Next on port 3847 |
+| Redirects | `next.config.ts` | `/projects` → `/functions`, `/businesses` → `/functions` |
 
 ---
 
@@ -43,10 +106,10 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 1. **Agent-native, not agent-bundled** — Hermes is the engine; Forge is the studio shell.
 2. **Local-first / BYOK** — User brings their own Hermes endpoint; no forced cloud.
-3. **Project isolation** — Each project owns workflows, chats, and client state.
+3. **Business isolation** — Each business owns processes, chats, and client state. (Legacy UI still says "project" in places.)
 4. **Neutral chrome, rich artifact** — UI stays minimal; the diagram carries visual weight.
 5. **Accent discipline** — Orange (`--accent`) for primary CTAs only; blue (`--selected`) for selected states; green for success/status.
-6. **Discover → lock → stream → critique → deliver** — Interview → diagram → chat corrections → export.
+6. **Discover → lock → stream → critique → deliver** — Brief/home → diagram → chat corrections → export. (Legacy `/interview` route is deprecated.)
 
 ---
 
@@ -90,7 +153,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 - [x] Main pages migrated off raw `zinc-950` / `emerald-*` where they represent theme colors
 - [x] `npm run build` passes
 
-**Do not:** Add light theme toggle yet (optional later). Do not change layout structure.
+**Note:** Light/dark/system mode toggle shipped later via `ThemeProvider` + `NavThemeModeToggle` (4.6). Skins override token colors at runtime.
 
 ---
 
@@ -100,17 +163,23 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 **Files:** `components/shell/AppShell.tsx`, `components/shell/NavRail.tsx`, `components/shell/ShellContext.tsx`, `components/shell/AppTopBar.tsx`, `app/(shell)/layout.tsx`
 
-**Rail items (v1):**
-- Logo (H) → `/home`
-- **+** New project (opens modal)
+**Rail items (current):**
+- Logo → `/business-manager`
+- **+** New process (opens modal)
 - Home → `/home`
-- Projects → `/projects`
+- Functions → `/functions` (was `/projects`; redirect in place)
+- Personnel → `/personnel`
 - Workshop → `/workshop`
-- Dashboard → `/dashboard`
-- Footer: Appearance settings, Hermes connection, Profile
+- God Mode → `/god-mode`
+- Automations → `/automations`
+- Dashboard → `/dashboard` (legacy; candidate for removal — see audit)
+- Business log → `/log`
+- Decisions → `/decisions` (developer setting)
+- Cronalytics → `/cronalytics` (developer setting)
+- Footer: Theme mode toggle, Hermes connection, Profile
 
 **Acceptance criteria:**
-- [x] Rail visible on projects, workshop, dashboard, profile
+- [x] Rail visible on shell routes (home, functions, workshop, etc.)
 - [x] Active route highlighted with `--accent-tint` background
 - [x] Collapsible to icon-only on narrow viewports (56px rail, tighter on mobile)
 
@@ -135,7 +204,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 - [x] `/` redirects to hero home (logged in) or login (logged out)
 - [x] Composer is visually dominant (centered, max-width ~640px)
 - [x] Send is disabled without text + Hermes connection
-- [x] Home vs Projects separated in nav rail (`/home` vs `/projects`)
+- [x] Home vs Functions separated in nav rail (`/home` vs `/functions`)
 - [x] Brief from home auto-sends first message in workshop
 
 **Depends on:** 1.1, 1.2
@@ -157,7 +226,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 **Acceptance criteria:**
 - [x] Shows last 4 projects on home
-- [x] "View all ›" links to `/projects`
+- [x] "View all ›" links to `/functions`
 - [x] Click card opens project in workshop
 
 **Depends on:** 1.3, D2 (status lifecycle — can stub statuses initially)
@@ -242,7 +311,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 **Files:** `components/hermes/HermesModelSwitcher.tsx`, `lib/hermes-models.ts`, `app/api/hermes/models/route.ts`, update `HermesConnectionProvider`
 
 **Acceptance criteria:**
-- [x] Model dropdown in `AppTopBar` (home, projects, dashboard, etc.)
+- [x] Model dropdown in `AppTopBar` (home, functions, dashboard, etc.)
 - [x] Model switcher also in workshop and automations headers (no top bar on those routes)
 - [x] Fetches models from Hermes `GET /v1/models` when connected
 - [x] Selected model persisted in `localStorage` via `HermesConfig.model`
@@ -254,7 +323,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ### 2.4 Function status lifecycle badges — **DEFERRED**
 
-**Goal:** Consistent status pills across home cards and the functions list (`/projects`).
+**Goal:** Consistent status pills across home cards and the functions list (`/functions`).
 
 **Note:** UI uses **Functions** (business areas) not "projects". Processes live inside a function.
 
@@ -432,7 +501,7 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 **Files:** `lib/themes/*`, `components/theme/ThemeProvider.tsx`, `components/theme/ThemeScript.tsx`, `components/settings/SettingsMenu.tsx`, `components/workshop/MermaidDiagram.tsx`
 
-**Shipped:** 7 built-in skins (Forge default + 6 Hermes Desktop presets), flashless boot script, accent→skin migration, Mermaid reads computed theme tokens.
+**Shipped:** 10 built-in skins (`iron-ember` default + 9 presets), flashless boot script, accent→skin migration, Mermaid reads computed theme tokens. Most presets are dark-only in the skin picker when mode = Light.
 
 **Reference:** `docs/references/hermes-desktop-design-system.md`
 
@@ -476,6 +545,95 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 
 ---
 
+### 4.10 Personnel roster — **SCAFFOLD** (shipped outside backlog)
+
+**Goal:** Org roster for humans and hired Hermes agents; feed swimlanes, `@actor` mentions, and automation assignment.
+
+**Status:** UI, API, and DB exist. **Not integrated** with workshop, process diagrams, automations, or chat agent prompts. Hire dialog copy over-promises assignment to processes/SOPs/automations.
+
+**Files:** `app/(shell)/personnel/page.tsx`, `app/api/personnel/**`, `components/personnel/*`, `lib/personnel/*`, `prisma/schema.prisma` (`HumanPersonnel`, `HermesAgentProfile`)
+
+**Shipped (scaffold):**
+- [x] Personnel nav + page: human add/fire, icon picker
+- [x] Owner bootstrap on business create/import/seed (`lib/personnel/ensure-owner.ts`)
+- [x] Hermes agent filesystem scan, hire/fire, icon on profile
+- [x] Business log events: `personnel.added`, `personnel.hired`, `personnel.fired`
+- [x] Git export writes `personnel.json` (`lib/business-git/materialize.ts`)
+
+**Remaining (required before marking Done):**
+- [ ] Wire roster into workshop `@` mentions (`@actor`, `@department`, `@system` — overlaps 3.5)
+- [ ] Swimlane lanes generated from personnel when process standard = swimlane
+- [ ] `Automation` → `hermesAgentProfileId` (or equivalent) for hired agents
+- [ ] Inject personnel context into chat + diagram agent prompts
+- [ ] Human edit PATCH (name, role, `roleDescription`); display description on cards
+- [ ] Import `personnel.json` on business git import
+- [ ] Align hire dialog copy with actual behavior (or implement promised assignment)
+
+**Do not:** Treat personnel as complete for BPM workflows until process linkage ships.
+
+---
+
+### 4.11 Immutable business log — **MOSTLY DONE** (shipped outside backlog)
+
+**Goal:** Append-only audit trail per business; foundation for Git versioning and governance.
+
+**Files:** `lib/business-log.ts`, `lib/business-log-types.ts`, `app/(shell)/log/page.tsx`, `app/api/business/log/route.ts`, `lib/business-git/*`
+
+**Shipped:**
+- [x] `BusinessEvent` model with sequence, hashes, metadata
+- [x] Log feed UI with type filters (`components/log/BusinessLogFeed.tsx`)
+- [x] Events emitted across business/process/automation/personnel actions
+- [x] Git materialize exports log + snapshot files per business
+
+**Remaining:**
+- [ ] Remote Git sync (fields on `Business` are stubbed "inert until implemented")
+- [ ] Round-trip import from git snapshot (personnel, decisions, etc.)
+- [ ] Emit `decision.*` events when Decisions feature ships (4.12)
+
+**Reference:** `docs/references/BUSINESS_LOG_AND_GIT.md`
+
+---
+
+### 4.12 Business decisions — **SCAFFOLD** (shipped outside backlog)
+
+**Goal:** Record owner decisions linked to business log and related entities (process, personnel, automation).
+
+**Files:** `prisma/schema.prisma` (`BusinessDecision`), `lib/decision-types.ts`, `app/(shell)/decisions/page.tsx`
+
+**Status:** Prisma model + event type constants exist. Page is developer-gated placeholder. **No CRUD API, no queries, no log emission.**
+
+**Remaining:**
+- [ ] Decisions API (create, list, supersede, revoke)
+- [ ] UI: decision list, create form, link to related entity
+- [ ] Emit `decision.recorded` / `decision.superseded` / `decision.revoked` on business log
+- [ ] Or: remove schema until ready (avoid middle state)
+
+---
+
+### 4.13 God Mode process overview — **DONE** (shipped outside backlog)
+
+**Goal:** Zoomable canvas of all process diagrams grouped by department/function.
+
+**Route:** `/god-mode`
+
+**Files:** `app/(shell)/god-mode/page.tsx`, `components/god-mode/GodModeCanvas.tsx`
+
+**Note:** Overlaps with `/functions` list view. Candidate to merge or dev-gate during nav consolidation (audit item).
+
+---
+
+### 4.14 Cronalytics (Hermes cron observability) — **DONE** (dev-gated)
+
+**Goal:** Dashboard for Hermes cron job health, trends, and model usage.
+
+**Route:** `/cronalytics` (visible when developer setting enabled)
+
+**Files:** `app/(shell)/cronalytics/page.tsx`, `lib/cronalytics/*`, `app/api/cronalytics/**`, `data/cronalytics-facts.db`
+
+**Note:** Separate SQLite DB from main Prisma DB. Power-user / operator tooling, not core BPM.
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -506,6 +664,11 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 | 4.7 | User theme install (JSON) | 4 | Done |
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
+| 4.10 | Personnel roster | 4 | **Scaffold** |
+| 4.11 | Immutable business log | 4 | Mostly done |
+| 4.12 | Business decisions | 4 | **Scaffold** |
+| 4.13 | God Mode overview | 4 | Done |
+| 4.14 | Cronalytics | 4 | Done (dev-gated) |
 
 ---
 
@@ -520,9 +683,25 @@ When picking up a backlog item:
 5. Do not expand scope into later phases unless the item explicitly requires it.
 6. Open Design source is reference only — do not copy their codebase; adapt patterns to process mapping.
 
-**Completed outside backlog (already shipped):**
-- New Project modal (name + description)
-- Project isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
-- Workshop header: H + Hermes Forge → `/projects`, project name underneath
-- Settings popover with System / Light / Dark mode + Hermes Desktop skin picker (`components/settings/SettingsMenu.tsx`, `lib/themes/`)
-- Process approval + automation studio + n8n integration (see 4.4)
+**Completed outside backlog (tracked above as 4.10–4.14):**
+- Functions view (`/functions`) replacing `/projects`
+- Business manager (`/business-manager`) for multi-business switching
+- New business modal (`NewProjectDialog` — legacy "project" naming)
+- Business isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
+- Settings: System / Light / Dark mode + skin picker (`components/settings/SettingsMenu.tsx`, `SkinPicker.tsx`, `lib/themes/`)
+- Process approval + automation studio + n8n integration (4.4)
+- Personnel roster scaffold (4.10) — **do not assume workshop integration**
+- Business log + git materialize (4.11)
+- God Mode canvas (4.13)
+- Cronalytics dev tooling (4.14)
+
+**Deprecated — do not extend:**
+- `app/interview/page.tsx` + `app/api/extract/route.ts` — legacy discovery; superseded by Home → workshop + Questions panel
+- `app/(shell)/dashboard/page.tsx` — legacy automation scores; links to interview
+
+**Known tech debt (see project audit):**
+- Terminology drift: "project" in UI vs `Business` in DB
+- `BusinessDecision` schema without runtime (4.12)
+- Personnel hire copy promises features not yet built (4.10)
+- Duplicate overview surfaces: Functions, God Mode, Dashboard
+- Zero automated tests

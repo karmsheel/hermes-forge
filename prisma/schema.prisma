@@ -227,6 +227,7 @@ model HumanPersonnel {
   roleDescription String?
   isOwner         Boolean  @default(false)
   userId          String?
+  iconKey         String?
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -246,10 +247,14 @@ model HermesAgentProfile {
   model       String?
   hermesHome  String
   isDefault   Boolean  @default(false)
+  iconKey     String?
+  isHired     Boolean  @default(false)
+  hiredAt     DateTime?
 
   discoveredAt DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([businessId, profileKey])
   @@index([businessId, discoveredAt(sort: Desc)])
+  @@index([businessId, isHired])
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { usePathname } from "next/navigation";
@@ -21,7 +20,7 @@ import {
 } from "lucide-react";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { APP_VERSION } from "@/lib/app-meta";
-import { isForgeDesktop } from "@/lib/forge-desktop";
+import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 
 type NavItem = {
@@ -37,11 +36,6 @@ export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
   const { showCronalyticsPage, showDecisionsPage } = useDeveloperSettings();
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    setIsDesktop(isForgeDesktop());
-  }, []);
 
   const mainItems: NavItem[] = [
     {
@@ -52,11 +46,11 @@ export function NavRail() {
       match: (path) => path === "/home",
     },
     {
-      id: "projects",
-      href: "/projects",
+      id: "functions",
+      href: "/functions",
       label: "Functions",
       icon: FolderKanban,
-      match: (path) => path === "/projects",
+      match: (path) => path === "/functions",
     },
     {
       id: "personnel",
@@ -184,6 +178,7 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--footer">
+        <NavThemeModeToggle />
         <button
           type="button"
           className="nav-rail__item"
@@ -202,11 +197,9 @@ export function NavRail() {
         >
           <User className="w-5 h-5" />
         </Link>
-        {isDesktop ? (
-          <span className="nav-rail__version" title={`Version ${APP_VERSION}`}>
-            v{APP_VERSION}
-          </span>
-        ) : null}
+        <span className="nav-rail__version" title={`Version ${APP_VERSION}`}>
+          v{APP_VERSION}
+        </span>
       </div>
     </nav>
   );

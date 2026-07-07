@@ -3,12 +3,13 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { resolveSkinPalette } from "@/lib/themes/presets";
+import { filterSkinsForPreference, resolveSkinPalette } from "@/lib/themes/presets";
 import { SkinInstallDialog } from "./SkinInstallDialog";
 import { ThemeDesignSystemPreview } from "./ThemeDesignSystemPreview";
 
 export function SkinPicker() {
   const {
+    preference,
     resolved,
     skinName,
     setSkin,
@@ -19,14 +20,20 @@ export function SkinPicker() {
   const [installOpen, setInstallOpen] = useState(false);
 
   const { builtinSkins, installedSkins } = useMemo(() => {
-    const installed: typeof availableSkins = [];
-    const builtin: typeof availableSkins = [];
-    for (const skin of availableSkins) {
+    const modeSkins = filterSkinsForPreference(availableSkins, preference);
+    const installed: typeof modeSkins = [];
+    const builtin: typeof modeSkins = [];
+    for (const skin of modeSkins) {
       if (userSkinNames.has(skin.name)) installed.push(skin);
       else builtin.push(skin);
     }
     return { builtinSkins: builtin, installedSkins: installed };
-  }, [availableSkins, userSkinNames]);
+  }, [availableSkins, preference, userSkinNames]);
+
+  const skinHint =
+    preference === "system"
+      ? "Follows system appearance · day & night palettes"
+      : `${resolved === "dark" ? "Night" : "Day"} palette · Hermes Desktop themes`;
 
   function renderSkinOption(skin: (typeof availableSkins)[number], removable: boolean) {
     const active = skinName === skin.name;
@@ -71,9 +78,7 @@ export function SkinPicker() {
 
   return (
     <div className="settings-appearance__skins">
-      <p className="settings-appearance__skin-hint">
-        {resolved === "dark" ? "Night palette" : "Day palette"} · Hermes Desktop themes
-      </p>
+      <p className="settings-appearance__skin-hint">{skinHint}</p>
       <div className="settings-menu__skin-grid" role="group" aria-label="Built-in skins">
         {builtinSkins.map((skin) => renderSkinOption(skin, false))}
       </div>

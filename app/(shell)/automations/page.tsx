@@ -130,7 +130,7 @@ export default function AutomationsPage() {
             <p className="text-sm text-text-muted mb-6">
               Select or create a function to see approved processes.
             </p>
-            <Link href="/projects" className="btn-primary text-sm inline-flex items-center gap-2">
+            <Link href="/functions" className="btn-primary text-sm inline-flex items-center gap-2">
               Go to Functions <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

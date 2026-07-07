@@ -61,8 +61,8 @@ export function SettingsAppearance() {
               <div className="min-w-0">
                 <div className="text-sm font-medium text-text">Theme</div>
                 <p className="mt-1 text-xs text-text-muted max-w-md">
-                  Pick a built-in skin or install a custom theme. Color mode applies to every
-                  skin.
+                  Pick a built-in skin or install a custom theme. System shows themes with both day
+                  and night palettes; Light and Dark show only matching skins.
                 </p>
               </div>
               <SegmentedControl

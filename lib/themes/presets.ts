@@ -1,4 +1,4 @@
-import { mix } from "./color";
+import { isDarkBackground, mix } from "./color";
 import type { ForgeSkin, SkinColors } from "./types";
 
 /** Muzli Nous palette — https://colors.muz.li/palette/0000f2/002aa9/bfcfff/809fff/ffffff */
@@ -14,68 +14,15 @@ function nousLine(pct: number): string {
   return mix(NOUS.blue, NOUS.white, (100 - pct) / 100);
 }
 
-function nousLineDark(pct: number): string {
-  return mix(NOUS.mid, NOUS.dark, (100 - pct) / 100);
+/** Subtle wash from brand blue — keeps #0000f2 as the only vivid blue. */
+function nousBrandTint(pct: number): string {
+  return mix(NOUS.blue, NOUS.white, (100 - pct) / 100);
 }
 
-function nousSurfaceTint(pct: number): string {
-  return `color-mix(in srgb, ${NOUS.light} ${pct}%, ${NOUS.white})`;
+/** Neutral structural borders — avoids competing with the brand blue. */
+function nousNeutralLine(pct: number): string {
+  return mix("#0A0A12", NOUS.white, (100 - pct) / 100);
 }
-
-/** Preserves the original Hermes Forge terracotta palette (Phase 1.1 default). */
-export const forgeSkin: ForgeSkin = {
-  name: "forge",
-  label: "Forge",
-  description: "Warm terracotta — the classic Hermes Forge look",
-  colors: {
-    background: "#faf9f7",
-    foreground: "#1a1916",
-    card: "#fffefc",
-    cardForeground: "#1a1916",
-    muted: "#f4f5f7",
-    mutedForeground: "#74716b",
-    popover: "#fffefc",
-    popoverForeground: "#1a1916",
-    primary: "#c96442",
-    primaryForeground: "#ffffff",
-    secondary: "#fbeee5",
-    secondaryForeground: "#1a1916",
-    accent: "#f5d8cb",
-    accentForeground: "#1a1916",
-    border: "#e1e5eb",
-    input: "#e1e5eb",
-    ring: "#2563eb",
-    midground: "#2563eb",
-    destructive: "#9c2a25",
-    destructiveForeground: "#ffffff",
-    sidebarBackground: "#fdfcfa",
-    sidebarBorder: "#e1e5eb",
-  },
-  darkColors: {
-    background: "#1a1917",
-    foreground: "#e8e4dc",
-    card: "#2a2825",
-    cardForeground: "#e8e4dc",
-    muted: "#252321",
-    mutedForeground: "#9a9690",
-    popover: "#2a2825",
-    popoverForeground: "#e8e4dc",
-    primary: "#d97a56",
-    primaryForeground: "#1a1917",
-    secondary: "#2e1a12",
-    secondaryForeground: "#e8e4dc",
-    accent: "#3d2318",
-    accentForeground: "#e8e4dc",
-    border: "#333128",
-    input: "#333128",
-    ring: "#2563eb",
-    midground: "#2563eb",
-    destructive: "#e06b65",
-    destructiveForeground: "#1a1917",
-    sidebarBackground: "#222120",
-    sidebarBorder: "#333128",
-  },
-};
 
 export const nousSkin: ForgeSkin = {
   name: "nous",
@@ -83,30 +30,33 @@ export const nousSkin: ForgeSkin = {
   description: "Crisp blue on white — the Nous palette",
   colors: {
     background: NOUS.white,
-    foreground: NOUS.dark,
+    foreground: "#0A0A12",
     card: NOUS.white,
-    cardForeground: NOUS.dark,
-    muted: NOUS.light,
-    mutedForeground: NOUS.mid,
+    cardForeground: "#0A0A12",
+    muted: nousBrandTint(6),
+    mutedForeground: "#5C5C70",
     popover: NOUS.white,
-    popoverForeground: NOUS.dark,
+    popoverForeground: "#0A0A12",
     primary: NOUS.blue,
     primaryForeground: NOUS.white,
-    secondary: NOUS.light,
+    secondary: nousBrandTint(8),
     secondaryForeground: NOUS.dark,
-    accent: nousSurfaceTint(50),
+    accent: nousBrandTint(10),
     accentForeground: NOUS.dark,
-    border: nousLine(28),
-    input: nousLine(35),
+    border: nousNeutralLine(12),
+    input: nousNeutralLine(16),
     ring: NOUS.blue,
     midground: NOUS.blue,
     composerRing: NOUS.blue,
     destructive: "#C72E4D",
     destructiveForeground: NOUS.white,
-    sidebarBackground: nousSurfaceTint(35),
-    sidebarBorder: nousLine(28),
-    userBubble: NOUS.dark,
-    userBubbleBorder: nousLine(40),
+    sidebarBackground: nousBrandTint(5),
+    sidebarBorder: nousNeutralLine(12),
+    userBubble: NOUS.blue,
+    userBubbleBorder: nousLine(32),
+    composerPlaceholder: "#00cedd",
+    info: NOUS.blue,
+    success: "#1A7A42",
   },
   darkColors: {
     background: "#0D2F86",
@@ -254,6 +204,263 @@ export const cyberpunkSkin: ForgeSkin = {
   },
 };
 
+/** Black lacquer + aged brass — horological prestige palette. */
+const BRASS = {
+  background: "#0C0C0C",
+  card: "#181818",
+  brass: "#B88A2E",
+  gold: "#F4D06F",
+  text: "#ECECEC",
+  mutedText: "#888888",
+} as const;
+
+function brassLine(pct: number): string {
+  return mix(BRASS.brass, BRASS.background, (100 - pct) / 100);
+}
+
+function brassSurface(pct: number): string {
+  return mix(BRASS.brass, BRASS.card, (100 - pct) / 100);
+}
+
+export const blackBrassSkin: ForgeSkin = {
+  name: "black-brass",
+  label: "Black & Brass",
+  description: "Obsidian black with aged brass and gold — craftsmanship and prestige",
+  colors: {
+    background: BRASS.background,
+    foreground: BRASS.text,
+    card: BRASS.card,
+    cardForeground: BRASS.text,
+    muted: "#141414",
+    mutedForeground: BRASS.mutedText,
+    popover: "#1A1A1A",
+    popoverForeground: BRASS.text,
+    primary: BRASS.gold,
+    primaryForeground: BRASS.background,
+    secondary: brassSurface(22),
+    secondaryForeground: mix(BRASS.gold, BRASS.text, 0.35),
+    accent: brassSurface(38),
+    accentForeground: BRASS.gold,
+    border: brassLine(18),
+    input: brassLine(24),
+    ring: BRASS.brass,
+    midground: BRASS.gold,
+    composerRing: BRASS.brass,
+    destructive: "#A84838",
+    destructiveForeground: "#FEF2F2",
+    sidebarBackground: "#080808",
+    sidebarBorder: brassLine(12),
+    userBubble: BRASS.card,
+    userBubbleBorder: brassLine(32),
+    success: "#6B9E5C",
+    info: "#6B8AAE",
+  },
+};
+
+/** Gunmetal + electric cyan — industrial AI forge (Claude / Cursor / Vercel vibes). */
+const CYBER = {
+  background: "#090A0F",
+  card: "#151821",
+  primary: "#36C2F6",
+  secondary: "#6EE7FF",
+  success: "#3DD68C",
+  text: "#F2F4F8",
+} as const;
+
+function cyberLine(pct: number): string {
+  return mix(CYBER.primary, CYBER.background, (100 - pct) / 100);
+}
+
+function cyberSurface(pct: number): string {
+  return mix(CYBER.secondary, CYBER.card, (100 - pct) / 100);
+}
+
+export const cyberForgeSkin: ForgeSkin = {
+  name: "cyber-forge",
+  label: "Cyber Forge",
+  description: "Gunmetal and electric cyan — industrial AI forge",
+  colors: {
+    background: CYBER.background,
+    foreground: CYBER.text,
+    card: CYBER.card,
+    cardForeground: CYBER.text,
+    muted: mix(CYBER.background, CYBER.card, 0.38),
+    mutedForeground: mix(CYBER.text, CYBER.background, 0.52),
+    popover: "#1A1F2B",
+    popoverForeground: CYBER.text,
+    primary: CYBER.primary,
+    primaryForeground: CYBER.background,
+    secondary: cyberSurface(18),
+    secondaryForeground: CYBER.secondary,
+    accent: cyberSurface(32),
+    accentForeground: CYBER.secondary,
+    border: cyberLine(16),
+    input: cyberLine(22),
+    ring: CYBER.primary,
+    midground: CYBER.secondary,
+    composerRing: CYBER.primary,
+    destructive: "#F05252",
+    destructiveForeground: CYBER.text,
+    sidebarBackground: "#06070B",
+    sidebarBorder: cyberLine(10),
+    userBubble: CYBER.card,
+    userBubbleBorder: cyberLine(28),
+    success: CYBER.success,
+    info: "#4DA8FF",
+  },
+};
+
+/** Slate + emerald — calm operations platform palette. */
+const OPS = {
+  background: "#0C1117",
+  card: "#161B22",
+  primary: "#3FB950",
+  accent: "#58D68D",
+  text: "#F0F6FC",
+} as const;
+
+function opsLine(pct: number): string {
+  return mix(OPS.primary, OPS.background, (100 - pct) / 100);
+}
+
+function opsSurface(pct: number): string {
+  return mix(OPS.accent, OPS.card, (100 - pct) / 100);
+}
+
+export const slateEmeraldSkin: ForgeSkin = {
+  name: "slate-emerald",
+  label: "Slate & Emerald",
+  description: "Cool slate with emerald accents — trustworthy operations platform",
+  colors: {
+    background: OPS.background,
+    foreground: OPS.text,
+    card: OPS.card,
+    cardForeground: OPS.text,
+    muted: mix(OPS.background, OPS.card, 0.38),
+    mutedForeground: mix(OPS.text, OPS.background, 0.54),
+    popover: "#1C2128",
+    popoverForeground: OPS.text,
+    primary: OPS.primary,
+    primaryForeground: OPS.background,
+    secondary: opsSurface(18),
+    secondaryForeground: OPS.accent,
+    accent: opsSurface(30),
+    accentForeground: OPS.accent,
+    border: opsLine(14),
+    input: opsLine(20),
+    ring: OPS.primary,
+    midground: OPS.accent,
+    composerRing: OPS.primary,
+    destructive: "#F85149",
+    destructiveForeground: OPS.text,
+    sidebarBackground: "#090D13",
+    sidebarBorder: opsLine(9),
+    userBubble: OPS.card,
+    userBubbleBorder: opsLine(26),
+    success: OPS.primary,
+    info: "#58A6FF",
+  },
+};
+
+/** Iron + ember — cooling forge: steel, ash, and low embers. */
+const IRON_EMBER_LIGHT = {
+  background: "#F0EEEA",
+  card: "#F8F7F5",
+  primary: "#B4532A",
+  accent: "#E86A33",
+  highlight: "#9A4A24",
+  text: "#1E1E22",
+  muted: "#6E6C68",
+} as const;
+
+const IRON_EMBER_DARK = {
+  background: "#111214",
+  card: "#1A1D22",
+  primary: "#A8552D",
+  accent: "#E86A33",
+  highlight: "#FFB56B",
+  text: "#F3F3F3",
+  muted: "#8B8B8B",
+} as const;
+
+function ironEmberLine(
+  tokens: typeof IRON_EMBER_LIGHT | typeof IRON_EMBER_DARK,
+  pct: number,
+): string {
+  return mix(tokens.primary, tokens.background, (100 - pct) / 100);
+}
+
+function ironEmberSurface(
+  tokens: typeof IRON_EMBER_LIGHT | typeof IRON_EMBER_DARK,
+  pct: number,
+): string {
+  return mix(tokens.accent, tokens.card, (100 - pct) / 100);
+}
+
+export const ironEmberSkin: ForgeSkin = {
+  name: "iron-ember",
+  label: "Iron & Ember",
+  description: "Cooling steel and ash with low ember glow — modern industrial warmth",
+  colors: {
+    background: IRON_EMBER_LIGHT.background,
+    foreground: IRON_EMBER_LIGHT.text,
+    card: IRON_EMBER_LIGHT.card,
+    cardForeground: IRON_EMBER_LIGHT.text,
+    muted: mix(IRON_EMBER_LIGHT.background, IRON_EMBER_LIGHT.card, 0.42),
+    mutedForeground: IRON_EMBER_LIGHT.muted,
+    popover: "#FFFFFF",
+    popoverForeground: IRON_EMBER_LIGHT.text,
+    primary: IRON_EMBER_LIGHT.primary,
+    primaryForeground: "#FFFFFF",
+    secondary: ironEmberSurface(IRON_EMBER_LIGHT, 14),
+    secondaryForeground: IRON_EMBER_LIGHT.highlight,
+    accent: ironEmberSurface(IRON_EMBER_LIGHT, 26),
+    accentForeground: IRON_EMBER_LIGHT.highlight,
+    border: ironEmberLine(IRON_EMBER_LIGHT, 14),
+    input: ironEmberLine(IRON_EMBER_LIGHT, 20),
+    ring: IRON_EMBER_LIGHT.accent,
+    midground: IRON_EMBER_LIGHT.accent,
+    composerRing: IRON_EMBER_LIGHT.accent,
+    destructive: "#C43010",
+    destructiveForeground: "#FFFFFF",
+    sidebarBackground: "#EBE8E4",
+    sidebarBorder: ironEmberLine(IRON_EMBER_LIGHT, 10),
+    userBubble: IRON_EMBER_LIGHT.text,
+    userBubbleBorder: ironEmberLine(IRON_EMBER_LIGHT, 28),
+    success: "#2F7A4A",
+    info: "#3D6F94",
+  },
+  darkColors: {
+    background: IRON_EMBER_DARK.background,
+    foreground: IRON_EMBER_DARK.text,
+    card: IRON_EMBER_DARK.card,
+    cardForeground: IRON_EMBER_DARK.text,
+    muted: mix(IRON_EMBER_DARK.background, IRON_EMBER_DARK.card, 0.36),
+    mutedForeground: IRON_EMBER_DARK.muted,
+    popover: "#1E2229",
+    popoverForeground: IRON_EMBER_DARK.text,
+    primary: IRON_EMBER_DARK.primary,
+    primaryForeground: IRON_EMBER_DARK.text,
+    secondary: ironEmberSurface(IRON_EMBER_DARK, 16),
+    secondaryForeground: IRON_EMBER_DARK.highlight,
+    accent: ironEmberSurface(IRON_EMBER_DARK, 28),
+    accentForeground: IRON_EMBER_DARK.highlight,
+    border: ironEmberLine(IRON_EMBER_DARK, 12),
+    input: ironEmberLine(IRON_EMBER_DARK, 18),
+    ring: IRON_EMBER_DARK.accent,
+    midground: IRON_EMBER_DARK.accent,
+    composerRing: IRON_EMBER_DARK.accent,
+    destructive: "#D64545",
+    destructiveForeground: IRON_EMBER_DARK.text,
+    sidebarBackground: "#0D0E10",
+    sidebarBorder: ironEmberLine(IRON_EMBER_DARK, 8),
+    userBubble: IRON_EMBER_DARK.card,
+    userBubbleBorder: ironEmberLine(IRON_EMBER_DARK, 24),
+    success: "#5A9E6F",
+    info: "#6B8FA8",
+  },
+};
+
 export const slateSkin: ForgeSkin = {
   name: "slate",
   label: "Slate",
@@ -285,18 +492,21 @@ export const slateSkin: ForgeSkin = {
 };
 
 export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
-  forge: forgeSkin,
+  "iron-ember": ironEmberSkin,
   nous: nousSkin,
   midnight: midnightSkin,
   ember: emberSkin,
   mono: monoSkin,
   cyberpunk: cyberpunkSkin,
+  "cyber-forge": cyberForgeSkin,
+  "slate-emerald": slateEmeraldSkin,
   slate: slateSkin,
+  "black-brass": blackBrassSkin,
 };
 
 export const BUILTIN_SKIN_LIST = Object.values(BUILTIN_SKINS);
 
-export const DEFAULT_SKIN_NAME = "forge";
+export const DEFAULT_SKIN_NAME = "iron-ember";
 
 export const BUILTIN_SKIN_NAMES = BUILTIN_SKIN_LIST.map((s) => s.name);
 
@@ -308,3 +518,29 @@ export function resolveSkinPalette(skin: ForgeSkin, mode: "light" | "dark"): Ski
   if (mode === "dark" && skin.darkColors) return skin.darkColors;
   return skin.colors;
 }
+
+/** Whether a skin has a palette appropriate for the given color mode. */
+export function skinSupportsMode(skin: ForgeSkin, mode: "light" | "dark"): boolean {
+  const dark = isDarkBackground(resolveSkinPalette(skin, mode).background);
+  return mode === "dark" ? dark : !dark;
+}
+
+export function filterSkinsForMode(skins: ForgeSkin[], mode: "light" | "dark"): ForgeSkin[] {
+  return skins.filter((skin) => skinSupportsMode(skin, mode));
+}
+
+/** Whether a skin has distinct palettes for both day and night. */
+export function skinSupportsBothModes(skin: ForgeSkin): boolean {
+  return skinSupportsMode(skin, "light") && skinSupportsMode(skin, "dark");
+}
+
+export function filterSkinsForPreference(
+  skins: ForgeSkin[],
+  preference: "system" | "light" | "dark",
+): ForgeSkin[] {
+  if (preference === "system") {
+    return skins.filter(skinSupportsBothModes);
+  }
+  return filterSkinsForMode(skins, preference);
+}
+

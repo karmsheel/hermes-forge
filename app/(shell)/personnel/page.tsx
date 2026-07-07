@@ -1,69 +1,129 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Bot,
-  Loader2,
-  Plus,
-  Radar,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { Bot, Loader2, Plus, Radar, UserRound, Users } from "lucide-react";
 import { AddHumanDialog } from "@/components/personnel/AddHumanDialog";
 import {
-  HumanPersonnelCard,
-  type HumanPersonnelItem,
-} from "@/components/personnel/HumanPersonnelCard";
+  AvailableAgentCard,
+  type AvailableAgentItem,
+} from "@/components/personnel/AvailableAgentCard";
+import { HireAgentDialog } from "@/components/personnel/HireAgentDialog";
+import {
+  PersonnelMemberCard,
+  type AgentEmployeeItem,
+  type EmployeeItem,
+  type HumanEmployeeItem,
+} from "@/components/personnel/PersonnelMemberCard";
 import { useShell } from "@/components/shell/ShellContext";
 
-interface HermesAgentProfile {
+function toHumanEmployee(human: {
   id: string;
-  profileKey: string;
+  name: string;
+  role: string;
+  roleDescription: string | null;
+  isOwner: boolean;
+  iconKey?: string | null;
+}): HumanEmployeeItem {
+  return {
+    kind: "human",
+    id: human.id,
+    name: human.name,
+    role: human.role,
+    roleDescription: human.roleDescription,
+    isOwner: human.isOwner,
+    iconKey: human.iconKey ?? null,
+  };
+}
+
+function toAgentEmployee(agent: {
+  id: string;
   displayName: string;
   description: string | null;
   model: string | null;
-  hermesHome: string;
+  profileKey: string;
   isDefault: boolean;
-  discoveredAt: string;
+  isHired: boolean;
+  iconKey?: string | null;
+}): AgentEmployeeItem {
+  return {
+    kind: "agent",
+    id: agent.id,
+    displayName: agent.displayName,
+    description: agent.description,
+    model: agent.model,
+    profileKey: agent.profileKey,
+    isDefault: agent.isDefault,
+    isHired: agent.isHired,
+    iconKey: agent.iconKey ?? null,
+  };
 }
 
-function PersonnelLists({ businessId }: { businessId: string | null }) {
+function PersonnelLists({
+  businessId,
+  businessName,
+}: {
+  businessId: string | null;
+  businessName: string | null;
+}) {
   const router = useRouter();
-  const [humans, setHumans] = useState<HumanPersonnelItem[]>([]);
-  const [agents, setAgents] = useState<HermesAgentProfile[]>([]);
+  const [humans, setHumans] = useState<HumanEmployeeItem[]>([]);
+  const [availableAgents, setAvailableAgents] = useState<AvailableAgentItem[]>([]);
+  const [hiredAgents, setHiredAgents] = useState<AgentEmployeeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [addHumanOpen, setAddHumanOpen] = useState(false);
   const [humanFormKey, setHumanFormKey] = useState(0);
   const [creatingHuman, setCreatingHuman] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [hiringAgent, setHiringAgent] = useState<AvailableAgentItem | null>(null);
+  const [hiring, setHiring] = useState(false);
+
+  const employees = useMemo<EmployeeItem[]>(
+    () => [...humans, ...hiredAgents],
+    [humans, hiredAgents]
+  );
+
+  const loadPersonnel = useCallback(async () => {
+    const [humansRes, agentsRes] = await Promise.all([
+      fetch("/api/personnel/humans"),
+      fetch("/api/personnel/agents"),
+    ]);
+
+    if (humansRes.status === 401 || agentsRes.status === 401) {
+      router.push("/");
+      return;
+    }
+
+    const humansData = await humansRes.json();
+    const agentsData = await agentsRes.json();
+
+    setHumans((humansData.humans || []).map(toHumanEmployee));
+    setAvailableAgents(
+      (agentsData.available || agentsData.agents?.filter((a: { isHired: boolean }) => !a.isHired) || []).map(
+        (agent: AvailableAgentItem) => ({
+          ...agent,
+          iconKey: agent.iconKey ?? null,
+        })
+      )
+    );
+    setHiredAgents(
+      (agentsData.hired || agentsData.agents?.filter((a: { isHired: boolean }) => a.isHired) || []).map(
+        toAgentEmployee
+      )
+    );
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([fetch("/api/personnel/humans"), fetch("/api/personnel/agents")])
-      .then(async ([humansRes, agentsRes]) => {
-        if (cancelled) return;
-
-        if (humansRes.status === 401 || agentsRes.status === 401) {
-          router.push("/");
-          return;
-        }
-
-        const humansData = await humansRes.json();
-        const agentsData = await agentsRes.json();
-
-        if (cancelled) return;
-
-        setHumans(humansData.humans || []);
-        setAgents(agentsData.agents || []);
-      })
+    loadPersonnel()
       .catch(() => {
         if (cancelled) return;
         toast.error("Failed to load personnel");
         setHumans([]);
-        setAgents([]);
+        setAvailableAgents([]);
+        setHiredAgents([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -72,7 +132,7 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
     return () => {
       cancelled = true;
     };
-  }, [businessId, router]);
+  }, [businessId, loadPersonnel]);
 
   const handleCreateHuman = useCallback(
     async (name: string, role: string, roleDescription: string) => {
@@ -92,7 +152,7 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
           throw new Error(data?.error || "Failed to add person");
         }
         const human = await res.json();
-        setHumans((prev) => [human, ...prev]);
+        setHumans((prev) => [toHumanEmployee(human), ...prev]);
         setAddHumanOpen(false);
         toast.success(`Added ${name}`);
       } catch (e) {
@@ -104,15 +164,56 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
     []
   );
 
-  const handleDeleteHuman = useCallback(async (id: string) => {
+  const handleFireHuman = useCallback(async (id: string) => {
     const res = await fetch(`/api/personnel/humans/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data?.error || "Failed to remove person");
+      throw new Error(data?.error || "Failed to fire person");
     }
     setHumans((prev) => prev.filter((person) => person.id !== id));
-    toast.success("Person removed from organization");
+    toast.success("Employee removed from organization");
   }, []);
+
+  const handleFireAgent = useCallback(async (id: string) => {
+    const res = await fetch(`/api/personnel/agents/${id}/fire`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to fire agent");
+    }
+    const agent = toAgentEmployee(data);
+    setHiredAgents((prev) => prev.filter((item) => item.id !== id));
+    setAvailableAgents((prev) => [
+      {
+        id: agent.id,
+        displayName: agent.displayName,
+        description: agent.description,
+        model: agent.model,
+        profileKey: agent.profileKey,
+        isDefault: agent.isDefault,
+        iconKey: agent.iconKey,
+      },
+      ...prev,
+    ]);
+    toast.success("Agent fired from organization");
+  }, []);
+
+  const handleIconChange = useCallback(
+    (id: string, kind: "human" | "agent", iconKey: string | null) => {
+      if (kind === "human") {
+        setHumans((prev) =>
+          prev.map((person) => (person.id === id ? { ...person, iconKey } : person))
+        );
+      } else {
+        setHiredAgents((prev) =>
+          prev.map((agent) => (agent.id === id ? { ...agent, iconKey } : agent))
+        );
+        setAvailableAgents((prev) =>
+          prev.map((agent) => (agent.id === id ? { ...agent, iconKey } : agent))
+        );
+      }
+    },
+    []
+  );
 
   const handleScanAgents = useCallback(async () => {
     if (scanning) return;
@@ -124,7 +225,14 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
         throw new Error(data?.error || "Scan failed");
       }
 
-      setAgents(data.agents || []);
+      setAvailableAgents(
+        (data.available || []).map((agent: AvailableAgentItem) => ({
+          ...agent,
+          iconKey: agent.iconKey ?? null,
+        }))
+      );
+      setHiredAgents((data.hired || []).map(toAgentEmployee));
+
       const { found = 0, added = 0, updated = 0 } = data.scan || {};
       if (found === 0) {
         toast.error("No Hermes profiles found on this machine");
@@ -141,6 +249,30 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
       setScanning(false);
     }
   }, [scanning]);
+
+  const handleConfirmHire = useCallback(async () => {
+    if (!hiringAgent) return;
+    setHiring(true);
+    try {
+      const res = await fetch(`/api/personnel/agents/${hiringAgent.id}/hire`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to hire agent");
+      }
+
+      const hired = toAgentEmployee(data);
+      setAvailableAgents((prev) => prev.filter((agent) => agent.id !== hiringAgent.id));
+      setHiredAgents((prev) => [hired, ...prev]);
+      setHiringAgent(null);
+      toast.success(`Hired ${hired.displayName}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not hire agent");
+    } finally {
+      setHiring(false);
+    }
+  }, [hiringAgent]);
 
   if (loading) {
     return (
@@ -161,8 +293,8 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
                 <Users className="w-4 h-4 text-accent" />
               </div>
               <div>
-                <h2 className="text-lg font-medium">Humans</h2>
-                <p className="text-xs text-text-soft">People on your team</p>
+                <h2 className="text-lg font-medium">Employees</h2>
+                <p className="text-xs text-text-soft">Owner, team members, and hired agents</p>
               </div>
             </div>
             <button
@@ -178,18 +310,20 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
             </button>
           </div>
 
-          {humans.length === 0 ? (
+          {employees.length === 0 ? (
             <div className="card p-8 text-center border-dashed">
               <UserRound className="w-8 h-8 text-text-soft mx-auto mb-2" />
-              <p className="text-sm text-text-muted">No people added yet.</p>
+              <p className="text-sm text-text-muted">No employees yet.</p>
             </div>
           ) : (
-            <ul className="grid gap-3">
-              {humans.map((person) => (
-                <HumanPersonnelCard
-                  key={person.id}
-                  person={person}
-                  onDelete={handleDeleteHuman}
+            <ul className="personnel-grid">
+              {employees.map((employee) => (
+                <PersonnelMemberCard
+                  key={`${employee.kind}-${employee.id}`}
+                  employee={employee}
+                  onIconChange={handleIconChange}
+                  onFireHuman={handleFireHuman}
+                  onFireAgent={handleFireAgent}
                 />
               ))}
             </ul>
@@ -203,8 +337,8 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
                 <Bot className="w-4 h-4 text-accent" />
               </div>
               <div>
-                <h2 className="text-lg font-medium">Agents</h2>
-                <p className="text-xs text-text-soft">Hermes profiles on this machine</p>
+                <h2 className="text-lg font-medium">Available agents</h2>
+                <p className="text-xs text-text-soft">Hermes profiles discovered on this machine</p>
               </div>
             </div>
             <button
@@ -222,11 +356,11 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
             </button>
           </div>
 
-          {agents.length === 0 ? (
+          {availableAgents.length === 0 ? (
             <div className="card p-8 text-center border-dashed">
               <Bot className="w-8 h-8 text-text-soft mx-auto mb-2" />
               <p className="text-sm text-text-muted mb-4">
-                No Hermes agents linked yet. Scan to discover profiles from your Hermes installation.
+                No Hermes agents discovered yet. Scan to find profiles from your Hermes installation.
               </p>
               <button
                 type="button"
@@ -243,34 +377,14 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
               </button>
             </div>
           ) : (
-            <ul className="grid gap-3">
-              {agents.map((agent) => (
-                <li key={agent.id} className="card p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-bg-muted flex items-center justify-center shrink-0">
-                      <Bot className="w-5 h-5 text-accent" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-medium text-lg">{agent.displayName}</div>
-                        {agent.isDefault && (
-                          <span className="text-[10px] uppercase tracking-widest text-text-soft border border-border rounded px-1.5 py-0.5">
-                            Default
-                          </span>
-                        )}
-                      </div>
-                      {agent.model && (
-                        <div className="text-xs text-text-soft mt-1 font-mono">{agent.model}</div>
-                      )}
-                      {agent.description && (
-                        <p className="text-sm text-text-muted mt-2">{agent.description}</p>
-                      )}
-                      <p className="text-xs text-text-soft mt-2 truncate" title={agent.hermesHome}>
-                        {agent.hermesHome}
-                      </p>
-                    </div>
-                  </div>
-                </li>
+            <ul className="personnel-grid">
+              {availableAgents.map((agent) => (
+                <AvailableAgentCard
+                  key={agent.id}
+                  agent={agent}
+                  onIconChange={(id, iconKey) => handleIconChange(id, "agent", iconKey)}
+                  onHire={setHiringAgent}
+                />
               ))}
             </ul>
           )}
@@ -283,6 +397,15 @@ function PersonnelLists({ businessId }: { businessId: string | null }) {
         creating={creatingHuman}
         onClose={() => setAddHumanOpen(false)}
         onCreate={handleCreateHuman}
+      />
+
+      <HireAgentDialog
+        open={hiringAgent !== null}
+        agentName={hiringAgent?.displayName ?? ""}
+        businessName={businessName ?? "this business"}
+        hiring={hiring}
+        onClose={() => !hiring && setHiringAgent(null)}
+        onConfirm={() => void handleConfirmHire()}
       />
     </>
   );
@@ -298,14 +421,15 @@ export default function PersonnelPage() {
         <h1 className="text-3xl font-semibold tracking-tight">Personnel</h1>
         {currentBusiness && <p className="text-sm text-accent mt-1">in {currentBusiness.name}</p>}
         <p className="text-sm text-text-muted mt-3 max-w-2xl">
-          Humans and Hermes agents linked to this business. Scan your local Hermes installation to
-          discover agent profiles.
+          Manage employees and hire Hermes agents into your organization. Scan your local Hermes
+          installation to discover available agent profiles.
         </p>
       </div>
 
       <PersonnelLists
         key={currentBusiness?.id ?? "no-business"}
         businessId={currentBusiness?.id ?? null}
+        businessName={currentBusiness?.name ?? null}
       />
     </main>
   );

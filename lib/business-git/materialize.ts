@@ -51,6 +51,7 @@ export async function materializeBusinessRepo(
       },
       memories: { orderBy: { lastUpdated: 'asc' } },
       humanPersonnel: { orderBy: { createdAt: 'asc' } },
+      hermesAgentProfiles: { orderBy: { discoveredAt: 'asc' } },
       decisions: { orderBy: { recordedAt: 'asc' } },
       events: { orderBy: { sequence: 'asc' } },
     },
@@ -102,19 +103,33 @@ export async function materializeBusinessRepo(
     )
   );
 
-  await writeJson(
-    path.join(repoPath, 'personnel.json'),
-    business.humanPersonnel.map((p) => ({
+  await writeJson(path.join(repoPath, 'personnel.json'), {
+    humans: business.humanPersonnel.map((p) => ({
       id: p.id,
       name: p.name,
       role: p.role,
       roleDescription: p.roleDescription,
       isOwner: p.isOwner,
       userId: p.userId,
+      iconKey: p.iconKey,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
-    }))
-  );
+    })),
+    agents: business.hermesAgentProfiles.map((a) => ({
+      id: a.id,
+      profileKey: a.profileKey,
+      displayName: a.displayName,
+      description: a.description,
+      model: a.model,
+      hermesHome: a.hermesHome,
+      isDefault: a.isDefault,
+      iconKey: a.iconKey,
+      isHired: a.isHired,
+      hiredAt: a.hiredAt?.toISOString() ?? null,
+      discoveredAt: a.discoveredAt.toISOString(),
+      updatedAt: a.updatedAt.toISOString(),
+    })),
+  });
 
   await writeNdjson(
     path.join(repoPath, 'decisions.ndjson'),

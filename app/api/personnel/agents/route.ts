@@ -15,10 +15,15 @@ export async function GET(request: NextRequest) {
 
     const agents = await prisma.hermesAgentProfile.findMany({
       where: { businessId: business.id },
-      orderBy: [{ isDefault: 'desc' }, { displayName: 'asc' }],
+      orderBy: [{ isHired: 'desc' }, { isDefault: 'desc' }, { displayName: 'asc' }],
     });
 
+    const available = agents.filter((agent) => !agent.isHired);
+    const hired = agents.filter((agent) => agent.isHired);
+
     return NextResponse.json({
+      available,
+      hired,
       agents,
       business: { id: business.id, name: business.name },
     });
@@ -92,10 +97,15 @@ export async function POST(request: NextRequest) {
 
     const agents = await prisma.hermesAgentProfile.findMany({
       where: { businessId: business.id },
-      orderBy: [{ isDefault: 'desc' }, { displayName: 'asc' }],
+      orderBy: [{ isHired: 'desc' }, { isDefault: 'desc' }, { displayName: 'asc' }],
     });
 
+    const available = agents.filter((agent) => !agent.isHired);
+    const hired = agents.filter((agent) => agent.isHired);
+
     return NextResponse.json({
+      available,
+      hired,
       agents,
       scan: { found: scanned.length, added, updated },
     });

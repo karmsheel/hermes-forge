@@ -6,6 +6,7 @@ const VERSION_CLICKS_KEY = "forge:dev-about-version-clicks";
 const PREVIEW_UPDATE_ICON_KEY = "forge:dev-preview-update-icon";
 const SHOW_CRONALYTICS_KEY = "forge:dev-show-cronalytics";
 const SHOW_DECISIONS_KEY = "forge:dev-show-decisions";
+const SHOW_HOME_PROCESS_STANDARD_PICKER_KEY = "forge:dev-show-home-process-standard-picker";
 
 const UNLOCK_CLICKS_REQUIRED = 5;
 
@@ -100,6 +101,18 @@ export function setShowDecisionsPage(enabled: boolean) {
     writeStorage(SHOW_DECISIONS_KEY, "1");
   } else {
     removeStorage(SHOW_DECISIONS_KEY);
+  }
+}
+
+export function getShowHomeProcessStandardPicker(): boolean {
+  return readStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY) === "1";
+}
+
+export function setShowHomeProcessStandardPicker(enabled: boolean) {
+  if (enabled) {
+    writeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY, "1");
+  } else {
+    removeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY);
   }
 }
 

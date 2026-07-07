@@ -26,6 +26,8 @@ export const BUSINESS_EVENT_TYPES = {
 
   PERSONNEL_ADDED: 'personnel.added',
   PERSONNEL_REMOVED: 'personnel.removed',
+  PERSONNEL_HIRED: 'personnel.hired',
+  PERSONNEL_FIRED: 'personnel.fired',
 
   DECISION_RECORDED: 'decision.recorded',
   DECISION_SUPERSEDED: 'decision.superseded',
@@ -58,6 +60,9 @@ export interface BusinessEventMetadata {
   changes?: FieldChange[];
   preview?: string;
   role?: string;
+  kind?: 'human' | 'agent';
+  businessName?: string;
+  profileKey?: string;
   count?: number;
   status?: string;
   type?: string;

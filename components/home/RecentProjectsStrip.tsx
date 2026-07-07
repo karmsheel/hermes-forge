@@ -69,7 +69,7 @@ export function RecentProcessesStrip() {
     <div className="recent-projects">
       <div className="recent-projects__header">
         <div className="recent-projects__title">Recent processes</div>
-        <Link href="/projects" className="recent-projects__view-all">
+        <Link href="/functions" className="recent-projects__view-all">
           View functions <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>

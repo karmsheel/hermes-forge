@@ -386,7 +386,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           <p className="text-sm text-text-muted mb-6">
             Select or create a business to view all process maps.
           </p>
-          <Link href="/projects" className="btn-primary text-sm inline-flex items-center gap-2">
+          <Link href="/functions" className="btn-primary text-sm inline-flex items-center gap-2">
             Go to Functions <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

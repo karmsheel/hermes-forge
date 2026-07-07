@@ -1,5 +1,7 @@
 import { BrowserWindow, ipcMain } from "electron";
-import { autoUpdater } from "electron-updater";
+import electronUpdater from "electron-updater";
+
+const { autoUpdater } = electronUpdater;
 
 /** @type {import("electron").App} */
 let appRef = null;

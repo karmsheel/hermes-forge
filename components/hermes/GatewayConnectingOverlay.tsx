@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Mirrors Hermes Agent Desktop (`gateway-connecting-overlay.tsx`):
 // monospace CONNECTING decode + blink cursor, then fade out on success.
@@ -32,6 +32,11 @@ export function GatewayConnectingOverlay({
 }: GatewayConnectingOverlayProps) {
   const [tail, setTail] = useState(TAIL);
   const [phase, setPhase] = useState<Phase>("live");
+  const onExitCompleteRef = useRef(onExitComplete);
+
+  useEffect(() => {
+    onExitCompleteRef.current = onExitComplete;
+  }, [onExitComplete]);
 
   useEffect(() => {
     if (leaving && phase === "live") {
@@ -73,11 +78,11 @@ export function GatewayConnectingOverlay({
     if (phase === "overlay-out") {
       const id = window.setTimeout(() => {
         setPhase("gone");
-        onExitComplete?.();
+        onExitCompleteRef.current?.();
       }, OVERLAY_OUT_MS);
       return () => window.clearTimeout(id);
     }
-  }, [onExitComplete, phase]);
+  }, [phase]);
 
   if (phase === "gone") {
     return null;
@@ -92,7 +97,6 @@ export function GatewayConnectingOverlay({
         overlayHidden ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      <style>{`@keyframes forge-connect-cursor { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }`}</style>
       <span
         className={`inline-flex items-center pl-[0.4em] font-mono text-[0.64rem] font-semibold uppercase tracking-[0.4em] tabular-nums text-accent transition duration-300 ease-out ${
           textLeaving ? "translate-y-2 opacity-0 saturate-0" : "translate-y-0 opacity-100 saturate-100"
@@ -102,8 +106,7 @@ export function GatewayConnectingOverlay({
         {tail}
         <span
           aria-hidden="true"
-          className="ml-0.5 inline-block size-2 shrink-0 -translate-y-px rounded-[1px] bg-accent"
-          style={{ animation: "forge-connect-cursor 1s step-end infinite" }}
+          className="forge-connect-cursor ml-0.5 inline-block size-2 shrink-0 -translate-y-px rounded-[1px] bg-accent"
         />
       </span>
     </div>

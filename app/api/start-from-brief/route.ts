@@ -18,7 +18,7 @@ import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
   templateId: z
-    .enum(['sop', 'customer-journey', 'approval-flow', 'onboarding', 'incident', 'blank'])
+    .enum(['sop', 'customer-journey', 'approval-flow', 'onboarding', 'incident'])
     .optional(),
   processName: z.string().max(120).optional(),
   diagramMermaid: z.string().max(20000).optional(),

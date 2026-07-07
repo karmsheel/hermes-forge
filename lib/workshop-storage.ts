@@ -85,3 +85,25 @@ export function consumePendingHermesReply(): string | null {
   if (value) sessionStorage.removeItem(PENDING_REPLY_KEY);
   return value;
 }
+
+const ALL_FUNCTIONS_FILTER = "__all__";
+
+function functionFilterKey(businessId: string) {
+  return `activeFunctionFilter:${businessId}`;
+}
+
+export function getActiveFunctionFilter(businessId: string): string | null {
+  if (typeof window === "undefined") return null;
+  const value = localStorage.getItem(functionFilterKey(businessId));
+  if (!value || value === ALL_FUNCTIONS_FILTER) return null;
+  return value;
+}
+
+export function setActiveFunctionFilter(businessId: string, functionName: string | null) {
+  if (typeof window === "undefined") return;
+  if (!functionName) {
+    localStorage.setItem(functionFilterKey(businessId), ALL_FUNCTIONS_FILTER);
+    return;
+  }
+  localStorage.setItem(functionFilterKey(businessId), functionName);
+}

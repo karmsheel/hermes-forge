@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/businesses",
-        destination: "/projects",
+        destination: "/functions",
+        permanent: true,
+      },
+      {
+        source: "/projects",
+        destination: "/functions",
         permanent: true,
       },
     ];

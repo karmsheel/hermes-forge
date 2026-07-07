@@ -23,7 +23,7 @@ export function getThemeBootScript(): string {
     skins: bootSkins,
     accentKey: "hermes-forge-accent",
     accentMap: {
-      terracotta: "forge",
+      terracotta: "iron-ember",
       coral: "ember",
       amber: "ember",
       sage: "slate",

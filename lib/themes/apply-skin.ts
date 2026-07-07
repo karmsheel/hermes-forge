@@ -38,14 +38,15 @@ function composerVars(
 
   const composerBg = c.userBubble;
   const composerBorder = pickHex(c.userBubbleBorder, border);
-  const composerFg = "#ffffff";
+  const composerFg = pickHex(c.composerForeground, "#ffffff");
+  const composerFaint = pickHex(c.composerPlaceholder, mix(composerFg, composerBg, 0.62));
 
   return {
     "--composer-bg": composerBg,
     "--composer-fg": composerFg,
     "--composer-fg-muted": mix(composerFg, composerBg, 0.35),
     "--composer-fg-soft": mix(composerFg, composerBg, 0.48),
-    "--composer-fg-faint": mix(composerFg, composerBg, 0.62),
+    "--composer-fg-faint": composerFaint,
     "--composer-border": composerBorder,
     "--composer-border-soft": mix(composerBorder, composerBg, 0.55),
     "--composer-border-strong": mix(composerBorder, composerFg, 0.18),
@@ -149,20 +150,23 @@ export function forgeVarsFromColors(c: SkinColors): ForgeSkinVars {
   }
 
   if (dark) {
-    vars["--green"] = "#4caf72";
-    vars["--green-bg"] = "#0f2a18";
-    vars["--green-border"] = "#1a4028";
+    const green = pickHex(c.success, "#4caf72");
+    const blue = pickHex(c.info, "#6b8fe8");
+    vars["--green"] = green;
+    vars["--green-bg"] = mix(green, bg, 0.88);
+    vars["--green-border"] = mix(green, bg, 0.75);
     vars["--amber"] = "#e09a40";
     vars["--amber-bg"] = "#2a1a04";
-    vars["--blue"] = "#6b8fe8";
-    vars["--blue-bg"] = "#0f1a38";
-    vars["--blue-border"] = "#1a2c58";
+    vars["--blue"] = blue;
+    vars["--blue-bg"] = mix(blue, bg, 0.88);
+    vars["--blue-border"] = mix(blue, bg, 0.75);
   } else {
-    const blue = pickHex(c.midground, c.ring, c.primary, "#2348b8");
+    const green = pickHex(c.success, "#1f7a3a");
+    const blue = pickHex(c.info, c.midground, c.ring, c.primary, "#2348b8");
     const blueBg = pickHex(c.secondary, c.accent, c.muted, "#e8efff");
-    vars["--green"] = "#1f7a3a";
-    vars["--green-bg"] = "#e8f7ee";
-    vars["--green-border"] = "#c6ead2";
+    vars["--green"] = green;
+    vars["--green-bg"] = mix(green, bg, 0.9);
+    vars["--green-border"] = mix(green, bg, 0.72);
     vars["--amber"] = "#b26200";
     vars["--amber-bg"] = "#fff3e0";
     vars["--blue"] = blue;

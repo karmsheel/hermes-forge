@@ -30,6 +30,14 @@ export interface SkinColors {
   sidebarBorder?: string;
   userBubble?: string;
   userBubbleBorder?: string;
+  /** Text on userBubble / home composer surfaces (defaults to white). */
+  composerForeground?: string;
+  /** Placeholder text in the home composer (defaults to a faint mix of composer foreground). */
+  composerPlaceholder?: string;
+  /** Semantic success (maps to --green tokens when set). */
+  success?: string;
+  /** Semantic info (maps to --blue tokens when set). */
+  info?: string;
 }
 
 export interface SkinTypography {

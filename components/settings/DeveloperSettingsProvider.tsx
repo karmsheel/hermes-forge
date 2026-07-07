@@ -14,11 +14,13 @@ import {
   getPreviewUpdateIcon,
   getShowCronalyticsPage,
   getShowDecisionsPage,
+  getShowHomeProcessStandardPicker,
   isDeveloperUnlocked,
   recordVersionUnlockClick,
   setPreviewUpdateIcon as persistPreviewUpdateIcon,
   setShowCronalyticsPage as persistShowCronalyticsPage,
   setShowDecisionsPage as persistShowDecisionsPage,
+  setShowHomeProcessStandardPicker as persistShowHomeProcessStandardPicker,
 } from "@/lib/developer-settings";
 
 interface DeveloperSettingsContextValue {
@@ -30,6 +32,8 @@ interface DeveloperSettingsContextValue {
   setShowCronalyticsPage: (enabled: boolean) => void;
   showDecisionsPage: boolean;
   setShowDecisionsPage: (enabled: boolean) => void;
+  showHomeProcessStandardPicker: boolean;
+  setShowHomeProcessStandardPicker: (enabled: boolean) => void;
   recordVersionUnlockClick: () => void;
 }
 
@@ -40,6 +44,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const [previewUpdateIcon, setPreviewUpdateIconState] = useState(false);
   const [showCronalyticsPage, setShowCronalyticsPageState] = useState(false);
   const [showDecisionsPage, setShowDecisionsPageState] = useState(false);
+  const [showHomeProcessStandardPicker, setShowHomeProcessStandardPickerState] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -47,6 +52,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setPreviewUpdateIconState(getPreviewUpdateIcon());
     setShowCronalyticsPageState(getShowCronalyticsPage());
     setShowDecisionsPageState(getShowDecisionsPage());
+    setShowHomeProcessStandardPickerState(getShowHomeProcessStandardPicker());
     setHydrated(true);
   }, []);
 
@@ -63,6 +69,11 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const setShowDecisionsPage = useCallback((enabled: boolean) => {
     setShowDecisionsPageState(enabled);
     persistShowDecisionsPage(enabled);
+  }, []);
+
+  const setShowHomeProcessStandardPicker = useCallback((enabled: boolean) => {
+    setShowHomeProcessStandardPickerState(enabled);
+    persistShowHomeProcessStandardPicker(enabled);
   }, []);
 
   const handleVersionUnlockClick = useCallback(() => {
@@ -83,6 +94,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowCronalyticsPage,
       showDecisionsPage: hydrated ? showDecisionsPage : false,
       setShowDecisionsPage,
+      showHomeProcessStandardPicker: hydrated ? showHomeProcessStandardPicker : false,
+      setShowHomeProcessStandardPicker,
       recordVersionUnlockClick: handleVersionUnlockClick,
     }),
     [
@@ -94,6 +107,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowCronalyticsPage,
       showDecisionsPage,
       setShowDecisionsPage,
+      showHomeProcessStandardPicker,
+      setShowHomeProcessStandardPicker,
       handleVersionUnlockClick,
     ]
   );

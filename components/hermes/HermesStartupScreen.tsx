@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Plug } from "lucide-react";
 import iconImage from "@/assets/icon.jpg";
+import { isForgeDesktop } from "@/lib/forge-desktop";
 import { loadHermesConfig } from "@/lib/hermes-storage";
 import { GatewayConnectingOverlay } from "./GatewayConnectingOverlay";
 import { useHermesConnection } from "./HermesConnectionProvider";
@@ -31,18 +32,53 @@ export function HermesStartupScreen() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") || "/home";
   const { isConnected, isBusy, autoConnect, status } = useHermesConnection();
-
-  const hadSavedConfig = useRef(Boolean(loadHermesConfig()));
+  const hadSavedConfig = useRef(false);
+  const [mounted, setMounted] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [phase, setPhase] = useState<StartupPhase>(() =>
-    hadSavedConfig.current ? "connecting" : "boot"
-  );
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [phase, setPhase] = useState<StartupPhase>("connecting");
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/local", { method: "POST" })
-      .then((res) => setSessionReady(res.ok))
-      .catch(() => setSessionReady(false));
+    const desktop = isForgeDesktop();
+    const saved = Boolean(loadHermesConfig());
+    hadSavedConfig.current = saved;
+    setIsDesktop(desktop);
+    setMounted(true);
+
+    if (!desktop && !saved) {
+      setPhase("boot");
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrapSession(attempt = 0) {
+      try {
+        const res = await fetch("/api/auth/local", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        if (cancelled) return;
+        if (res.ok) {
+          setSessionReady(true);
+          return;
+        }
+      } catch {
+        if (cancelled) return;
+      }
+
+      if (attempt < 3) {
+        window.setTimeout(() => void bootstrapSession(attempt + 1), 1000 * (attempt + 1));
+      }
+    }
+
+    void bootstrapSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -61,16 +97,26 @@ export function HermesStartupScreen() {
   }, [isBusy, phase]);
 
   useEffect(() => {
-    if (phase === "connecting" && !isBusy && !isConnected) {
+    if (phase !== "connecting" || !sessionReady) return;
+
+    if (isDesktop) {
+      setPhase("leaving");
+      return;
+    }
+
+    if (isConnected) {
+      setPhase("leaving");
+      return;
+    }
+
+    if (!isBusy && !isConnected) {
       setPhase("idle");
     }
-  }, [isBusy, isConnected, phase]);
+  }, [isBusy, isConnected, isDesktop, phase, sessionReady]);
 
-  useEffect(() => {
-    if (isConnected && sessionReady && phase === "connecting") {
-      setPhase("leaving");
-    }
-  }, [isConnected, phase, sessionReady]);
+  const handleExitComplete = useCallback(() => {
+    router.push(redirectTo);
+  }, [redirectTo, router]);
 
   async function handleConnect() {
     setConnecting(true);
@@ -83,13 +129,18 @@ export function HermesStartupScreen() {
   }
 
   const tip = troubleshootingTip(status.kind);
+
+  if (!mounted) {
+    return <GatewayConnectingOverlay />;
+  }
+
   const showOverlay = phase === "connecting" || phase === "leaving";
 
   if (showOverlay) {
     return (
       <GatewayConnectingOverlay
         leaving={phase === "leaving"}
-        onExitComplete={() => router.push(redirectTo)}
+        onExitComplete={handleExitComplete}
       />
     );
   }
@@ -121,6 +172,12 @@ export function HermesStartupScreen() {
           </p>
         </div>
 
+        {!sessionReady && (
+          <div className="mb-4 text-xs text-text-muted bg-bg-muted border border-border rounded-lg px-3 py-2">
+            Starting local session…
+          </div>
+        )}
+
         {status.error && (
           <div className="mb-4 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-left">
             {status.error}
@@ -131,7 +188,7 @@ export function HermesStartupScreen() {
         <button
           type="button"
           onClick={() => void handleConnect()}
-          disabled={connecting || isBusy}
+          disabled={connecting || isBusy || !sessionReady}
           className="btn-primary w-full justify-center"
         >
           {connecting || isBusy ? (

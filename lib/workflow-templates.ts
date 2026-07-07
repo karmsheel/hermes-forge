@@ -3,8 +3,7 @@ export type WorkflowTemplateId =
   | "customer-journey"
   | "approval-flow"
   | "onboarding"
-  | "incident"
-  | "blank";
+  | "incident";
 
 export interface WorkflowTemplate {
   id: WorkflowTemplateId;
@@ -77,15 +76,6 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
       "Document our incident response flow: detection, triage, escalation paths, communication, resolution, and post-mortem.",
     gradientFrom: "#c44d7a",
     gradientTo: "#7a2f4c",
-  },
-  {
-    id: "blank",
-    title: "Blank process",
-    description: "Start from scratch",
-    processName: "Untitled Process",
-    seedPrompt: "",
-    gradientFrom: "#4a6278",
-    gradientTo: "#2a3540",
   },
 ];
 

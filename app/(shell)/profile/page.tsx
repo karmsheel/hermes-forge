@@ -434,7 +434,7 @@ export default function ProfilePage() {
                     <Pencil className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Edit</span>
                   </button>
-                  <Link href="/projects" className="btn-secondary text-xs px-3 py-1.5">Open</Link>
+                  <Link href="/functions" className="btn-secondary text-xs px-3 py-1.5">Open</Link>
                   <button
                     onClick={() => handleDownload(b)}
                     disabled={downloadingId === b.id}

@@ -24,10 +24,16 @@ import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import {
+  aggregateFunctions,
+  filterProcessesByFunctionKeepingActive,
+} from "@/lib/functions";
+import {
   clearActiveProcessId,
   consumePendingHermesReply,
   consumePendingNewProcess,
+  getActiveFunctionFilter,
   getActiveProcessId,
+  setActiveFunctionFilter,
   setActiveProcessId,
   getActiveConversationId,
   setActiveConversationId as persistConversationId,
@@ -46,6 +52,7 @@ export default function WorkshopPage() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
+  const [functionFilter, setFunctionFilter] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingProcess, setLoadingProcess] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -151,7 +158,7 @@ export default function WorkshopPage() {
       }
       const data = await res.json();
       if (!data.business) {
-        window.location.href = "/projects";
+        window.location.href = "/functions";
         return;
       }
 
@@ -161,6 +168,18 @@ export default function WorkshopPage() {
       setProcesses(list);
       setBusinessId(currentBusinessId);
       setBusinessName(data.business?.name || null);
+
+      const savedFunctionFilter = getActiveFunctionFilter(currentBusinessId);
+      const availableFunctions = aggregateFunctions(list);
+      const resolvedFunctionFilter =
+        savedFunctionFilter &&
+        availableFunctions.some((fn) => fn.name === savedFunctionFilter)
+          ? savedFunctionFilter
+          : null;
+      setFunctionFilter(resolvedFunctionFilter);
+      if (savedFunctionFilter && !resolvedFunctionFilter) {
+        setActiveFunctionFilter(currentBusinessId, null);
+      }
 
       const savedProcessId = getActiveProcessId(currentBusinessId);
       const resolvedId =
@@ -229,6 +248,18 @@ export default function WorkshopPage() {
       loadProcess(activeId, businessId);
     }
   }, [activeId, businessId, loadingList, loadProcess]);
+
+  const availableFunctions = useMemo(() => aggregateFunctions(processes), [processes]);
+
+  const filteredProcesses = useMemo(
+    () => filterProcessesByFunctionKeepingActive(processes, functionFilter, activeId),
+    [processes, functionFilter, activeId],
+  );
+
+  const handleFunctionFilterChange = useCallback((functionName: string | null) => {
+    setFunctionFilter(functionName);
+    if (businessId) setActiveFunctionFilter(businessId, functionName);
+  }, [businessId]);
 
   const handleCreateProcess = useCallback(async () => {
     if (creating) return;
@@ -754,7 +785,10 @@ export default function WorkshopPage() {
 
       <div className="flex-1 flex min-h-0">
         <ProcessSidebar
-          processes={processes}
+          processes={filteredProcesses}
+          functions={availableFunctions}
+          functionFilter={functionFilter}
+          onFunctionFilterChange={handleFunctionFilterChange}
           activeId={activeId}
           loading={loadingList}
           creating={creating}

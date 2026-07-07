@@ -60,6 +60,8 @@ export function normalizeSkinColors(
     sidebarBorder: partial.sidebarBorder ?? partial.border ?? mix(foreground, background, 0.82),
     userBubble: partial.userBubble,
     userBubbleBorder: partial.userBubbleBorder,
+    composerForeground: partial.composerForeground,
+    composerPlaceholder: partial.composerPlaceholder,
     composerRing: partial.composerRing,
     midgroundForeground: partial.midgroundForeground,
   };

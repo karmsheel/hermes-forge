@@ -12,11 +12,16 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import type { FunctionSummary } from "@/lib/functions";
 import type { ProcessSummary } from "@/lib/types";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
+import { FunctionFilterPicker } from "./FunctionFilterPicker";
 
 interface ProcessSidebarProps {
   processes: ProcessSummary[];
+  functions: FunctionSummary[];
+  functionFilter: string | null;
+  onFunctionFilterChange: (functionName: string | null) => void;
   activeId: string | null;
   loading: boolean;
   creating: boolean;
@@ -28,6 +33,9 @@ interface ProcessSidebarProps {
 
 export function ProcessSidebar({
   processes,
+  functions,
+  functionFilter,
+  onFunctionFilterChange,
   activeId,
   loading,
   creating,
@@ -145,7 +153,7 @@ export function ProcessSidebar({
   return (
     <>
       <aside className="w-64 shrink-0 border-r border-border bg-bg-panel text-text flex flex-col h-full overflow-hidden">
-        <div className="p-3 border-b border-border">
+        <div className="p-3 border-b border-border space-y-2">
           <button
             onClick={onCreate}
             disabled={creating}
@@ -158,11 +166,16 @@ export function ProcessSidebar({
             )}
             New Process
           </button>
+          <FunctionFilterPicker
+            value={functionFilter}
+            functions={functions}
+            onChange={onFunctionFilterChange}
+          />
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 pb-4">
           <div className="text-[10px] uppercase tracking-widest text-text-muted px-2 mb-2">
-            Workflows
+            {functionFilter ? `${functionFilter} workflows` : "Workflows"}
           </div>
 
           {loading ? (
@@ -171,7 +184,9 @@ export function ProcessSidebar({
             </div>
           ) : processes.length === 0 ? (
             <div className="text-xs text-text-muted px-2 py-4 text-center">
-              No workflows yet. Create one to start mapping.
+              {functionFilter
+                ? `No workflows in ${functionFilter} yet.`
+                : "No workflows yet. Create one to start mapping."}
             </div>
           ) : (
             <ul className="space-y-1">

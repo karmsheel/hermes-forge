@@ -7,7 +7,7 @@ const MIGRATION_FLAG_KEY = "hermes-forge-skin-migrated-v1";
 
 /** Map legacy accent ids to closest built-in skin. */
 const ACCENT_TO_SKIN: Record<AccentId, string> = {
-  terracotta: "forge",
+  terracotta: "iron-ember",
   coral: "ember",
   amber: "ember",
   sage: "slate",

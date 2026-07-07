@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { getStoredProcessStandard, type ProcessStandardId } from "@/lib/process-standards";
 import { startFromBrief } from "@/lib/start-from-brief";
@@ -14,10 +15,11 @@ import { TemplateCards } from "./TemplateCards";
 
 const heroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
-export function HomeHero() {
+export function HomeHero({ belowFold }: { belowFold?: ReactNode }) {
   const router = useRouter();
   const composerRef = useRef<HTMLTextAreaElement>(null);
-  const { openNewProject, openHermesConnection } = useShell();
+  const { openHermesConnection } = useShell();
+  const { showHomeProcessStandardPicker } = useDeveloperSettings();
   const [brief, setBrief] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<WorkflowTemplateId | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
@@ -29,14 +31,6 @@ export function HomeHero() {
   }, []);
 
   function handleTemplateSelect(template: WorkflowTemplate) {
-    if (template.id === "blank") {
-      setSelectedTemplateId(null);
-      setSelectedTemplate(null);
-      setBrief("");
-      openNewProject();
-      return;
-    }
-
     setSelectedTemplateId(template.id);
     setSelectedTemplate(template);
     setBrief(template.seedPrompt);
@@ -75,40 +69,48 @@ export function HomeHero() {
   }
 
   return (
-    <section className="home-hero">
-      <div className="home-hero__intro">
-        <div
-          className="home-hero__art"
-          aria-hidden="true"
-          style={
-            {
-              "--home-hero-art-url": `url(${heroArtUrl})`,
-            } as CSSProperties
-          }
-        />
-        <h1 className="home-hero__title">What will you FORGE today?</h1>
-        <p className="home-hero__subtitle">Map, monitor and automate your business with Hermes Agent</p>
+    <div className="home-page">
+      <div className="home-page__head">
+        <section className="home-hero">
+          <div className="home-hero__intro">
+            <div
+              className="home-hero__art"
+              aria-hidden="true"
+              style={
+                {
+                  "--home-hero-art-url": `url(${heroArtUrl})`,
+                } as CSSProperties
+              }
+            />
+            <h1 className="home-hero__title">What will you FORGE today?</h1>
+            <p className="home-hero__subtitle">
+              Map, monitor and automate your business with Hermes Agent
+            </p>
+          </div>
+
+          <PromptComposer
+            value={brief}
+            onChange={handleBriefChange}
+            onSend={handleSend}
+            sending={sending}
+            onOpenConnection={openHermesConnection}
+            composerRef={composerRef}
+            footerExtra={
+              showHomeProcessStandardPicker ? (
+                <ProcessStandardPicker value={processStandard} onChange={setProcessStandard} />
+              ) : null
+            }
+          />
+        </section>
       </div>
 
-      <PromptComposer
-        value={brief}
-        onChange={handleBriefChange}
-        onSend={handleSend}
-        sending={sending}
-        onOpenConnection={openHermesConnection}
-        composerRef={composerRef}
-        footerExtra={
-          <ProcessStandardPicker value={processStandard} onChange={setProcessStandard} />
-        }
-      />
+      <div className="home-page__scroll">
+        <div className="home-page__scroll-inner">
+          <TemplateCards selectedId={selectedTemplateId} onSelect={handleTemplateSelect} />
 
-      <TemplateCards selectedId={selectedTemplateId} onSelect={handleTemplateSelect} />
-
-      <p className="home-hero__blank">
-        <button type="button" onClick={openNewProject} className="home-hero__blank-link">
-          …or start a blank business ›
-        </button>
-      </p>
-    </section>
+          {belowFold}
+        </div>
+      </div>
+    </div>
   );
 }

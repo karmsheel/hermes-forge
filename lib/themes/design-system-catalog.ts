@@ -50,7 +50,7 @@ const SKIN_COLOR_GROUP_DEFS: { id: string; label: string; keys: (keyof SkinColor
   {
     id: "composer",
     label: "Composer & chat",
-    keys: ["composerRing", "userBubble", "userBubbleBorder"],
+    keys: ["composerRing", "userBubble", "userBubbleBorder", "composerForeground", "composerPlaceholder"],
   },
 ];
 

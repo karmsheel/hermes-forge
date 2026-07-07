@@ -4,10 +4,5 @@ import { HomeHero } from "@/components/home/HomeHero";
 import { RecentProcessesStrip } from "@/components/home/RecentProjectsStrip";
 
 export default function HomePage() {
-  return (
-    <div className="home-page">
-      <HomeHero />
-      <RecentProcessesStrip />
-    </div>
-  );
+  return <HomeHero belowFold={<RecentProcessesStrip />} />;
 }

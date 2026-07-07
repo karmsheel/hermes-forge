@@ -23,7 +23,6 @@ import {
   THEME_STORAGE_KEY,
   type ThemePreference,
 } from "@/lib/theme";
-
 interface ThemeContextValue {
   preference: ThemePreference;
   resolved: "light" | "dark";
@@ -42,7 +41,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("dark");
   const [resolved, setResolved] = useState<"light" | "dark">("dark");
-  const [skinName, setSkinNameState] = useState("forge");
+  const [skinName, setSkinNameState] = useState("iron-ember");
   const [userThemesVersion, setUserThemesVersion] = useState(0);
 
   const refreshUserThemes = useCallback(() => {
@@ -72,8 +71,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     applyThemePreference(storedTheme);
     const mode = resolveThemePreference(storedTheme);
     setResolved(mode);
-    applyCurrentSkin(storedSkin, mode);
     refreshUserThemes();
+    applyCurrentSkin(storedSkin, mode);
   }, [applyCurrentSkin, refreshUserThemes]);
 
   useEffect(() => {

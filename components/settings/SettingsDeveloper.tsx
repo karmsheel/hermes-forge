@@ -12,6 +12,8 @@ export function SettingsDeveloper() {
     setShowCronalyticsPage,
     showDecisionsPage,
     setShowDecisionsPage,
+    showHomeProcessStandardPicker,
+    setShowHomeProcessStandardPicker,
   } = useDeveloperSettings();
 
   return (
@@ -28,6 +30,22 @@ export function SettingsDeveloper() {
 
       <div className="card p-6">
         <div className="divide-y divide-border-soft">
+          <div className="py-1">
+            <ListRow
+              label="Show home notation picker"
+              description='Reveal the process standard control in the home composer (BPMN, swimlane, flowchart). Hidden by default; "Model picks" stays the default.'
+              action={
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showHomeProcessStandardPicker}
+                    onChange={(event) => setShowHomeProcessStandardPicker(event.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                </label>
+              }
+            />
+          </div>
           <div className="py-1">
             <ListRow
               label="Show Decisions page"

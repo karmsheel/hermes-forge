@@ -118,21 +118,29 @@ function runProcess(command, args, options = {}) {
   });
 }
 
+function serverUrl() {
+  return `http://127.0.0.1:${SERVER_PORT}`;
+}
+
+function probeServer(url) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, (res) => {
+      res.resume();
+      if (res.statusCode && res.statusCode < 500) resolve();
+      else reject(new Error(`status ${res.statusCode}`));
+    });
+    req.on("error", reject);
+    req.setTimeout(2000, () => {
+      req.destroy(new Error("timeout"));
+    });
+  });
+}
+
 async function waitForServer(url, timeoutMs = 90000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      await new Promise((resolve, reject) => {
-        const req = http.get(url, (res) => {
-          res.resume();
-          if (res.statusCode && res.statusCode < 500) resolve();
-          else reject(new Error(`status ${res.statusCode}`));
-        });
-        req.on("error", reject);
-        req.setTimeout(2000, () => {
-          req.destroy(new Error("timeout"));
-        });
-      });
+      await probeServer(url);
       return;
     } catch {
       await new Promise((r) => setTimeout(r, 500));
@@ -161,8 +169,18 @@ function attachServerLogs(child, label = "server") {
   child.on("error", (error) => console.error(`[${label}] failed to start`, error));
 }
 
-function startServer(env) {
+async function startServer(env) {
+  const url = serverUrl();
+
   if (isDev) {
+    try {
+      await probeServer(url);
+      console.log(`[server] Reusing existing dev server at ${url}`);
+      return;
+    } catch {
+      // No reachable server yet — spawn one below.
+    }
+
     serverProcess = spawnCommand(
       npmCommand(),
       ["run", "dev", "--", "-p", SERVER_PORT, "-H", "127.0.0.1"],
@@ -220,8 +238,8 @@ app.whenReady().then(async () => {
 
   try {
     await migrateDatabase(env);
-    startServer(env);
-    await waitForServer(`http://127.0.0.1:${SERVER_PORT}`);
+    await startServer(env);
+    await waitForServer(serverUrl());
     createWindow();
     scheduleUpdateCheck();
   } catch (error) {
