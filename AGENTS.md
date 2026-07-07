@@ -112,16 +112,21 @@ When working in a worktree:
 
 ## 6. Desktop Release Workflow (Manual)
 
-Desktop builds and GitHub Releases are **not automated**. There is no CI workflow and `desktop:build` does **not** publish. Agents asked to cut a desktop release must follow this checklist end-to-end — do not hand steps back to the user unless blocked (e.g. missing GitHub credentials).
+Desktop builds and GitHub Releases are **not automated**. There is no CI workflow; `npm run desktop:build` packages locally but **does not publish**. Agents asked to cut a release must run the full checklist below themselves — do not hand steps back to the user unless truly blocked (e.g. no GitHub token).
 
-### When this applies
+**Repo:** `https://github.com/karmsheel/hermes-forge` (not `Hermes-Business-Factory`).
 
-- User asks to package, release, or ship a new desktop version.
-- Bumping `package.json` version for a desktop build.
+### Canonical order (do not reorder)
+
+1. Bump versions → build → test
+2. Commit version bump → tag → push `main` + tag
+3. Publish to GitHub Releases via `electron-builder`
+4. **Verify** release is public, tagged, and has 3 assets
+5. Finalize draft if `electron-builder` left one
+
+Skipping step 4 is how v0.2.1 broke: a draft on an `untagged-…` URL hid the release and broke the Assets UI.
 
 ### Version sources (keep in sync)
-
-Update all three before building:
 
 | File | Field |
 |------|-------|
@@ -129,43 +134,22 @@ Update all three before building:
 | `package-lock.json` | root `"version"` and `packages[""].version` |
 | `lib/app-meta.ts` | `APP_VERSION` |
 
-Tag format: `v{version}` (e.g. `v0.2.1`). Electron and the in-app About screen read from these.
+Tag format: `v{version}` (e.g. `v0.2.1`). Tag should point at the **version-bump commit**; docs commits may land on `main` afterward.
 
-### Pre-flight
-
-1. Work from `main` (or merge feature work first).
-2. Stop running dev/desktop instances — or run prebuild cleanup:
-   ```powershell
-   npm run desktop:prebuild
-   ```
-   This kills stale Hermes Forge / Next dev processes and deletes `dist/desktop/`.
-
-3. **Lint caveat:** ESLint does not ignore `dist/`. Always run `desktop:prebuild` (or delete `dist/desktop/`) before `npm run lint`, or eslint will scan packaged artifacts and report thousands of false positives. Lint has pre-existing source warnings/errors; **production build + desktop smoke tests are the release gate**, not a clean lint run.
-
-### Build and verify
+### Step 1 — Pre-flight and build
 
 ```powershell
-npm run build                              # TypeScript + Next.js — must pass
-npm run desktop:build                      # prebuild → build → prepare → electron-builder
-npm run desktop:test                       # launches win-unpacked, expects /login on port 3857
+npm run desktop:prebuild                 # kill stale processes; delete dist/desktop/
+npm run build                            # TypeScript + Next.js — must pass
+npm run desktop:build                    # prebuild → build → prepare → electron-builder (no publish)
+npm run desktop:test                     # expects /login on port 3857
 powershell -File scripts/test-standalone-prisma.ps1
 powershell -File scripts/test-packaged-prisma.ps1
 ```
 
-All of the above must pass before publishing.
+**Lint:** ESLint ignores `.next/` but not `dist/`. Run `desktop:prebuild` before `npm run lint`, or eslint scans packaged artifacts and reports thousands of false positives. Lint has pre-existing source issues; **build + desktop tests are the gate**, not a clean lint run.
 
-### Build outputs (`dist/desktop/`)
-
-| Artifact | Purpose |
-|----------|---------|
-| `Hermes Forge Setup {version}.exe` | NSIS installer (local filename has spaces) |
-| `Hermes Forge Setup {version}.exe.blockmap` | Delta-update block map |
-| `latest.yml` | Auto-updater manifest (`electron-updater`) |
-| `win-unpacked/` | Unpacked app (used by `desktop:test`) |
-
-`package.json` → `build.publish` points at `karmsheel/hermes-forge`, but publishing only happens if you explicitly run `electron-builder --publish` with `GH_TOKEN` — **not** part of the current workflow.
-
-### Git: commit and tag
+### Step 2 — Git commit and tag
 
 ```powershell
 git add package.json package-lock.json lib/app-meta.ts
@@ -175,34 +159,87 @@ git push origin main
 git push origin v{version}
 ```
 
-Summarize changes since the previous tag (`git log v{prev}..HEAD --oneline`) for release notes.
+Release notes bullets: `git log v{prev}..HEAD --oneline`
 
-### GitHub Release: publish (preferred)
+### Step 3 — Publish to GitHub Releases
 
-**Use `electron-builder` to publish** — same path that worked for v0.2.0. Do not hand-upload assets via raw API unless publish is blocked.
+**Always prefer `electron-builder --publish`** (worked for v0.2.0). Avoid raw REST API uploads — they use wrong content-types and skip `latest.yml` orchestration.
 
 ```powershell
-# Token from git credential helper or a PAT with repo scope
 $env:GH_TOKEN = (("protocol=https`nhost=github.com`n`n" | git credential fill) -split "`n" |
   Where-Object { $_ -like "password=*" }) -replace "password=", ""
 
 npx electron-builder --win nsis --publish always --prepackaged dist/desktop/win-unpacked
 ```
 
-This uploads `Hermes-Forge-Setup-{version}.exe`, `.blockmap`, and `latest.yml` with correct names.
+- Uploads `Hermes-Forge-Setup-{version}.exe`, `.blockmap`, and `latest.yml`
+- Installer upload is ~400+ MB — allow 10–15 minutes; do not kill the process early
+- `GH_TOKEN` needs `repo` scope (git credential helper usually works; `gh` may be installed but not logged in)
 
-**Critical — verify the release is not a draft.** `electron-builder` may create a **draft** release on an `untagged-…` URL. That breaks the public Releases page (shows old version as Latest; assets fail to load). After publish, check via API:
+Local NSIS output uses spaces (`Hermes Forge Setup {version}.exe`); published assets use hyphens (`Hermes-Forge-Setup-{version}.exe`). `latest.yml` references the hyphenated name.
+
+### Step 4 — Post-publish verification (mandatory)
+
+Run these checks before telling the user the release is live:
 
 ```powershell
-# Must show: draft=False, html_url ending in /releases/tag/v{version}
-# Must have assets: Hermes-Forge-Setup-{version}.exe, .blockmap, latest.yml
+$token = (("protocol=https`nhost=github.com`n`n" | git credential fill) -split "`n" |
+  Where-Object { $_ -like "password=*" }) -replace "password=", ""
+$headers = @{ Authorization = "Bearer $token"; Accept = "application/vnd.github+json" }
+$releases = Invoke-RestMethod -Uri "https://api.github.com/repos/karmsheel/hermes-forge/releases?per_page=5" -Headers $headers
+$r = $releases | Where-Object { $_.tag_name -eq "v{version}" } | Select-Object -First 1
 ```
 
-If `draft=True` or URL contains `untagged-`, PATCH the release (`draft: false`, `make_latest: true`, proper `name` and release notes). **Never delete a published release** unless you can complete republish in the same session.
+| Check | Pass condition |
+|-------|----------------|
+| Release exists | `$r` is not null |
+| Not a draft | `$r.draft -eq $false` |
+| Correct URL | `$r.html_url` ends with `/releases/tag/v{version}` (no `untagged-`) |
+| Assets | Exactly: `Hermes-Forge-Setup-{version}.exe`, `.blockmap`, `latest.yml` |
+| Download | `Invoke-WebRequest` HEAD on `…/releases/download/v{version}/Hermes-Forge-Setup-{version}.exe` returns 200 |
 
-Fallback: manual API upload only if `electron-builder --publish` fails. Use hyphenated filenames — `latest.yml` references `Hermes-Forge-Setup-…`, not the spaced local NSIS output.
+If `GET …/releases/tags/v{version}` returns 404 but a draft exists with `tag_name=v{version}` and `untagged-` in the URL → go to Step 5.
 
-Release notes template:
+### Step 5 — Finalize draft releases
+
+`electron-builder` often creates a **draft** release at `…/releases/tag/untagged-{hash}`. While draft:
+
+- The public Releases page still shows the **previous** version as Latest
+- The Assets section may show "Uh oh! There was an error while loading"
+- `GET …/releases/tags/v{version}` returns 404
+
+**Fix:** PATCH the release by id (from the list endpoint — do not rely on get-by-tag):
+
+```powershell
+$body = @{
+  tag_name = "v{version}"
+  target_commitish = "main"
+  name = "Hermes Forge {version}"
+  body = "<release notes markdown>"
+  draft = $false
+  prerelease = $false
+  make_latest = "true"
+} | ConvertTo-Json -Depth 3
+Invoke-RestMethod -Uri "https://api.github.com/repos/karmsheel/hermes-forge/releases/$($r.id)" `
+  -Method Patch -Headers $headers -Body $body -ContentType "application/json; charset=utf-8"
+```
+
+Re-run Step 4 checks after patching.
+
+### Failure modes (lessons from v0.2.1)
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| Hand-uploaded assets via REST API | Release exists but Assets UI broken; wrong content-types | Republish via `electron-builder --publish` |
+| Deleted release to "fix" it | Gap with no public release; tag orphaned | Publish via electron-builder; finalize draft |
+| Left `electron-builder` draft unpublished | Old version still "Latest"; untagged URL | Step 5 PATCH |
+| Killed publish mid-upload | Draft with partial/missing assets | Delete draft release only if republishing immediately |
+| Pushed tag but never published | Tag on GitHub, no installer assets | Run Step 3 |
+| Lint with `dist/desktop/` present | 20k+ false lint errors | Run `desktop:prebuild` first |
+
+**Never delete a working published release** to fix asset display. Finalize drafts or republish in the same session.
+
+### Release notes template
 
 ```markdown
 ## Hermes Forge {version}
@@ -221,23 +258,14 @@ Existing installs receive this update via the in-app updater.
 - Data and SQLite DB are stored in the Electron user-data folder
 ```
 
-### Publishing without `gh` CLI
+### Client auto-update
 
-`gh` may be installed but not authenticated. Alternatives agents should use:
-
-- **GitHub REST API** with a token from `git credential fill` (host `github.com`).
-- **`gh auth login --with-token`** if the stored token has sufficient scopes.
-
-Upload endpoint: `POST {release.upload_url}?name={filename}` with `Content-Type: application/octet-stream`. The installer is ~400+ MB — allow several minutes for upload.
-
-### Client auto-update (already automatic)
-
-Installed desktop apps use `electron-updater` (`electron/auto-update.mjs`) to poll GitHub Releases and read `latest.yml`. No extra step after assets are uploaded correctly.
+Installed apps use `electron-updater` (`electron/auto-update.mjs`) → GitHub Releases → `latest.yml`. No extra step once Step 4 passes.
 
 ### Do not commit
 
 - `dist/desktop/` (build output)
-- Ephemeral one-off publish scripts created during a release session
+- Ephemeral publish/debug scripts from a release session
 
 ---
 
