@@ -1,14 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { GodModeCanvas } from "@/components/god-mode/GodModeCanvas";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 
 export default function GodModePage() {
+  const router = useRouter();
+  const { hydrated, showGodModePage } = useDeveloperSettings();
   const [stats, setStats] = useState({
     total: 0,
     withDiagrams: 0,
     businessName: null as string | null,
   });
+
+  useEffect(() => {
+    if (hydrated && !showGodModePage) {
+      router.replace("/home");
+    }
+  }, [hydrated, showGodModePage, router]);
+
+  if (!hydrated || !showGodModePage) {
+    return null;
+  }
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">

@@ -421,8 +421,12 @@ export default function PersonnelPage() {
         <h1 className="text-3xl font-semibold tracking-tight">Personnel</h1>
         {currentBusiness && <p className="text-sm text-accent mt-1">in {currentBusiness.name}</p>}
         <p className="text-sm text-text-muted mt-3 max-w-2xl">
-          Manage employees and hire Hermes agents into your organization. Scan your local Hermes
-          installation to discover available agent profiles.
+          Manage your org roster — humans and Hermes agents for this business. Scan your local
+          Hermes installation to discover agent profiles.
+        </p>
+        <p className="text-xs text-text-soft mt-3 max-w-2xl rounded-lg border border-border bg-bg-subtle px-3 py-2">
+          Roster only for now. This list is not yet linked to workshop diagrams, swimlanes, or
+          automations.
         </p>
       </div>
 

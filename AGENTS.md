@@ -42,6 +42,7 @@ This script pulls the version from `main` and writes it into your current folder
 1. `AGENTS.md` (this file)
 2. `docs/references/INDEX.md`
 3. The specific reference file(s) relevant to the task (usually `PRODUCT_BACKLOG.md`)
+4. When assessing repo health, tech debt, or "what's wrong / redundant": `docs/references/audit.md`
 
 Use the methods above to load them.
 
@@ -51,6 +52,7 @@ See `docs/references/INDEX.md` for the full list.
 
 Key files:
 - `PRODUCT_BACKLOG.md` — The source of truth for what to build next
+- `audit.md` — Canonical project audit (mistakes, gaps, redundancy, remediation status)
 
 ---
 
@@ -63,7 +65,7 @@ Core philosophy (inspired by Open Design):
 - Hermes does the heavy reasoning
 - The UI is a "studio" shell, not a traditional CRUD app
 
-See `docs/references/PRODUCT_BACKLOG.md` and `docs/references/INDEX.md` for detailed priorities.
+See `docs/references/PRODUCT_BACKLOG.md`, `docs/references/audit.md`, and `docs/references/INDEX.md` for detailed priorities and known tech debt.
 
 ---
 
@@ -100,6 +102,7 @@ When working in a worktree:
 
 - Prefer small, focused changes that can be reviewed easily.
 - Update the backlog (via PR or discussion) when scope changes significantly.
+- After fixing audit items, update `docs/references/audit.md` remediation table and `PRODUCT_BACKLOG.md` AUDIT-* statuses.
 - When implementing a feature from the backlog, reference the specific item.
 - Keep UI minimal. The diagram and process model carry the visual weight.
 - Use the token system in `app/tokens.css` (see backlog Phase 1.1).

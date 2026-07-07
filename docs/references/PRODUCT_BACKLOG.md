@@ -5,6 +5,8 @@ Implementation plan adapted from [Open Design](https://github.com/nexu-io/open-d
 **Reference screenshot:** `Screenshot 2026-06-30 161549.png` (project root)  
 **Open Design key paths:** `apps/web/src/styles/tokens.css`, `apps/web/src/components/HomeHero.tsx`, `apps/web/src/components/EntryNavRail.tsx`, `apps/web/src/components/EntryShell.tsx`, `apps/web/src/components/home-hero/chips.ts`
 
+**Repo health audit:** [`audit.md`](audit.md) — mistakes, missing features, redundancy, and **AUDIT-*** remediation tracker (updated 2026-07-07 session).
+
 ---
 
 ## Concept mapping
@@ -39,7 +41,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ## Current codebase (baseline)
 
-*Last aligned with codebase: v0.2.0 + post-release WIP (personnel, themes).*
+*Last aligned with codebase: v0.2.0 + post-release WIP (personnel, themes). Audit remediation session: 2026-07-07 — see [Audit remediation](#audit-remediation-2026-07-07).*
 
 ### Shell & navigation
 
@@ -76,7 +78,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Business log | `app/(shell)/log/page.tsx`, `lib/business-log.ts` | Append-only immutable event feed |
 | Git materialize | `lib/business-git/materialize.ts` | Per-business repo snapshot (export; remote sync partial) |
 | Decisions | `app/(shell)/decisions/page.tsx` | **Scaffold** — dev-gated placeholder; `BusinessDecision` model has no API |
-| God Mode | `app/(shell)/god-mode/page.tsx` | Canvas overview of all process diagrams by department |
+| God Mode | `app/(shell)/god-mode/page.tsx` | **Dev-gated** — diagram canvas overview by department |
 | Cronalytics | `app/(shell)/cronalytics/page.tsx` | **Dev-gated** — Hermes cron observability; separate SQLite DB |
 
 ### Personnel (scaffold — not integrated)
@@ -608,7 +610,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.13 God Mode process overview — **DONE** (shipped outside backlog)
+### 4.13 God Mode process overview — **DONE** (dev-gated)
 
 **Goal:** Zoomable canvas of all process diagrams grouped by department/function.
 
@@ -686,9 +688,34 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.10 | Personnel roster | 4 | **Scaffold** |
 | 4.11 | Immutable business log | 4 | Mostly done |
 | 4.12 | Business decisions | 4 | **Scaffold** |
-| 4.13 | God Mode overview | 4 | Done |
+| 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+
+---
+
+## Audit remediation (2026-07-07)
+
+Source: [`audit.md`](audit.md). Full findings and redundancy list live there; this table tracks cleanup execution.
+
+| ID | Task | Status |
+|----|------|--------|
+| AUDIT-1 | Align `PRODUCT_BACKLOG.md` baseline with codebase | **Done** |
+| AUDIT-2 | Personnel honesty pass (copy, placeholders, dead components) | **Done** |
+| AUDIT-3 | Remove legacy Interview (`/interview`, `/api/extract`) | **Done** |
+| AUDIT-4 | Merge Dashboard into Functions (org chart + analytics) | **Done** |
+| AUDIT-5 | Dev-gate God Mode in nav + route guard | **Done** |
+| AUDIT-6 | Dead code cleanup (accent, duplicate next.config, theme exports, dead CSS) | **Partial** — personnel dead components removed |
+| AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | Pending |
+| AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | Pending |
+| AUDIT-9 | Terminology pass ("project" → "business" in UI) | Pending |
+| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | Deferred — honesty pass shipped instead |
+
+**Session outcomes (code):**
+- `docs/references/audit.md` committed as canonical audit
+- `components/functions/FunctionOrgChart.tsx`, `BusinessAnalyticsSection.tsx` — merged Functions page
+- Redirects: `/interview` → `/home`, `/dashboard` → `/functions`
+- Developer setting: `forge:dev-show-god-mode` (`lib/developer-settings.ts`)
 
 ---
 
@@ -719,9 +746,9 @@ When picking up a backlog item:
 - `/interview` + `/api/extract` — legacy discovery; `/interview` redirects to `/home`
 - `/dashboard` — merged into `/functions` (analytics section below org chart)
 
-**Known tech debt (see project audit):**
-- Terminology drift: "project" in UI vs `Business` in DB
-- `BusinessDecision` schema without runtime (4.12)
-- Personnel not wired to workshop/automations (4.10)
-- God Mode dev-gated; Functions is the primary overview (org chart + analytics)
-- Zero automated tests
+**Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-6 … AUDIT-10** above. Highlights:
+- Terminology drift: "project" in UI vs `Business` in DB (AUDIT-9)
+- `BusinessDecision` schema without runtime (4.12 / AUDIT-7)
+- Personnel not wired to workshop/automations (4.10 / AUDIT-10)
+- Zero automated tests (AUDIT-8)
+- Accent legacy, duplicate `next.config` (AUDIT-6)

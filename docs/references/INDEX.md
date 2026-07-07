@@ -31,6 +31,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | File                        | Purpose                                      | Priority | When to Read |
 |----------------------------|----------------------------------------------|----------|--------------|
 | `PRODUCT_BACKLOG.md`       | Full product backlog, phases, and tasks     | High     | Before choosing or implementing any feature |
+| `audit.md`                 | Project audit: mistakes, gaps, redundancy, remediation progress | High | When planning cleanup, assessing repo health, or prioritizing tech debt |
 | `INDEX.md` (this file)     | Manifest of all references                   | High     | At the start of any agent session |
 | `hermes-desktop-design-system.md` | Hermes Desktop tokens, primitives, theme engine reference | Medium | When working on skins, themes, or UI convergence (4.6+) |
 | `THEME_SCHEMA.md` | JSON schema for user-installable Forge themes | Medium | When building or documenting custom theme install (4.7) |

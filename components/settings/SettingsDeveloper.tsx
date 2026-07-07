@@ -12,6 +12,8 @@ export function SettingsDeveloper() {
     setShowCronalyticsPage,
     showDecisionsPage,
     setShowDecisionsPage,
+    showGodModePage,
+    setShowGodModePage,
     showHomeProcessStandardPicker,
     setShowHomeProcessStandardPicker,
   } = useDeveloperSettings();
@@ -56,6 +58,22 @@ export function SettingsDeveloper() {
                     type="checkbox"
                     checked={showDecisionsPage}
                     onChange={(event) => setShowDecisionsPage(event.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                </label>
+              }
+            />
+          </div>
+          <div className="py-1">
+            <ListRow
+              label="Show God Mode page"
+              description="Reveal the God Mode nav item and diagram canvas overview. Hidden by default."
+              action={
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showGodModePage}
+                    onChange={(event) => setShowGodModePage(event.target.checked)}
                     className="h-4 w-4 rounded border-border accent-accent"
                   />
                 </label>

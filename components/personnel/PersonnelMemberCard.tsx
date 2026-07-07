@@ -53,7 +53,11 @@ export function PersonnelMemberCard({
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const isOwner = employee.kind === "human" && employee.isOwner;
-  const name = employee.kind === "human" ? employee.name : employee.displayName;
+  const isHuman = employee.kind === "human";
+  const name = isHuman ? employee.name : employee.displayName;
+  const fireMenuLabel = isHuman ? "Remove from organization" : "Fire from organization";
+  const fireConfirmTitle = isHuman ? "Remove from organization?" : "Fire from organization?";
+  const fireConfirmAction = isHuman ? "Remove" : "Fire";
   const subtitle =
     employee.kind === "human"
       ? employee.role
@@ -196,7 +200,7 @@ export function PersonnelMemberCard({
             }}
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Fire [FIRE]
+            {fireMenuLabel}
           </button>
         </div>
       )}
@@ -211,11 +215,10 @@ export function PersonnelMemberCard({
             disabled={firing}
           />
           <div className="relative w-full max-w-md card p-6">
-            <h2 className="text-xl font-semibold tracking-tight">Fire from organization?</h2>
+            <h2 className="text-xl font-semibold tracking-tight">{fireConfirmTitle}</h2>
             <p className="text-sm text-text-muted mt-2">
               This will remove{" "}
               <span className="font-medium text-text">&quot;{name}&quot;</span> from this business.
-              [FIRE]
             </p>
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -232,7 +235,7 @@ export function PersonnelMemberCard({
                 disabled={firing}
                 className="btn-primary text-sm bg-red-600 hover:bg-red-700 focus:bg-red-700 disabled:opacity-50"
               >
-                {firing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Fire [FIRE]"}
+                {firing ? <Loader2 className="w-4 h-4 animate-spin" /> : fireConfirmAction}
               </button>
             </div>
           </div>

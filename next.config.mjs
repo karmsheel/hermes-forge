@@ -22,6 +22,16 @@ const nextConfig = {
         destination: "/functions",
         permanent: true,
       },
+      {
+        source: "/interview",
+        destination: "/home",
+        permanent: true,
+      },
+      {
+        source: "/dashboard",
+        destination: "/functions",
+        permanent: true,
+      },
     ];
   },
 };

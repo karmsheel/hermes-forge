@@ -14,12 +14,14 @@ import {
   getPreviewUpdateIcon,
   getShowCronalyticsPage,
   getShowDecisionsPage,
+  getShowGodModePage,
   getShowHomeProcessStandardPicker,
   isDeveloperUnlocked,
   recordVersionUnlockClick,
   setPreviewUpdateIcon as persistPreviewUpdateIcon,
   setShowCronalyticsPage as persistShowCronalyticsPage,
   setShowDecisionsPage as persistShowDecisionsPage,
+  setShowGodModePage as persistShowGodModePage,
   setShowHomeProcessStandardPicker as persistShowHomeProcessStandardPicker,
 } from "@/lib/developer-settings";
 
@@ -32,6 +34,8 @@ interface DeveloperSettingsContextValue {
   setShowCronalyticsPage: (enabled: boolean) => void;
   showDecisionsPage: boolean;
   setShowDecisionsPage: (enabled: boolean) => void;
+  showGodModePage: boolean;
+  setShowGodModePage: (enabled: boolean) => void;
   showHomeProcessStandardPicker: boolean;
   setShowHomeProcessStandardPicker: (enabled: boolean) => void;
   recordVersionUnlockClick: () => void;
@@ -44,6 +48,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const [previewUpdateIcon, setPreviewUpdateIconState] = useState(false);
   const [showCronalyticsPage, setShowCronalyticsPageState] = useState(false);
   const [showDecisionsPage, setShowDecisionsPageState] = useState(false);
+  const [showGodModePage, setShowGodModePageState] = useState(false);
   const [showHomeProcessStandardPicker, setShowHomeProcessStandardPickerState] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -52,6 +57,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setPreviewUpdateIconState(getPreviewUpdateIcon());
     setShowCronalyticsPageState(getShowCronalyticsPage());
     setShowDecisionsPageState(getShowDecisionsPage());
+    setShowGodModePageState(getShowGodModePage());
     setShowHomeProcessStandardPickerState(getShowHomeProcessStandardPicker());
     setHydrated(true);
   }, []);
@@ -69,6 +75,11 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const setShowDecisionsPage = useCallback((enabled: boolean) => {
     setShowDecisionsPageState(enabled);
     persistShowDecisionsPage(enabled);
+  }, []);
+
+  const setShowGodModePage = useCallback((enabled: boolean) => {
+    setShowGodModePageState(enabled);
+    persistShowGodModePage(enabled);
   }, []);
 
   const setShowHomeProcessStandardPicker = useCallback((enabled: boolean) => {
@@ -94,6 +105,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowCronalyticsPage,
       showDecisionsPage: hydrated ? showDecisionsPage : false,
       setShowDecisionsPage,
+      showGodModePage: hydrated ? showGodModePage : false,
+      setShowGodModePage,
       showHomeProcessStandardPicker: hydrated ? showHomeProcessStandardPicker : false,
       setShowHomeProcessStandardPicker,
       recordVersionUnlockClick: handleVersionUnlockClick,
@@ -107,6 +120,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowCronalyticsPage,
       showDecisionsPage,
       setShowDecisionsPage,
+      showGodModePage,
+      setShowGodModePage,
       showHomeProcessStandardPicker,
       setShowHomeProcessStandardPicker,
       handleVersionUnlockClick,

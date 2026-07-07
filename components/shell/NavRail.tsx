@@ -8,7 +8,6 @@ import {
   FolderKanban,
   Hammer,
   Home,
-  LayoutDashboard,
   PlugZap,
   Plus,
   Scale,
@@ -35,7 +34,7 @@ type NavItem = {
 export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
-  const { showCronalyticsPage, showDecisionsPage } = useDeveloperSettings();
+  const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
 
   const mainItems: NavItem[] = [
     {
@@ -79,13 +78,6 @@ export function NavRail() {
       label: "Automations",
       icon: Zap,
       match: (path) => path.startsWith("/automations"),
-    },
-    {
-      id: "dashboard",
-      href: "/dashboard",
-      label: "Dashboard",
-      icon: LayoutDashboard,
-      match: (path) => path.startsWith("/dashboard"),
     },
     {
       id: "log",
@@ -140,6 +132,7 @@ export function NavRail() {
 
       <div className="nav-rail__section nav-rail__section--grow">
         {mainItems
+          .filter((item) => item.id !== "god-mode" || showGodModePage)
           .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
           .filter((item) => item.id !== "decisions" || showDecisionsPage)
           .map((item) => {

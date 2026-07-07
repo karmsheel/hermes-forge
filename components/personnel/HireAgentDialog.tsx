@@ -30,9 +30,9 @@ export function HireAgentDialog({
       size="sm"
     >
       <p className="text-sm text-text-muted">
-        Hiring this agent will add them to your organization for{" "}
-        <span className="font-medium text-text">{businessName}</span>. You will be able to assign
-        this agent to processes, SOPs, and automations in the business.
+        Hiring adds this agent to your roster for{" "}
+        <span className="font-medium text-text">{businessName}</span>. They will appear in your
+        employees list. Workshop and automation assignment are not connected yet.
       </p>
       <div className="flex justify-end gap-3 mt-6">
         <button

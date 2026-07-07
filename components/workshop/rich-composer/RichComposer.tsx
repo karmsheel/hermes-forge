@@ -313,7 +313,7 @@ export function RichComposer({
         <div className="relative flex-1">
           <textarea
             ref={textareaRef}
-            className="input w-full resize-none min-h-[44px] max-h-32 text-sm"
+            className="input composer-input w-full resize-none min-h-[44px] max-h-32 text-sm"
             placeholder={placeholder}
             value={value}
             onChange={onChange}
