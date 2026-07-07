@@ -177,19 +177,30 @@ git push origin v{version}
 
 Summarize changes since the previous tag (`git log v{prev}..HEAD --oneline`) for release notes.
 
-### GitHub Release: manual asset upload
+### GitHub Release: publish (preferred)
 
-Create (or update) a release at `https://github.com/karmsheel/hermes-forge/releases` for tag `v{version}`.
+**Use `electron-builder` to publish** — same path that worked for v0.2.0. Do not hand-upload assets via raw API unless publish is blocked.
 
-**Upload these three assets** — names matter for auto-update:
+```powershell
+# Token from git credential helper or a PAT with repo scope
+$env:GH_TOKEN = (("protocol=https`nhost=github.com`n`n" | git credential fill) -split "`n" |
+  Where-Object { $_ -like "password=*" }) -replace "password=", ""
 
-| Upload as | Source file |
-|-----------|-------------|
-| `Hermes-Forge-Setup-{version}.exe` | Copy/rename from `Hermes Forge Setup {version}.exe` |
-| `Hermes-Forge-Setup-{version}.exe.blockmap` | Copy/rename from `Hermes Forge Setup {version}.exe.blockmap` |
-| `latest.yml` | `dist/desktop/latest.yml` as-is |
+npx electron-builder --win nsis --publish always --prepackaged dist/desktop/win-unpacked
+```
 
-`latest.yml` references the **hyphenated** installer name (`Hermes-Forge-Setup-…`), not the spaced local NSIS output. If the blockmap on GitHub does not match `{installer-name}.blockmap`, delta updates will fail.
+This uploads `Hermes-Forge-Setup-{version}.exe`, `.blockmap`, and `latest.yml` with correct names.
+
+**Critical — verify the release is not a draft.** `electron-builder` may create a **draft** release on an `untagged-…` URL. That breaks the public Releases page (shows old version as Latest; assets fail to load). After publish, check via API:
+
+```powershell
+# Must show: draft=False, html_url ending in /releases/tag/v{version}
+# Must have assets: Hermes-Forge-Setup-{version}.exe, .blockmap, latest.yml
+```
+
+If `draft=True` or URL contains `untagged-`, PATCH the release (`draft: false`, `make_latest: true`, proper `name` and release notes). **Never delete a published release** unless you can complete republish in the same session.
+
+Fallback: manual API upload only if `electron-builder --publish` fails. Use hyphenated filenames — `latest.yml` references `Hermes-Forge-Setup-…`, not the spaced local NSIS output.
 
 Release notes template:
 
