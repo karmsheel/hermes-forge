@@ -33,7 +33,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Legacy aliases still in UI copy:** "project" (`RecentProjectsStrip`, `NewProjectDialog`) — means `Business`, not a separate entity. `/projects` redirects to `/functions`.
 
-**Deprecated routes (do not extend):** `/interview`, `/dashboard` — legacy discovery loop; primary flow is Home → workshop.
+**Redirects:** `/interview` → `/home`; `/dashboard` → `/functions` (dashboard merged into Functions page).
 
 ---
 
@@ -46,7 +46,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Area | Path | Notes |
 |------|------|-------|
 | App shell | `app/(shell)/layout.tsx`, `components/shell/AppShell.tsx` | Left nav rail + content area |
-| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Workshop, God Mode, Automations, Dashboard, Business log (+ dev-gated Decisions, Cronalytics) |
+| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Workshop, Automations, Business log (+ dev-gated God Mode, Decisions, Cronalytics) |
 | Business manager | `app/(shell)/business-manager/page.tsx` | Multi-business switcher; logo links here |
 | Settings | `app/(shell)/settings/page.tsx`, `components/settings/*` | Appearance, About, Developer panels |
 | Theme engine | `lib/themes/*`, `components/theme/ThemeProvider.tsx` | Built-in skins, JSON/VS Code install, boot script (4.6–4.8) |
@@ -57,7 +57,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 |------|------|-------|
 | Home | `app/(shell)/home/page.tsx` | Hero composer, templates, recent businesses strip |
 | Start from brief | `app/api/start-from-brief/route.ts`, `lib/start-from-brief.ts` | Atomic business + process + seed messages |
-| Functions list | `app/(shell)/functions/page.tsx` | Processes grouped by `Process.department`; replaces old `/projects` |
+| Functions | `app/(shell)/functions/page.tsx` | Org chart by department + automation analytics (merged dashboard); replaces `/projects` and `/dashboard` |
 | Workshop | `app/(shell)/workshop/page.tsx` | 3-column: sidebar / diagram+tabs / chat |
 | Process sidebar | `components/workshop/ProcessSidebar.tsx` | Process list + function filter |
 | Process chat | `components/workshop/ProcessChat.tsx` | Hermes chat, rich composer, message queue |
@@ -77,7 +77,6 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Git materialize | `lib/business-git/materialize.ts` | Per-business repo snapshot (export; remote sync partial) |
 | Decisions | `app/(shell)/decisions/page.tsx` | **Scaffold** — dev-gated placeholder; `BusinessDecision` model has no API |
 | God Mode | `app/(shell)/god-mode/page.tsx` | Canvas overview of all process diagrams by department |
-| Dashboard | `app/(shell)/dashboard/page.tsx` | **Legacy** — automation scores; links to deprecated `/interview` |
 | Cronalytics | `app/(shell)/cronalytics/page.tsx` | **Dev-gated** — Hermes cron observability; separate SQLite DB |
 
 ### Personnel (scaffold — not integrated)
@@ -97,8 +96,8 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | API surface | `app/api/**` | ~52 route handlers |
 | Global styles | `app/globals.css`, `app/tokens.css` | Design tokens + skin overrides |
 | DB schema | `prisma/schema.prisma` | User, Business, Process, Conversation, ChatMessage, Automation, Memory, BusinessEvent, BusinessDecision, HumanPersonnel, HermesAgentProfile |
-| Desktop | `electron/main.mjs`, `electron/preload.mjs` | Electron wrapper; standalone Next on port 3847 |
-| Redirects | `next.config.ts` | `/projects` → `/functions`, `/businesses` → `/functions` |
+| Desktop | `electron/main.mjs`, `electron/preload.mjs` | Electron wrapper; standalone Next on port 3847; multi-tab design → 4.15 / [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+| Redirects | `next.config.ts` | `/projects` → `/functions`, `/businesses` → `/functions`, `/interview` → `/home`, `/dashboard` → `/functions` |
 
 ---
 
@@ -109,7 +108,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 3. **Business isolation** — Each business owns processes, chats, and client state. (Legacy UI still says "project" in places.)
 4. **Neutral chrome, rich artifact** — UI stays minimal; the diagram carries visual weight.
 5. **Accent discipline** — Orange (`--accent`) for primary CTAs only; blue (`--selected`) for selected states; green for success/status.
-6. **Discover → lock → stream → critique → deliver** — Brief/home → diagram → chat corrections → export. (Legacy `/interview` route is deprecated.)
+6. **Discover → lock → stream → critique → deliver** — Brief/home → diagram → chat corrections → export.
 
 ---
 
@@ -170,10 +169,9 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - Functions → `/functions` (was `/projects`; redirect in place)
 - Personnel → `/personnel`
 - Workshop → `/workshop`
-- God Mode → `/god-mode`
 - Automations → `/automations`
-- Dashboard → `/dashboard` (legacy; candidate for removal — see audit)
 - Business log → `/log`
+- God Mode → `/god-mode` (developer setting)
 - Decisions → `/decisions` (developer setting)
 - Cronalytics → `/cronalytics` (developer setting)
 - Footer: Theme mode toggle, Hermes connection, Profile
@@ -549,7 +547,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Goal:** Org roster for humans and hired Hermes agents; feed swimlanes, `@actor` mentions, and automation assignment.
 
-**Status:** UI, API, and DB exist. **Not integrated** with workshop, process diagrams, automations, or chat agent prompts. Hire dialog copy over-promises assignment to processes/SOPs/automations.
+**Status:** UI, API, and DB exist. **Not integrated** with workshop, process diagrams, automations, or chat agent prompts. Page + hire dialog copy state roster-only scope (honesty pass shipped).
 
 **Files:** `app/(shell)/personnel/page.tsx`, `app/api/personnel/**`, `components/personnel/*`, `lib/personnel/*`, `prisma/schema.prisma` (`HumanPersonnel`, `HermesAgentProfile`)
 
@@ -567,7 +565,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [ ] Inject personnel context into chat + diagram agent prompts
 - [ ] Human edit PATCH (name, role, `roleDescription`); display description on cards
 - [ ] Import `personnel.json` on business git import
-- [ ] Align hire dialog copy with actual behavior (or implement promised assignment)
+- [x] Align hire dialog + page copy with actual behavior (honesty pass)
 
 **Do not:** Treat personnel as complete for BPM workflows until process linkage ships.
 
@@ -618,7 +616,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Files:** `app/(shell)/god-mode/page.tsx`, `components/god-mode/GodModeCanvas.tsx`
 
-**Note:** Overlaps with `/functions` list view. Candidate to merge or dev-gate during nav consolidation (audit item).
+**Note:** Dev-gated in nav (Settings → Developer → Show God Mode). Overlaps with Functions org chart; kept for diagram canvas power users.
 
 ---
 
@@ -631,6 +629,27 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 **Files:** `app/(shell)/cronalytics/page.tsx`, `lib/cronalytics/*`, `app/api/cronalytics/**`, `data/cronalytics-facts.db`
 
 **Note:** Separate SQLite DB from main Prisma DB. Power-user / operator tooling, not core BPM.
+
+---
+
+### 4.15 Desktop multi-tab shell — **PLANNED**
+
+**Goal:** Notion/open-design-style tab bar in the Electron desktop app so users can work on different businesses or aspects of a business **at the same time**, with background Hermes chat/diagram streams continuing in inactive tabs.
+
+**Status:** Design complete; not implemented. Full architecture, phases, and checklist in the reference doc below.
+
+**Reference:** [`docs/references/DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md)
+
+**Depends on:** 4.8 (desktop packaging), workshop (Phase 3), active business cookie model (today's baseline)
+
+**Key deliverables:**
+- [ ] `ForgeTabProvider` + `ForgeTabBar` (desktop-gated via `isForgeDesktop()`)
+- [ ] `X-Forge-Business-Id` header + `forgeFetch` for per-tab API scoping
+- [ ] `WorkshopSession` extraction + `ForgeTabOutlet` multi-mount for true parallel streams
+- [ ] Tab-aware `NavRail`; tab persistence across app restart
+- [ ] Phase 3 polish: keyboard shortcuts, open-in-new-tab, memory guard
+
+**Do not:** Implement via Electron `BrowserView` partitions (duplicates providers, heavy memory). Prefer in-renderer mounted sessions per the reference doc.
 
 ---
 
@@ -669,6 +688,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.12 | Business decisions | 4 | **Scaffold** |
 | 4.13 | God Mode overview | 4 | Done |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
+| 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 
 ---
 
@@ -695,13 +715,13 @@ When picking up a backlog item:
 - God Mode canvas (4.13)
 - Cronalytics dev tooling (4.14)
 
-**Deprecated — do not extend:**
-- `app/interview/page.tsx` + `app/api/extract/route.ts` — legacy discovery; superseded by Home → workshop + Questions panel
-- `app/(shell)/dashboard/page.tsx` — legacy automation scores; links to interview
+**Removed / merged:**
+- `/interview` + `/api/extract` — legacy discovery; `/interview` redirects to `/home`
+- `/dashboard` — merged into `/functions` (analytics section below org chart)
 
 **Known tech debt (see project audit):**
 - Terminology drift: "project" in UI vs `Business` in DB
 - `BusinessDecision` schema without runtime (4.12)
-- Personnel hire copy promises features not yet built (4.10)
-- Duplicate overview surfaces: Functions, God Mode, Dashboard
+- Personnel not wired to workshop/automations (4.10)
+- God Mode dev-gated; Functions is the primary overview (org chart + analytics)
 - Zero automated tests
