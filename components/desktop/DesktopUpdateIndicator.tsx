@@ -27,7 +27,9 @@ export function DesktopUpdateIndicator() {
       ? "Restart to update"
       : status.phase === "downloading"
         ? "Downloading update"
-        : `Update available${status.version ? ` · v${status.version}` : ""}`;
+        : status.phase === "error"
+          ? "Update check failed"
+          : `Update available${status.version ? ` · v${status.version}` : ""}`;
 
   return (
     <>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ExternalLink, Info } from "lucide-react";
 import iconImage from "@/assets/icon.jpg";
 import { APP_NAME, APP_RELEASES_URL, APP_TAGLINE, APP_VERSION } from "@/lib/app-meta";
+import { checkDesktopUpdate } from "@/lib/desktop-update";
+import { isForgeDesktop } from "@/lib/forge-desktop";
 import { ListRow } from "@/components/ui";
 import { useDeveloperSettings } from "./DeveloperSettingsProvider";
 
@@ -81,6 +83,23 @@ export function SettingsAbout() {
               }
             />
           </div>
+          {isForgeDesktop() ? (
+            <div className="py-1">
+              <ListRow
+                label="Check for updates"
+                description="Query GitHub Releases for a newer desktop build."
+                action={
+                  <button
+                    type="button"
+                    onClick={() => void checkDesktopUpdate()}
+                    className="btn-secondary text-xs px-3 py-1.5"
+                  >
+                    Check now
+                  </button>
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

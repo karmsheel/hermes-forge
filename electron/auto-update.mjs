@@ -1,4 +1,6 @@
 import { BrowserWindow, ipcMain } from "electron";
+import fs from "node:fs";
+import path from "node:path";
 import electronUpdater from "electron-updater";
 
 const { autoUpdater } = electronUpdater;
@@ -30,8 +32,23 @@ function broadcastStatus() {
   }
 }
 
+function writeStatusLog() {
+  if (!appRef?.isPackaged) return;
+  try {
+    const logPath = path.join(appRef.getPath("userData"), "update-status.json");
+    fs.writeFileSync(
+      logPath,
+      JSON.stringify({ ...currentStatus, loggedAt: new Date().toISOString() }, null, 2),
+      "utf8"
+    );
+  } catch (error) {
+    console.error("[auto-update] failed to write status log", error);
+  }
+}
+
 function setStatus(patch) {
   currentStatus = { ...currentStatus, ...patch };
+  writeStatusLog();
   broadcastStatus();
 }
 

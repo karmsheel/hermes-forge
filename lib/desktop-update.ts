@@ -22,7 +22,13 @@ export function useDesktopUpdate() {
     let cancelled = false;
 
     void window.forgeDesktop.getUpdateStatus().then((next) => {
-      if (!cancelled) setStatus(next);
+      if (cancelled) return;
+      setStatus(next);
+      if (next.phase === "idle" || next.phase === "not-available") {
+        void window.forgeDesktop?.checkForUpdates?.().then((fresh) => {
+          if (!cancelled) setStatus(fresh);
+        });
+      }
     });
 
     const unsubscribe = window.forgeDesktop.onUpdateStatus?.((next) => {

@@ -28,6 +28,6 @@ export function isDesktopUpdateVisible(status: DesktopUpdateStatus): boolean {
     status.phase === "available" ||
     status.phase === "downloading" ||
     status.phase === "downloaded" ||
-    (status.phase === "error" && Boolean(status.version))
+    status.phase === "error"
   );
 }
