@@ -5,51 +5,57 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Plug } from "lucide-react";
 import iconImage from "@/assets/icon.jpg";
-import { isForgeDesktop } from "@/lib/forge-desktop";
 import { loadHermesConfig } from "@/lib/hermes-storage";
 import { GatewayConnectingOverlay } from "./GatewayConnectingOverlay";
+import { HermesConnectionErrorModal } from "./HermesConnectionErrorModal";
+import { HermesSplashScreen } from "./HermesSplashScreen";
 import { useHermesConnection } from "./HermesConnectionProvider";
 
-type StartupPhase = "boot" | "connecting" | "idle" | "leaving";
+const SPLASH_MS = 3000;
 
-function troubleshootingTip(kind?: string): string | null {
-  switch (kind) {
-    case "not_running":
-      return "Start Hermes with `hermes gateway` and ensure API_SERVER_ENABLED=true in ~/.hermes/.env";
-    case "auth_failed":
-      return "Your API key does not match API_SERVER_KEY in ~/.hermes/.env";
-    case "misconfigured":
-      return "Enable the API server in ~/.hermes/.env, then restart the gateway";
-    case "timeout":
-      return "Hermes took too long to respond. Check that the gateway is running locally.";
-    default:
-      return null;
-  }
-}
+type StartupPhase = "splash" | "connecting" | "idle" | "leaving";
 
 export function HermesStartupScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") || "/business-manager";
-  const { isConnected, isBusy, autoConnect, status } = useHermesConnection();
+  const { isConnected, isBusy, autoConnect, setupApiServer, restartGateway, status } =
+    useHermesConnection();
+
   const hadSavedConfig = useRef(false);
+  const splashDone = useRef(false);
+  const autoConnectStarted = useRef(false);
+
   const [mounted, setMounted] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [phase, setPhase] = useState<StartupPhase>("connecting");
+  const [phase, setPhase] = useState<StartupPhase>("splash");
+  const [splashLeaving, setSplashLeaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const desktop = isForgeDesktop();
-    const saved = Boolean(loadHermesConfig());
-    hadSavedConfig.current = saved;
-    setIsDesktop(desktop);
+    hadSavedConfig.current = Boolean(loadHermesConfig());
     setMounted(true);
-
-    if (!desktop && !saved) {
-      setPhase("boot");
-    }
   }, []);
+
+  useEffect(() => {
+    if (!mounted || splashDone.current) return;
+
+    const timer = window.setTimeout(() => {
+      splashDone.current = true;
+      setSplashLeaving(true);
+      window.setTimeout(() => {
+        setSplashLeaving(false);
+        setPhase(hadSavedConfig.current ? "connecting" : "idle");
+      }, 520);
+    }, SPLASH_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [mounted]);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,129 +88,206 @@ export function HermesStartupScreen() {
   }, []);
 
   useEffect(() => {
-    if (phase !== "boot") return;
-    if (hadSavedConfig.current || isBusy) {
+    if (!sessionReady || phase === "splash" || phase === "leaving") return;
+
+    if (hadSavedConfig.current && !autoConnectStarted.current) {
+      autoConnectStarted.current = true;
       setPhase("connecting");
-    } else if (!isConnected && !isBusy) {
-      setPhase("idle");
     }
-  }, [isBusy, isConnected, phase]);
+  }, [phase, sessionReady]);
 
   useEffect(() => {
-    if (isBusy && phase === "idle") {
+    if (isBusy && (phase === "idle" || phase === "connecting")) {
       setPhase("connecting");
     }
   }, [isBusy, phase]);
 
   useEffect(() => {
-    if (phase !== "connecting" || !sessionReady) return;
-
-    if (isDesktop) {
-      setPhase("leaving");
-      return;
-    }
+    if (!splashDone.current || !sessionReady || phase === "splash" || phase === "leaving") return;
 
     if (isConnected) {
+      setErrorModalOpen(false);
       setPhase("leaving");
       return;
     }
+
+    if (phase !== "connecting") return;
 
     if (!isBusy && !isConnected) {
       setPhase("idle");
     }
-  }, [isBusy, isConnected, isDesktop, phase, sessionReady]);
+  }, [isBusy, isConnected, phase, sessionReady]);
+
+  const refreshDiscovery = useCallback(async () => {
+    try {
+      const res = await fetch("/api/hermes/discover", { method: "POST" });
+      const data = await res.json();
+      setHasApiKey(Boolean(data.hasApiKey));
+      return data;
+    } catch {
+      setHasApiKey(null);
+      return null;
+    }
+  }, []);
 
   const handleExitComplete = useCallback(() => {
     router.push(redirectTo);
   }, [redirectTo, router]);
 
   async function handleConnect() {
+    setErrorModalOpen(false);
+    setActionMessage(null);
     setConnecting(true);
     setPhase("connecting");
+
+    let connected = false;
     try {
-      await autoConnect();
+      connected = await autoConnect();
     } finally {
       setConnecting(false);
     }
+
+    if (!connected) {
+      await refreshDiscovery();
+      setErrorModalOpen(true);
+    }
   }
 
-  const tip = troubleshootingTip(status.kind);
+  async function handleSetupApiServer() {
+    setSettingUp(true);
+    setActionMessage(null);
+    try {
+      const result = await setupApiServer();
+      if (result.ok) {
+        setHasApiKey(true);
+        setActionMessage(result.message || "API server settings updated.");
+        if (result.gatewayReachable) {
+          setErrorModalOpen(false);
+        }
+      } else {
+        setActionMessage(result.error || result.message || "API server setup failed.");
+      }
+    } finally {
+      setSettingUp(false);
+    }
+  }
+
+  async function handleRestartGateway() {
+    setRestarting(true);
+    setActionMessage(null);
+    try {
+      const result = await restartGateway();
+      if (result.ok) {
+        setActionMessage(result.message || "Gateway restarted.");
+        setErrorModalOpen(false);
+      } else {
+        setActionMessage(result.error || result.message || "Gateway restart failed.");
+      }
+    } finally {
+      setRestarting(false);
+    }
+  }
 
   if (!mounted) {
     return <GatewayConnectingOverlay />;
   }
 
-  const showOverlay = phase === "connecting" || phase === "leaving";
+  if (phase === "splash") {
+    return <HermesSplashScreen leaving={splashLeaving} />;
+  }
 
-  if (showOverlay) {
+  if (phase === "connecting" || phase === "leaving") {
     return (
-      <GatewayConnectingOverlay
-        leaving={phase === "leaving"}
-        onExitComplete={handleExitComplete}
-      />
+      <>
+        <GatewayConnectingOverlay
+          leaving={phase === "leaving"}
+          onExitComplete={handleExitComplete}
+        />
+        <HermesConnectionErrorModal
+          open={errorModalOpen}
+          onClose={() => setErrorModalOpen(false)}
+          error={status.error}
+          kind={status.kind}
+          hasApiKey={hasApiKey}
+          settingUp={settingUp}
+          restarting={restarting}
+          actionMessage={actionMessage}
+          onEnableApiServer={() => void handleSetupApiServer()}
+          onRestartGateway={() => void handleRestartGateway()}
+        />
+      </>
     );
   }
 
   return (
-    <div className="app-shell flex items-center justify-center px-6">
-      <div className="w-full max-w-md text-center">
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <Image
-              src={iconImage}
-              alt="Hermes Forge"
-              className="w-9 h-9 rounded-lg object-cover"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="font-semibold text-lg tracking-tight">Hermes Forge</span>
+    <>
+      <div className="app-shell flex items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <Image
+                src={iconImage}
+                alt="Hermes Forge"
+                className="w-9 h-9 rounded-lg object-cover"
+                width={36}
+                height={36}
+                priority
+              />
+              <span className="font-semibold text-lg tracking-tight">Hermes Forge</span>
+            </div>
+
+            <p className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.35em] text-accent mb-4">
+              Hermes Agent
+            </p>
+
+            <h1 className="text-2xl font-semibold tracking-tight">Connect to Hermes</h1>
+            <p className="text-sm text-text-muted mt-2 leading-relaxed">
+              Hermes Forge runs on your machine and talks to a local Hermes gateway — the same way
+              the Hermes Browser Extension connects on startup.
+            </p>
           </div>
 
-          <p className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.35em] text-accent mb-4">
-            Hermes Agent
-          </p>
+          {!sessionReady && (
+            <div className="mb-4 text-xs text-text-muted bg-bg-muted border border-border rounded-lg px-3 py-2">
+              Starting local session…
+            </div>
+          )}
 
-          <h1 className="text-2xl font-semibold tracking-tight">Connect to Hermes</h1>
-          <p className="text-sm text-text-muted mt-2 leading-relaxed">
-            Hermes Forge runs on your machine and talks to a local Hermes gateway — the same way
-            Hermes Agent Desktop connects on startup.
+          <button
+            type="button"
+            onClick={() => void handleConnect()}
+            disabled={connecting || isBusy || !sessionReady}
+            className="btn-primary w-full justify-center"
+          >
+            {connecting || isBusy ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                <Plug className="w-4 h-4" />
+                Connect to Hermes
+              </>
+            )}
+          </button>
+
+          <p className="text-xs text-text-soft mt-4">
+            Make sure Hermes Agent is installed locally. If connection fails, we will help you
+            enable the API server and restart the gateway.
           </p>
         </div>
-
-        {!sessionReady && (
-          <div className="mb-4 text-xs text-text-muted bg-bg-muted border border-border rounded-lg px-3 py-2">
-            Starting local session…
-          </div>
-        )}
-
-        {status.error && (
-          <div className="mb-4 text-xs text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 text-left">
-            {status.error}
-            {tip && <div className="mt-1.5 text-text-muted">{tip}</div>}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => void handleConnect()}
-          disabled={connecting || isBusy || !sessionReady}
-          className="btn-primary w-full justify-center"
-        >
-          {connecting || isBusy ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <>
-              <Plug className="w-4 h-4" />
-              Connect to Hermes
-            </>
-          )}
-        </button>
-
-        <p className="text-xs text-text-soft mt-4">
-          Make sure Hermes Agent is running locally (`hermes gateway`).
-        </p>
       </div>
-    </div>
+
+      <HermesConnectionErrorModal
+        open={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        error={status.error}
+        kind={status.kind}
+        hasApiKey={hasApiKey}
+        settingUp={settingUp}
+        restarting={restarting}
+        actionMessage={actionMessage}
+        onEnableApiServer={() => void handleSetupApiServer()}
+        onRestartGateway={() => void handleRestartGateway()}
+      />
+    </>
   );
 }

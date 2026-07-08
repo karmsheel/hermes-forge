@@ -21,6 +21,23 @@ import {
   saveHermesConfig,
 } from "@/lib/hermes-storage";
 
+interface HermesSetupResponse {
+  ok: boolean;
+  message?: string;
+  needsGatewayRestart?: boolean;
+  gatewayReachable?: boolean;
+  suggested?: { baseUrl: string; apiKey?: string } | null;
+  error?: string;
+}
+
+interface HermesGatewayRestartResponse {
+  ok: boolean;
+  message?: string;
+  gatewayReachable?: boolean;
+  suggested?: { baseUrl: string; apiKey?: string } | null;
+  error?: string;
+}
+
 interface HermesConnectionContextValue {
   config: HermesConfig | null;
   status: HermesConnectionStatus;
@@ -30,6 +47,8 @@ interface HermesConnectionContextValue {
   modelsLoading: boolean;
   selectedModel: string | null;
   autoConnect: () => Promise<boolean>;
+  setupApiServer: () => Promise<HermesSetupResponse>;
+  restartGateway: () => Promise<HermesGatewayRestartResponse>;
   testConnection: (config?: HermesConfig) => Promise<boolean>;
   saveConnection: (config: HermesConfig) => Promise<boolean>;
   disconnect: () => void;
@@ -187,6 +206,116 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
     [status.model, testConnection]
   );
 
+  const setupApiServer = useCallback(async (): Promise<HermesSetupResponse> => {
+    setStatus({ state: "discovering" });
+
+    try {
+      const res = await fetch("/api/hermes/setup", { method: "POST" });
+      const data = (await res.json()) as HermesSetupResponse & {
+        suggested?: { baseUrl: string; apiKey?: string } | null;
+        probe?: Parameters<typeof connectionStatusFromProbe>[0];
+      };
+
+      if (!res.ok || !data.ok) {
+        setStatus({
+          state: "error",
+          error: data.error || data.message || "API server setup failed",
+          kind: "misconfigured",
+        });
+        return data;
+      }
+
+      if (data.suggested?.baseUrl && data.suggested.apiKey) {
+        const discovered = withResolvedModel(
+          {
+            baseUrl: data.suggested.baseUrl,
+            apiKey: data.suggested.apiKey,
+          },
+          data.probe?.model
+        );
+        saveHermesConfig(discovered);
+        setConfig(discovered);
+        if (data.probe) {
+          applyProbe(data.probe, "auto", discovered);
+        }
+        toast.success(data.message || "Hermes API server configured");
+        return data;
+      }
+
+      setStatus({
+        state: "error",
+        error: data.message || "API server configured. Run `hermes gateway restart`, then connect again.",
+        kind: data.needsGatewayRestart ? "not_running" : "misconfigured",
+      });
+      toast.message(data.message || "Restart Hermes gateway to apply settings");
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "API server setup failed";
+      setStatus({
+        state: "error",
+        error: message,
+        kind: "misconfigured",
+      });
+      return { ok: false, error: message };
+    }
+  }, [applyProbe]);
+
+  const restartGateway = useCallback(async (): Promise<HermesGatewayRestartResponse> => {
+    setStatus({ state: "discovering" });
+
+    try {
+      const res = await fetch("/api/hermes/gateway/restart", { method: "POST" });
+      const data = (await res.json()) as HermesGatewayRestartResponse & {
+        suggested?: { baseUrl: string; apiKey?: string } | null;
+        probe?: Parameters<typeof connectionStatusFromProbe>[0];
+      };
+
+      if (!res.ok || !data.ok) {
+        setStatus({
+          state: "error",
+          error: data.error || data.message || "Gateway restart failed",
+          kind: "not_running",
+        });
+        toast.error(data.error || data.message || "Gateway restart failed");
+        return data;
+      }
+
+      if (data.suggested?.baseUrl && data.suggested.apiKey) {
+        const discovered = withResolvedModel(
+          {
+            baseUrl: data.suggested.baseUrl,
+            apiKey: data.suggested.apiKey,
+          },
+          data.probe?.model
+        );
+        saveHermesConfig(discovered);
+        setConfig(discovered);
+        if (data.probe) {
+          applyProbe(data.probe, "auto", discovered);
+        }
+        toast.success(data.message || "Hermes gateway restarted");
+        return data;
+      }
+
+      setStatus({
+        state: "error",
+        error: data.message || "Gateway restarted but Hermes is not reachable yet.",
+        kind: "not_running",
+      });
+      toast.message(data.message || "Gateway restarted — try Connect again in a moment.");
+      return data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gateway restart failed";
+      setStatus({
+        state: "error",
+        error: message,
+        kind: "not_running",
+      });
+      toast.error(message);
+      return { ok: false, error: message };
+    }
+  }, [applyProbe]);
+
   const autoConnect = useCallback(async (): Promise<boolean> => {
     setStatus({ state: "discovering" });
 
@@ -290,6 +419,8 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
       modelsLoading,
       selectedModel,
       autoConnect,
+      setupApiServer,
+      restartGateway,
       testConnection,
       saveConnection,
       disconnect,
@@ -299,6 +430,8 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
     }),
     [
       autoConnect,
+      setupApiServer,
+      restartGateway,
       availableModels,
       config,
       disconnect,
