@@ -18,7 +18,9 @@
   --color-text-soft: var(--text-soft);
   --color-text-faint: var(--text-faint);
   --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-hover-fg: var(--accent-hover-fg);
   --color-accent-tint: var(--accent-tint);
   --color-accent-soft: var(--accent-soft);
   --color-selected: var(--selected);
