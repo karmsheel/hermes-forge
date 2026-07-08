@@ -30,7 +30,7 @@ function troubleshootingTip(kind?: string): string | null {
 export function HermesStartupScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("from") || "/home";
+  const redirectTo = searchParams.get("from") || "/business-manager";
   const { isConnected, isBusy, autoConnect, status } = useHermesConnection();
   const hadSavedConfig = useRef(false);
   const [mounted, setMounted] = useState(false);

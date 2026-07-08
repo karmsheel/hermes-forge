@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { User } from "lucide-react";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
-import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { BusinessSwitcher } from "./BusinessSwitcher";
@@ -21,7 +20,6 @@ export function AppTopBar() {
 
         <div className="flex items-center gap-3 text-sm">
           <HermesModelSwitcher onOpenConnection={openHermesConnection} />
-          <DesktopUpdateIndicator />
           <HermesStatusBadge onClick={openHermesConnection} />
           {!userLoading && user && (
             <Link

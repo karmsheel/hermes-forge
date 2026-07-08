@@ -17,6 +17,7 @@ import {
   getShowGodModePage,
   getShowHomeProcessStandardPicker,
   isDeveloperUnlocked,
+  lockDeveloperMode as persistLockDeveloperMode,
   recordVersionUnlockClick,
   setPreviewUpdateIcon as persistPreviewUpdateIcon,
   setShowCronalyticsPage as persistShowCronalyticsPage,
@@ -39,6 +40,7 @@ interface DeveloperSettingsContextValue {
   showHomeProcessStandardPicker: boolean;
   setShowHomeProcessStandardPicker: (enabled: boolean) => void;
   recordVersionUnlockClick: () => void;
+  lockDeveloperMode: () => void;
 }
 
 const DeveloperSettingsContext = createContext<DeveloperSettingsContextValue | null>(null);
@@ -95,6 +97,17 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     }
   }, []);
 
+  const handleLockDeveloperMode = useCallback(() => {
+    persistLockDeveloperMode();
+    setIsUnlocked(false);
+    setPreviewUpdateIconState(false);
+    setShowCronalyticsPageState(false);
+    setShowDecisionsPageState(false);
+    setShowGodModePageState(false);
+    setShowHomeProcessStandardPickerState(false);
+    toast.success("Developer mode hidden");
+  }, []);
+
   const value = useMemo(
     () => ({
       hydrated,
@@ -110,6 +123,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       showHomeProcessStandardPicker: hydrated ? showHomeProcessStandardPicker : false,
       setShowHomeProcessStandardPicker,
       recordVersionUnlockClick: handleVersionUnlockClick,
+      lockDeveloperMode: handleLockDeveloperMode,
     }),
     [
       hydrated,
@@ -125,6 +139,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       showHomeProcessStandardPicker,
       setShowHomeProcessStandardPicker,
       handleVersionUnlockClick,
+      handleLockDeveloperMode,
     ]
   );
 

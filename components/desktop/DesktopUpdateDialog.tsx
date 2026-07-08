@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Overlay } from "@/components/ui/Overlay";
+import { ReleaseNotesContent } from "@/components/desktop/ReleaseNotesContent";
 import {
   checkDesktopUpdate,
   downloadDesktopUpdate,
@@ -119,7 +120,7 @@ export function DesktopUpdateDialog({
         {status.releaseNotes ? (
           <div className="rounded-lg border border-border-soft px-4 py-3">
             <p className="text-xs font-medium text-text-muted mb-2">What&apos;s new</p>
-            <p className="text-sm text-text whitespace-pre-wrap">{status.releaseNotes}</p>
+            <ReleaseNotesContent notes={status.releaseNotes} />
           </div>
         ) : null}
 

@@ -16,6 +16,7 @@ export function SettingsDeveloper() {
     setShowGodModePage,
     showHomeProcessStandardPicker,
     setShowHomeProcessStandardPicker,
+    lockDeveloperMode,
   } = useDeveloperSettings();
 
   return (
@@ -112,6 +113,22 @@ export function SettingsDeveloper() {
               }
             />
           </div>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-border-soft">
+          <ListRow
+            label="Hide developer mode"
+            description="Remove the Developer settings section and reset preview toggles. Unlock again from Settings → About by clicking the version five times."
+            action={
+              <button
+                type="button"
+                onClick={lockDeveloperMode}
+                className="btn-secondary text-xs px-3 py-1.5"
+              >
+                Hide
+              </button>
+            }
+          />
         </div>
       </div>
     </section>

@@ -37,6 +37,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `THEME_SCHEMA.md` | JSON schema for user-installable Forge themes | Medium | When building or documenting custom theme install (4.7) |
 | `BUSINESS_LOG_AND_GIT.md` | Immutable business log + per-business Git versioning architecture | High | When implementing business log, export, sync, or GitHub integration |
 | `DESKTOP_MULTI_TAB_SHELL.md` | Desktop multi-tab shell design (Notion-style parallel sessions) | Medium | When implementing desktop tab bar or per-tab business scoping (4.15) |
+| `WINDOWS_CODE_SIGNING.md` | Windows Authenticode signing for NSIS installer and SmartScreen trust | Medium | When implementing desktop installer signing or release hardening (4.16) |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
 | *(Future)* `PROCESS.md`    | Process notation standards & contracts      | Medium   | When building diagram/workflow features |
 | *(Future)* `DESIGN.md`     | Visual & interaction guidelines             | Low      | When working on UI components |

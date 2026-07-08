@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           name: true,
+          avatarEmoji: true,
+          avatarIcon: true,
           description: true,
           industry: true,
           _count: { select: { processes: true } },
@@ -37,6 +39,8 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           name: true,
+          avatarEmoji: true,
+          avatarIcon: true,
           description: true,
           industry: true,
           _count: { select: { processes: true } },

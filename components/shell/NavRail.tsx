@@ -17,8 +17,9 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
-import { useAppVersion } from "@/lib/use-app-version";
+import { NavRailVersion } from "./NavRailVersion";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 
@@ -32,7 +33,6 @@ type NavItem = {
 };
 
 export function NavRail() {
-  const appVersion = useAppVersion();
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
   const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
@@ -191,9 +191,10 @@ export function NavRail() {
         >
           <User className="w-5 h-5" />
         </Link>
-        <span className="nav-rail__version" title={`Version ${appVersion}`}>
-          v{appVersion}
-        </span>
+        <div className="nav-rail__footer-meta">
+          <DesktopUpdateIndicator />
+          <NavRailVersion />
+        </div>
       </div>
     </nav>
   );

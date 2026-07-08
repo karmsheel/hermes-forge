@@ -3,14 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
-import { Building2, Check, ChevronDown, Loader2, Plus } from "lucide-react";
+import { Check, ChevronDown, Loader2, Plus } from "lucide-react";
+import { BusinessAvatarMark } from "@/components/shell/BusinessAvatarMark";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessSummary } from "@/lib/types";
-
-function businessInitial(name: string) {
-  const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
-}
 
 export function BusinessSwitcher() {
   const { currentBusiness, switchBusiness, openNewProject } = useShell();
@@ -149,9 +145,12 @@ export function BusinessSwitcher() {
                   disabled={isSwitching}
                   className={`business-switcher__option${isActive ? " is-active" : ""}`}
                 >
-                  <span className="business-switcher__option-avatar" aria-hidden>
-                    {businessInitial(b.name)}
-                  </span>
+                  <BusinessAvatarMark
+                    name={b.name}
+                    avatarEmoji={b.avatarEmoji}
+                    avatarIcon={b.avatarIcon}
+                    className="business-switcher__option-avatar"
+                  />
                   <span className="business-switcher__option-body">
                     <span className="business-switcher__option-name">{b.name}</span>
                     {b.description ? (
@@ -204,9 +203,11 @@ export function BusinessSwitcher() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="business-switcher__avatar" aria-hidden>
-          {currentBusiness ? businessInitial(currentBusiness.name) : <Building2 className="w-3.5 h-3.5" />}
-        </span>
+        <BusinessAvatarMark
+          name={currentBusiness?.name ?? ""}
+          avatarEmoji={currentBusiness?.avatarEmoji}
+          avatarIcon={currentBusiness?.avatarIcon}
+        />
         <span className="business-switcher__label">{displayName}</span>
         <span className="business-switcher__chevron" aria-hidden>
           <ChevronDown className={`business-switcher__chevron-icon${open ? " is-open" : ""}`} />

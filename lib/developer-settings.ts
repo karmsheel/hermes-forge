@@ -49,6 +49,16 @@ export function getVersionUnlockClickCount(): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+export function lockDeveloperMode() {
+  removeStorage(UNLOCKED_KEY);
+  removeStorage(VERSION_CLICKS_KEY);
+  removeStorage(PREVIEW_UPDATE_ICON_KEY);
+  removeStorage(SHOW_CRONALYTICS_KEY);
+  removeStorage(SHOW_DECISIONS_KEY);
+  removeStorage(SHOW_GOD_MODE_KEY);
+  removeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY);
+}
+
 export function recordVersionUnlockClick(): {
   count: number;
   justUnlocked: boolean;
@@ -134,7 +144,8 @@ export function getPreviewUpdateStatus(): DesktopUpdateStatus {
     phase: "available",
     currentVersion: APP_VERSION,
     version: "9.9.9-dev",
-    releaseNotes: "Developer preview — mock update for UI testing.",
+    releaseNotes:
+      "<h2>Hermes Forge 9.9.9-dev</h2><p>Developer preview — mock update for UI testing.</p><h3>Highlights</h3><ul><li><strong>Fix:</strong> Release notes render as rich text</li><li>Headings, lists, and <code>inline code</code> display correctly</li></ul>",
     progress: null,
     error: null,
   };

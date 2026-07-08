@@ -18,12 +18,30 @@ import { SettingsOverlay } from "@/components/settings/SettingsOverlay";
 import { DEFAULT_SETTINGS_VIEW, type SettingsViewId } from "@/lib/settings-views";
 
 import { clearLegacyActiveProcessId, setPendingNewProcess } from "@/lib/workshop-storage";
-import type { UserProfile } from "@/lib/types";
+import type { NewBusinessInput } from "@/lib/new-business";
+import type { ActiveBusiness, UserProfile } from "@/lib/types";
+
+function toActiveBusiness(
+  business: {
+    id: string;
+    name: string;
+    avatarEmoji?: string | null;
+    avatarIcon?: string | null;
+  } | null | undefined,
+): ActiveBusiness | null {
+  if (!business?.id || !business?.name) return null;
+  return {
+    id: business.id,
+    name: business.name,
+    avatarEmoji: business.avatarEmoji ?? null,
+    avatarIcon: business.avatarIcon ?? null,
+  };
+}
 
 interface ShellContextValue {
   user: UserProfile | null;
   userLoading: boolean;
-  currentBusiness: { id: string; name: string } | null;
+  currentBusiness: ActiveBusiness | null;
   newProjectOpen: boolean;
   connectionOpen: boolean;
   settingsOpen: boolean;
@@ -38,7 +56,7 @@ interface ShellContextValue {
   setSettingsTab: (tab: SettingsViewId) => void;
   switchBusiness: (id: string) => Promise<boolean>;
   refreshCurrentBusiness: () => Promise<void>;
-  createProject: (name: string, description: string) => Promise<void>;
+  createProject: (input: NewBusinessInput) => Promise<void>;
   requestNewProcess: () => void;
   registerWorkshopNewProcess: (handler: (() => void | Promise<void>) | null) => void;
 }
@@ -49,7 +67,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [userLoading, setUserLoading] = useState(true);
-  const [currentBusiness, setCurrentBusiness] = useState<{ id: string; name: string } | null>(null);
+  const [currentBusiness, setCurrentBusiness] = useState<ActiveBusiness | null>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -68,9 +86,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
           data = await res.json();
         }
         if (data?.user) setUser(data.user);
-        if (data?.activeBusiness) {
-          setCurrentBusiness({ id: data.activeBusiness.id, name: data.activeBusiness.name });
-        }
+        setCurrentBusiness(toActiveBusiness(data?.activeBusiness));
       } catch {
         /* ignore */
       } finally {
@@ -81,40 +97,48 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     void loadUser();
   }, []);
 
+  const refreshCurrentBusiness = useCallback(async () => {
+    try {
+      const me = await fetch("/api/auth/me").then((r) => r.json());
+      setCurrentBusiness(toActiveBusiness(me?.activeBusiness));
+    } catch {
+      /* non-fatal */
+    }
+  }, []);
+
   const createProject = useCallback(
-    async (name: string, description: string) => {
+    async ({ name, description, avatarEmoji, avatarIcon }: NewBusinessInput) => {
       setCreatingProject(true);
       try {
         const res = await fetch("/api/businesses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description: description || undefined }),
+          body: JSON.stringify({
+            name,
+            description: description || undefined,
+            avatarEmoji: avatarEmoji || undefined,
+            avatarIcon: avatarIcon || undefined,
+          }),
         });
         if (!res.ok) throw new Error("Failed to create");
+        const business = await res.json();
         clearLegacyActiveProcessId();
         setNewProjectOpen(false);
-        router.push("/workshop");
+        const active = toActiveBusiness(business);
+        if (active) {
+          setCurrentBusiness(active);
+        } else {
+          await refreshCurrentBusiness();
+        }
+        router.push("/home");
       } catch {
         toast.error("Could not create business");
       } finally {
         setCreatingProject(false);
       }
     },
-    [router]
+    [router, refreshCurrentBusiness]
   );
-
-  const refreshCurrentBusiness = useCallback(async () => {
-    try {
-      const me = await fetch("/api/auth/me").then((r) => r.json());
-      if (me?.activeBusiness) {
-        setCurrentBusiness({ id: me.activeBusiness.id, name: me.activeBusiness.name });
-      } else {
-        setCurrentBusiness(null);
-      }
-    } catch {
-      /* non-fatal */
-    }
-  }, []);
 
   const switchBusiness = useCallback(
     async (id: string): Promise<boolean> => {

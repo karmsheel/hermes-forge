@@ -53,7 +53,7 @@ export function diffBusinessFields(
   before: Record<string, unknown>,
   after: Record<string, unknown>
 ) {
-  const fields = ['name', 'description', 'industry', 'teamSize', 'goals'] as const;
+  const fields = ['name', 'description', 'industry', 'teamSize', 'goals', 'avatarEmoji', 'avatarIcon'] as const;
   const changes = [];
   for (const field of fields) {
     const prev = before[field];

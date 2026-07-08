@@ -28,6 +28,8 @@ model Business {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name        String
+  avatarEmoji String?
+  avatarIcon  String?
   industry    String?
   description String?
   teamSize    Int?

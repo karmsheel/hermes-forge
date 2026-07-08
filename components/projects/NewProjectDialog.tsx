@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
+import { BusinessAvatarPickerFields } from "@/components/business-manager/BusinessAvatarPickerFields";
+import type { BusinessIconKey } from "@/lib/business-avatar";
+import type { NewBusinessInput } from "@/lib/new-business";
 
 interface NewProjectDialogProps {
   open: boolean;
   creating: boolean;
   onClose: () => void;
-  onCreate: (name: string, description: string) => void;
+  onCreate: (input: NewBusinessInput) => void;
   title?: string;
   subtitle?: string;
 }
@@ -15,11 +18,15 @@ interface NewProjectDialogProps {
 export function NewProjectDialog({ open, creating, onClose, onCreate, title, subtitle }: NewProjectDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
+  const [avatarIcon, setAvatarIcon] = useState<BusinessIconKey | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setName("");
     setDescription("");
+    setAvatarEmoji(null);
+    setAvatarIcon(null);
   }, [open]);
 
   useEffect(() => {
@@ -37,7 +44,27 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName || creating) return;
-    onCreate(trimmedName, description.trim());
+    onCreate({
+      name: trimmedName,
+      description: description.trim(),
+      avatarEmoji,
+      avatarIcon,
+    });
+  }
+
+  function selectEmoji(emoji: string) {
+    setAvatarEmoji(emoji);
+    setAvatarIcon(null);
+  }
+
+  function selectIcon(iconKey: BusinessIconKey) {
+    setAvatarIcon(iconKey);
+    setAvatarEmoji(null);
+  }
+
+  function clearAvatar() {
+    setAvatarEmoji(null);
+    setAvatarIcon(null);
   }
 
   return (
@@ -62,7 +89,7 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
         <div className="mb-6 pr-8">
           <h2 className="text-xl font-semibold tracking-tight">{title || "New Business"}</h2>
           <p className="text-sm text-text-muted mt-1">
-            {subtitle || "Give your business a name and optional description before opening the workshop."}
+            {subtitle || "Name your business, add a description, and pick an avatar to get started."}
           </p>
         </div>
 
@@ -92,9 +119,23 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
               className="input w-full text-sm min-h-[88px] resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What is this project about?"
+              placeholder="What is this business about?"
               disabled={creating}
               rows={3}
+            />
+          </div>
+
+          <div>
+            <div className="block text-xs uppercase tracking-widest text-text-muted mb-2">
+              Avatar <span className="normal-case tracking-normal text-text-soft">(optional)</span>
+            </div>
+            <BusinessAvatarPickerFields
+              avatarEmoji={avatarEmoji}
+              avatarIcon={avatarIcon}
+              disabled={creating}
+              onSelectEmoji={selectEmoji}
+              onSelectIcon={selectIcon}
+              onClear={clearAvatar}
             />
           </div>
 
@@ -113,7 +154,7 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
               className="btn-primary text-sm"
             >
               {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Create &amp; Open Workshop
+              Forge business
             </button>
           </div>
         </form>

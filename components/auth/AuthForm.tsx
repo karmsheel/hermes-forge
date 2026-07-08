@@ -22,7 +22,7 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
   const [name, setName] = useState("");
 
   const isSignup = mode === "signup";
-  const redirectTo = searchParams.get("from") || "/home";
+  const redirectTo = searchParams.get("from") || "/business-manager";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

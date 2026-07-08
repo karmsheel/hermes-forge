@@ -98,7 +98,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | API surface | `app/api/**` | ~52 route handlers |
 | Global styles | `app/globals.css`, `app/tokens.css` | Design tokens + skin overrides |
 | DB schema | `prisma/schema.prisma` | User, Business, Process, Conversation, ChatMessage, Automation, Memory, BusinessEvent, BusinessDecision, HumanPersonnel, HermesAgentProfile |
-| Desktop | `electron/main.mjs`, `electron/preload.mjs` | Electron wrapper; standalone Next on port 3847; multi-tab design → 4.15 / [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+| Desktop | `electron/main.mjs`, `electron/preload.mjs` | Electron wrapper; standalone Next on port 3847; NSIS installer unsigned → 4.16 / [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md); multi-tab → 4.15 / [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 | Redirects | `next.config.ts` | `/projects` → `/functions`, `/businesses` → `/functions`, `/interview` → `/home`, `/dashboard` → `/functions` |
 
 ---
@@ -655,6 +655,29 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+### 4.16 Windows installer code signing — **PLANNED**
+
+**Goal:** Sign the NSIS installer and all bundled Windows executables so SmartScreen shows a verified publisher instead of "unknown publisher," and so `electron-updater` can verify update signatures.
+
+**Status:** Investigated 2026-07-07; not implemented. Full context, certificate options, env vars, and checklist in the reference doc below.
+
+**Reference:** [`docs/references/WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md)
+
+**Depends on:** 4.8 (desktop packaging), manual GitHub Releases workflow (`AGENTS.md`)
+
+**Problem today:** v0.2.3 builds are entirely unsigned (`Get-AuthenticodeSignature` → `NotSigned` on installer and app exe). `electron-builder` has no `WIN_CSC_LINK` / `forceCodeSigning` configuration.
+
+**Key deliverables:**
+- [ ] Obtain Authenticode certificate (OV `.pfx` or Azure Trusted Signing)
+- [ ] Store signing credentials securely (env vars locally; GitHub Secrets when CI exists)
+- [ ] Add `forceCodeSigning: true` and `win.signtoolOptions.publisherName` to `package.json`
+- [ ] Verify signed installer (`Status: Valid`) before each GitHub Release publish
+- [ ] Update `AGENTS.md` release checklist with signing pre-flight + post-build verification
+
+**Expectations:** Signing fixes the unknown-publisher dialog; first releases may still show SmartScreen "unrecognized app" until publisher reputation builds (EV no longer grants instant trust as of 2026).
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -691,6 +714,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+| 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
 
 ---
 

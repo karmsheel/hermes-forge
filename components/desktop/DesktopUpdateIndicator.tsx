@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownCircle } from "lucide-react";
+import { ArrowUpCircle } from "lucide-react";
 import { DesktopUpdateDialog } from "./DesktopUpdateDialog";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { useDesktopUpdate } from "@/lib/desktop-update";
@@ -36,12 +36,11 @@ export function DesktopUpdateIndicator() {
       <button
         type="button"
         onClick={() => setDialogOpen(true)}
-        className="desktop-update-indicator flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border text-accent"
+        className="nav-rail__item desktop-update-indicator nav-rail__item--accent"
         title={label}
         aria-label={label}
       >
-        <ArrowDownCircle className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Update</span>
+        <ArrowUpCircle className="w-5 h-5" />
       </button>
 
       <DesktopUpdateDialog

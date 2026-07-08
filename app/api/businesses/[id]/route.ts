@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireBusinessAccess } from '@/lib/auth';
+import { isBusinessIconKey } from '@/lib/business-avatar';
 import { diffBusinessFields, recordBusinessEvent } from '@/lib/business-log';
 import { consumeExportAck } from '@/lib/business-log-export-cache';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
@@ -18,6 +19,8 @@ const UpdateBusinessSchema = z.object({
   industry: z.string().max(100).optional(),
   teamSize: z.number().int().positive().optional(),
   goals: z.string().max(500).optional(),
+  avatarEmoji: z.string().trim().max(8).nullable().optional(),
+  avatarIcon: z.string().trim().nullable().optional(),
 });
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -49,10 +52,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const body = UpdateBusinessSchema.parse(await request.json());
 
+    if (body.avatarIcon !== undefined && body.avatarIcon !== null && !isBusinessIconKey(body.avatarIcon)) {
+      return NextResponse.json({ error: 'Invalid business icon' }, { status: 400 });
+    }
+
+    const updateData = { ...body };
+    if (body.avatarEmoji !== undefined && body.avatarEmoji) {
+      updateData.avatarIcon = null;
+    }
+    if (body.avatarIcon !== undefined && body.avatarIcon) {
+      updateData.avatarEmoji = null;
+    }
+
     const before = await prisma.business.findUnique({ where: { id } });
     const business = await prisma.business.update({
       where: { id },
-      data: body,
+      data: updateData,
     });
 
     if (before) {

@@ -8,12 +8,15 @@ import {
 } from '@/lib/auth';
 import { markBusinessLogInitialized, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { isBusinessIconKey } from '@/lib/business-avatar';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 
 const CreateBusinessSchema = z.object({
   name: z.string().max(120).optional(),
   description: z.string().max(5000).optional(),
   industry: z.string().max(100).optional(),
+  avatarEmoji: z.string().trim().max(8).nullable().optional(),
+  avatarIcon: z.string().trim().nullable().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,6 +30,8 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
+        avatarEmoji: true,
+        avatarIcon: true,
         description: true,
         industry: true,
         createdAt: true,
@@ -49,6 +54,14 @@ export async function POST(request: NextRequest) {
 
     const body = CreateBusinessSchema.parse(await request.json());
 
+    if (body.avatarIcon !== undefined && body.avatarIcon !== null && !isBusinessIconKey(body.avatarIcon)) {
+      return NextResponse.json({ error: 'Invalid business icon' }, { status: 400 });
+    }
+
+    const avatarEmoji = body.avatarEmoji?.trim() || null;
+    const avatarIcon =
+      body.avatarIcon && isBusinessIconKey(body.avatarIcon) ? body.avatarIcon : null;
+
     const business = await prisma.$transaction(async (tx) => {
       const created = await tx.business.create({
         data: {
@@ -56,10 +69,14 @@ export async function POST(request: NextRequest) {
           name: body.name?.trim() || 'Untitled Project',
           description: body.description?.trim() || null,
           industry: body.industry?.trim() || null,
+          avatarEmoji: avatarIcon ? null : avatarEmoji,
+          avatarIcon: avatarEmoji ? null : avatarIcon,
         },
         select: {
           id: true,
           name: true,
+          avatarEmoji: true,
+          avatarIcon: true,
           description: true,
           industry: true,
           createdAt: true,

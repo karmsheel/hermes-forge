@@ -13,6 +13,8 @@ export interface Business {
   id: string;
   userId?: string;
   name: string;
+  avatarEmoji: string | null;
+  avatarIcon: string | null;
   industry: string | null;
   description: string | null;
   teamSize: number | null;
@@ -23,9 +25,18 @@ export interface Business {
   updatedAt: string;
 }
 
+export interface ActiveBusiness {
+  id: string;
+  name: string;
+  avatarEmoji: string | null;
+  avatarIcon: string | null;
+}
+
 export interface BusinessSummary {
   id: string;
   name: string;
+  avatarEmoji: string | null;
+  avatarIcon: string | null;
   description: string | null;
   industry: string | null;
   createdAt: string;
