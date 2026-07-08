@@ -7,6 +7,7 @@ declare global {
     forgeDesktop?: {
       isDesktop: boolean;
       platform: string;
+      getAppVersion?: () => Promise<string>;
       openVscodeThemeFile?: () => Promise<string | null>;
       getUpdateStatus?: () => Promise<DesktopUpdateStatus>;
       checkForUpdates?: () => Promise<DesktopUpdateStatus>;

@@ -18,7 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
-import { APP_VERSION } from "@/lib/app-meta";
+import { useAppVersion } from "@/lib/use-app-version";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 
@@ -32,6 +32,7 @@ type NavItem = {
 };
 
 export function NavRail() {
+  const appVersion = useAppVersion();
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
   const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
@@ -190,8 +191,8 @@ export function NavRail() {
         >
           <User className="w-5 h-5" />
         </Link>
-        <span className="nav-rail__version" title={`Version ${APP_VERSION}`}>
-          v{APP_VERSION}
+        <span className="nav-rail__version" title={`Version ${appVersion}`}>
+          v{appVersion}
         </span>
       </div>
     </nav>

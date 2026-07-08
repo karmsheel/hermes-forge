@@ -132,7 +132,9 @@ Skipping step 4 is how v0.2.1 broke: a draft on an `untagged-…` URL hid the re
 |------|-------|
 | `package.json` | `"version"` |
 | `package-lock.json` | root `"version"` and `packages[""].version` |
-| `lib/app-meta.ts` | `APP_VERSION` |
+| `lib/app-meta.ts` | `APP_VERSION` (auto-synced from `package.json` by `npm run build`) |
+
+**UI version display:** Settings, nav rail, and the updater read the **runtime** version from `app.getVersion()` (Electron `package.json`) via the desktop preload bridge. Bump `package.json` before `npm run build` so both the packaged app and the Next bundle stay aligned.
 
 Tag format: `v{version}` (e.g. `v0.2.1`). Tag should point at the **version-bump commit**; docs commits may land on `main` afterward.
 

@@ -1,11 +1,11 @@
 {
   "name": "hermes-forge",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/sync-app-version.mjs && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "desktop:dev": "electron .",

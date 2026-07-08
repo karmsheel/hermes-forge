@@ -16,6 +16,45 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function dialogCopy(status: DesktopUpdateStatus) {
+  switch (status.phase) {
+    case "checking":
+      return {
+        title: "Checking for updates",
+        description: "Looking for a newer desktop build on GitHub Releases…",
+      };
+    case "not-available":
+      return {
+        title: "You're up to date",
+        description: status.currentVersion
+          ? `Hermes Forge v${status.currentVersion} is the latest version.`
+          : "You already have the latest desktop build.",
+      };
+    case "downloaded":
+      return {
+        title: "Ready to install",
+        description: "The update has been downloaded. Restart Hermes Forge to finish installing.",
+      };
+    case "downloading":
+      return {
+        title: "Downloading update",
+        description: "Keep the app open while the update downloads.",
+      };
+    case "error":
+      return {
+        title: "Update check failed",
+        description: status.error ?? "Could not check for updates. Try again in a moment.",
+      };
+    default:
+      return {
+        title: "Update available",
+        description: status.version
+          ? `Version ${status.version} is available.`
+          : "A newer desktop build is available.",
+      };
+  }
+}
+
 export function DesktopUpdateDialog({
   open,
   status,
@@ -29,22 +68,7 @@ export function DesktopUpdateDialog({
 }) {
   const busy = status.phase === "checking" || status.phase === "downloading";
   const canClose = !busy;
-
-  const title =
-    status.phase === "downloaded"
-      ? "Ready to install"
-      : status.phase === "downloading"
-        ? "Downloading update"
-        : "Update available";
-
-  const description =
-    status.phase === "downloaded"
-      ? "The update has been downloaded. Restart Hermes Forge to finish installing."
-      : status.phase === "downloading"
-        ? "Keep the app open while the update downloads."
-        : status.version
-          ? `Version ${status.version} is available.`
-          : "A newer desktop build is available.";
+  const { title, description } = dialogCopy(status);
 
   return (
     <Overlay
@@ -63,7 +87,14 @@ export function DesktopUpdateDialog({
           </p>
         ) : null}
 
-        {status.version ? (
+        {status.phase === "checking" ? (
+          <div className="inline-flex items-center gap-2 text-sm text-text-muted px-1 py-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Checking…
+          </div>
+        ) : null}
+
+        {status.version && status.phase !== "not-available" ? (
           <div className="rounded-lg border border-border-soft bg-bg-subtle px-4 py-3 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="text-text-muted">Current</span>
@@ -72,6 +103,15 @@ export function DesktopUpdateDialog({
             <div className="mt-2 flex items-center justify-between gap-3">
               <span className="text-text-muted">New</span>
               <span className="font-medium text-accent">v{status.version}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {status.phase === "not-available" && status.currentVersion ? (
+          <div className="rounded-lg border border-border-soft bg-bg-subtle px-4 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-text-muted">Installed version</span>
+              <span className="font-medium text-text-strong">v{status.currentVersion}</span>
             </div>
           </div>
         ) : null}
@@ -98,16 +138,13 @@ export function DesktopUpdateDialog({
           </div>
         ) : null}
 
-        {status.error ? (
+        {status.error && status.phase === "error" ? (
           <p className="text-sm text-red-400">{status.error}</p>
         ) : null}
 
         <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-          {!isPreview && (status.phase === "available" || status.phase === "error") ? (
-            <Button
-              onClick={() => void downloadDesktopUpdate()}
-              disabled={busy}
-            >
+          {!isPreview && status.phase === "available" ? (
+            <Button onClick={() => void downloadDesktopUpdate()} disabled={busy}>
               Download update
             </Button>
           ) : null}
@@ -117,11 +154,7 @@ export function DesktopUpdateDialog({
           ) : null}
 
           {!isPreview && status.phase === "error" ? (
-            <Button
-              variant="secondary"
-              onClick={() => void checkDesktopUpdate()}
-              disabled={busy}
-            >
+            <Button variant="secondary" onClick={() => void checkDesktopUpdate()} disabled={busy}>
               Check again
             </Button>
           ) : null}
@@ -131,6 +164,12 @@ export function DesktopUpdateDialog({
               <Loader2 className="w-4 h-4 animate-spin" />
               Downloading…
             </div>
+          ) : null}
+
+          {canClose && status.phase !== "downloading" ? (
+            <Button variant="secondary" onClick={onClose}>
+              {status.phase === "not-available" || status.phase === "error" ? "Close" : "Cancel"}
+            </Button>
           ) : null}
         </div>
       </div>

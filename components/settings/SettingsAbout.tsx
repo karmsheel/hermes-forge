@@ -2,13 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Info } from "lucide-react";
 import iconImage from "@/assets/icon.jpg";
-import { APP_NAME, APP_RELEASES_URL, APP_TAGLINE, APP_VERSION } from "@/lib/app-meta";
+import { DesktopUpdateDialog } from "@/components/desktop/DesktopUpdateDialog";
+import { APP_NAME, APP_RELEASES_URL, APP_TAGLINE } from "@/lib/app-meta";
 import { checkDesktopUpdate } from "@/lib/desktop-update";
+import type { DesktopUpdateStatus } from "@/lib/desktop-update-types";
 import { isForgeDesktop } from "@/lib/forge-desktop";
+import { useAppVersion } from "@/lib/use-app-version";
 import { ListRow } from "@/components/ui";
 import { useDeveloperSettings } from "./DeveloperSettingsProvider";
+
+const IDLE_STATUS: DesktopUpdateStatus = {
+  phase: "idle",
+  currentVersion: "0.0.0",
+  version: null,
+  releaseNotes: null,
+  progress: null,
+  error: null,
+};
 
 function runtimeLabel() {
   if (typeof window !== "undefined" && window.forgeDesktop?.isDesktop) {
@@ -23,6 +36,21 @@ function runtimeLabel() {
 
 export function SettingsAbout() {
   const { recordVersionUnlockClick } = useDeveloperSettings();
+  const appVersion = useAppVersion();
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<DesktopUpdateStatus>(IDLE_STATUS);
+
+  useEffect(() => {
+    if (!updateDialogOpen || !window.forgeDesktop?.onUpdateStatus) return;
+    return window.forgeDesktop.onUpdateStatus(setUpdateStatus);
+  }, [updateDialogOpen]);
+
+  const handleCheckForUpdates = useCallback(async () => {
+    setUpdateDialogOpen(true);
+    setUpdateStatus((prev) => ({ ...prev, phase: "checking", error: null }));
+    const result = await checkDesktopUpdate();
+    setUpdateStatus(result);
+  }, []);
 
   return (
     <section>
@@ -52,7 +80,7 @@ export function SettingsAbout() {
             onClick={recordVersionUnlockClick}
             className="text-xs text-text-muted mt-1 hover:text-text transition-colors"
           >
-            Version {APP_VERSION}
+            Version {appVersion}
           </button>
         </div>
 
@@ -91,7 +119,7 @@ export function SettingsAbout() {
                 action={
                   <button
                     type="button"
-                    onClick={() => void checkDesktopUpdate()}
+                    onClick={() => void handleCheckForUpdates()}
                     className="btn-secondary text-xs px-3 py-1.5"
                   >
                     Check now
@@ -102,6 +130,12 @@ export function SettingsAbout() {
           ) : null}
         </div>
       </div>
+
+      <DesktopUpdateDialog
+        open={updateDialogOpen}
+        status={updateStatus}
+        onClose={() => setUpdateDialogOpen(false)}
+      />
     </section>
   );
 }

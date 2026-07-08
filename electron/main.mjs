@@ -262,6 +262,8 @@ app.whenReady().then(async () => {
   }
 });
 
+ipcMain.handle("app:get-version", () => app.getVersion());
+
 ipcMain.handle("theme:open-vscode-file", async () => {
   const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
   const result = await dialog.showOpenDialog(win ?? undefined, {

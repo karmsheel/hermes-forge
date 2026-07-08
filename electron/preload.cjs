@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("forgeDesktop", {
   isDesktop: true,
   platform: process.platform,
+  getAppVersion: () => ipcRenderer.invoke("app:get-version"),
   openVscodeThemeFile: () => ipcRenderer.invoke("theme:open-vscode-file"),
   getUpdateStatus: () => ipcRenderer.invoke("update:get-status"),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
