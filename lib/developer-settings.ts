@@ -7,6 +7,7 @@ const PREVIEW_UPDATE_ICON_KEY = "forge:dev-preview-update-icon";
 const SHOW_CRONALYTICS_KEY = "forge:dev-show-cronalytics";
 const SHOW_DECISIONS_KEY = "forge:dev-show-decisions";
 const SHOW_HOME_PROCESS_STANDARD_PICKER_KEY = "forge:dev-show-home-process-standard-picker";
+const SHOW_HERMES_MODEL_SWITCHER_KEY = "forge:dev-show-hermes-model-switcher";
 const SHOW_GOD_MODE_KEY = "forge:dev-show-god-mode";
 
 const UNLOCK_CLICKS_REQUIRED = 5;
@@ -57,6 +58,7 @@ export function lockDeveloperMode() {
   removeStorage(SHOW_DECISIONS_KEY);
   removeStorage(SHOW_GOD_MODE_KEY);
   removeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY);
+  removeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY);
 }
 
 export function recordVersionUnlockClick(): {
@@ -136,6 +138,18 @@ export function setShowHomeProcessStandardPicker(enabled: boolean) {
     writeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY, "1");
   } else {
     removeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY);
+  }
+}
+
+export function getShowHermesModelSwitcher(): boolean {
+  return readStorage(SHOW_HERMES_MODEL_SWITCHER_KEY) === "1";
+}
+
+export function setShowHermesModelSwitcher(enabled: boolean) {
+  if (enabled) {
+    writeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY, "1");
+  } else {
+    removeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY);
   }
 }
 

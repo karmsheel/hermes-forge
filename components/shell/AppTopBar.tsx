@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { User } from "lucide-react";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
@@ -10,6 +11,7 @@ import { useShell } from "./ShellContext";
 
 export function AppTopBar() {
   const { user, userLoading, openHermesConnection } = useShell();
+  const { showHermesModelSwitcher } = useDeveloperSettings();
 
   return (
     <header className="app-topbar shrink-0 bg-bg">
@@ -19,7 +21,9 @@ export function AppTopBar() {
         <div className="flex-1 min-w-0" />
 
         <div className="flex items-center gap-3 text-sm">
-          <HermesModelSwitcher onOpenConnection={openHermesConnection} />
+          {showHermesModelSwitcher && (
+            <HermesModelSwitcher onOpenConnection={openHermesConnection} />
+          )}
           <HermesStatusBadge onClick={openHermesConnection} />
           {!userLoading && user && (
             <Link

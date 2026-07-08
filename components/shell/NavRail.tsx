@@ -13,7 +13,6 @@ import {
   Scale,
   ScanEye,
   ScrollText,
-  User,
   Users,
   Zap,
 } from "lucide-react";
@@ -182,15 +181,6 @@ export function NavRail() {
         >
           <PlugZap className="w-5 h-5" />
         </button>
-        <Link
-          href="/profile"
-          className={`nav-rail__item${pathname.startsWith("/profile") ? " is-active" : ""}`}
-          title="Profile"
-          aria-label="Profile"
-          aria-current={pathname.startsWith("/profile") ? "page" : undefined}
-        >
-          <User className="w-5 h-5" />
-        </Link>
         <div className="nav-rail__footer-meta">
           <DesktopUpdateIndicator />
           <NavRailVersion />

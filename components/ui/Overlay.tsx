@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { Button } from "./Button";
 
@@ -23,33 +24,48 @@ export function Overlay({
   closeDisabled?: boolean;
   elevated?: boolean;
 }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
+
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !closeDisabled) onClose();
     }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, closeDisabled, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const widthClass =
     size === "lg" ? "max-w-2xl" : size === "sm" ? "max-w-md" : "max-w-lg";
 
-  return (
+  const zClass = elevated ? "z-[80]" : "z-[60]";
+
+  return createPortal(
     <div
-      className={`fixed inset-0 flex items-center justify-center p-4${elevated ? " z-[80]" : " z-[60]"}`}
+      className={`fixed inset-0 flex items-center justify-center p-4 ${zClass}`}
+      role="presentation"
     >
-      <button
-        type="button"
+      <div
         className="absolute inset-0 bg-black/70"
-        aria-label={`Close ${title}`}
+        aria-hidden="true"
         onClick={closeDisabled ? undefined : onClose}
-        disabled={closeDisabled}
       />
       <div
-        className={`overlay-panel relative w-full ${widthClass} p-6 max-h-[90vh] overflow-y-auto text-text`}
+        className={`overlay-panel relative z-10 w-full ${widthClass} p-6 max-h-[90vh] overflow-y-auto text-text`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="overlay-title"
@@ -74,6 +90,7 @@ export function Overlay({
 
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

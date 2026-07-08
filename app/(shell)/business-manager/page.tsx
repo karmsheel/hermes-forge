@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import steampunkGirl from "@/assets/girl_steampunk.svg";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, Hammer, Loader2, Upload } from "lucide-react";
@@ -9,6 +10,8 @@ import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessExportPayload, BusinessSummary } from "@/lib/types";
 
+const forgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
+
 export default function BusinessManagerPage() {
   const router = useRouter();
   const { switchBusiness, openNewProject, currentBusiness, refreshCurrentBusiness } = useShell();
@@ -16,7 +19,9 @@ export default function BusinessManagerPage() {
   const [loading, setLoading] = useState(true);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [forgeArtSize, setForgeArtSize] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const forgeActionsRef = useRef<HTMLDivElement>(null);
 
   const loadBusinesses = useCallback(async () => {
     setLoading(true);
@@ -39,6 +44,20 @@ export default function BusinessManagerPage() {
   useEffect(() => {
     void loadBusinesses();
   }, [loadBusinesses]);
+
+  useEffect(() => {
+    const actionsEl = forgeActionsRef.current;
+    if (!actionsEl) return;
+
+    const syncArtSize = () => {
+      setForgeArtSize(actionsEl.getBoundingClientRect().height);
+    };
+
+    syncArtSize();
+    const observer = new ResizeObserver(syncArtSize);
+    observer.observe(actionsEl);
+    return () => observer.disconnect();
+  }, [loading, importing]);
 
   async function enterBusiness(id: string) {
     setSwitchingId(id);
@@ -131,10 +150,34 @@ export default function BusinessManagerPage() {
           </div>
         </header>
 
-        <div className="business-manager__forge-actions">
-          <button type="button" onClick={openNewProject} className="business-manager__forge-btn">
+        <div className="business-manager__forge-panel">
+          <div
+            className="business-manager__forge-art-wrap"
+            aria-hidden
+            style={
+              forgeArtSize
+                ? ({ width: forgeArtSize, height: forgeArtSize } as CSSProperties)
+                : undefined
+            }
+          >
+            <div
+              className="business-manager__forge-art"
+              style={
+                {
+                  "--business-manager-forge-art-url": `url("${forgeArtUrl}")`,
+                } as CSSProperties
+              }
+            />
+          </div>
+
+          <div ref={forgeActionsRef} className="business-manager__forge-actions">
+          <button
+            type="button"
+            onClick={openNewProject}
+            className="business-manager__forge-btn business-manager__forge-btn--primary"
+          >
             <span className="business-manager__forge-btn-icon" aria-hidden>
-              <Hammer className="w-5 h-5" />
+              <Hammer className="w-6 h-6" />
             </span>
             <span className="business-manager__forge-btn-body">
               <span className="business-manager__forge-btn-label">Forge new business</span>
@@ -146,7 +189,7 @@ export default function BusinessManagerPage() {
             type="button"
             onClick={triggerImport}
             disabled={importing}
-            className="business-manager__forge-btn"
+            className="business-manager__forge-btn business-manager__forge-btn--import"
           >
             <span className="business-manager__forge-btn-icon" aria-hidden>
               {importing ? (
@@ -167,6 +210,7 @@ export default function BusinessManagerPage() {
             className="sr-only"
             onChange={onFileChange}
           />
+          </div>
         </div>
 
         <section className="business-manager__section" aria-labelledby="business-manager-your-businesses">

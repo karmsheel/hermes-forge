@@ -16,6 +16,8 @@ export function SettingsDeveloper() {
     setShowGodModePage,
     showHomeProcessStandardPicker,
     setShowHomeProcessStandardPicker,
+    showHermesModelSwitcher,
+    setShowHermesModelSwitcher,
     lockDeveloperMode,
   } = useDeveloperSettings();
 
@@ -43,6 +45,22 @@ export function SettingsDeveloper() {
                     type="checkbox"
                     checked={showHomeProcessStandardPicker}
                     onChange={(event) => setShowHomeProcessStandardPicker(event.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                </label>
+              }
+            />
+          </div>
+          <div className="py-1">
+            <ListRow
+              label="Show Hermes model switcher"
+              description="Reveal the model dropdown in the top bar. Hidden by default; the default Hermes Agent model is still used."
+              action={
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showHermesModelSwitcher}
+                    onChange={(event) => setShowHermesModelSwitcher(event.target.checked)}
                     className="h-4 w-4 rounded border-border accent-accent"
                   />
                 </label>
