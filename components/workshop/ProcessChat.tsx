@@ -211,7 +211,7 @@ export function ProcessChat({
                 data-message-id={msg.id}
                 className={`chat-message text-sm transition-shadow ${
                   isUser
-                    ? "bg-accent text-accent-fg"
+                    ? "chat-message--user"
                     : "bg-bg-elevated border border-border text-text"
                 }`}
               >

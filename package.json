@@ -1,6 +1,6 @@
 {
   "name": "hermes-forge",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "main": "electron/main.mjs",
   "scripts": {
