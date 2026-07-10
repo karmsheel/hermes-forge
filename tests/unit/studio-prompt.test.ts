@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import { pageBlurbForPath } from "../../lib/chatbar/page-registry.ts";
+import {
+  autoStudioTitleFromText,
+  buildStudioChatSystemPrompt,
+  buildStudioPageContextMessage,
+} from "../../lib/chatbar/studio-prompt.ts";
+
+describe("pageBlurbForPath", () => {
+  it("resolves known routes", () => {
+    assert.equal(pageBlurbForPath("/home").routeKey, "home");
+    assert.equal(pageBlurbForPath("/functions").title, "Functions");
+    assert.equal(pageBlurbForPath("/workshop/x").routeKey, "workshop");
+  });
+
+  it("falls back for unknown routes", () => {
+    assert.equal(pageBlurbForPath("/mystery").routeKey, "unknown");
+  });
+});
+
+describe("studio prompts", () => {
+  it("includes business and page purpose", () => {
+    const system = buildStudioChatSystemPrompt({
+      businessName: "Acme",
+      route: "/personnel",
+    });
+    assert.match(system, /Acme/);
+    assert.match(system, /Personnel/);
+  });
+
+  it("wraps page context as untrusted", () => {
+    const block = buildStudioPageContextMessage({
+      route: "/log",
+      businessName: "Acme",
+    });
+    assert.match(block, /UNTRUSTED_FORGE_CONTEXT_START/);
+    assert.match(block, /Business log/);
+  });
+
+  it("auto-titles from first message", () => {
+    assert.equal(autoStudioTitleFromText("What is this page?"), "What is this page?");
+    assert.ok(autoStudioTitleFromText("x".repeat(80)).endsWith("…"));
+  });
+});

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Building2, Hammer, Loader2, Upload } from "lucide-react";
 import { BusinessTileCard } from "@/components/business-manager/BusinessTileCard";
 import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
+import { NavThemeModeToggle } from "@/components/shell/NavThemeModeToggle";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessExportPayload, BusinessSummary } from "@/lib/types";
 
@@ -140,13 +141,16 @@ export default function BusinessManagerPage() {
           <div className="business-manager__brand" aria-hidden>
             <HermesForgeMark className="hermes-forge-mark" />
           </div>
-          <div>
+          <div className="business-manager__header-text">
             <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Hermes Forge</div>
             <h1 className="business-manager__title">Business Manager</h1>
             <p className="business-manager__subtitle">
               Choose a business to forge, or start fresh. This is your workspace hub before entering
               the studio.
             </p>
+          </div>
+          <div className="business-manager__header-actions">
+            <NavThemeModeToggle />
           </div>
         </header>
 

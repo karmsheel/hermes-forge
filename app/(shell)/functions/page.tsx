@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { FunctionsPageContext } from "@/components/chatbar/page-providers/FunctionsPageContext";
 import {
   BusinessAnalyticsSection,
   type AnalyticsBusiness,
@@ -102,6 +103,11 @@ export default function FunctionsPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 w-full">
+      <FunctionsPageContext
+        business={business}
+        processes={processes}
+        functions={functions}
+      />
       <div className="flex items-end justify-between mb-8">
         <div>
           <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Your workspace</div>

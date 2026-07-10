@@ -406,6 +406,15 @@ function ironEmberLine(
   return mix(tokens.primary, tokens.background, (100 - pct) / 100);
 }
 
+/**
+ * Dark structural lines need more luminance than primary-on-black alone
+ * provides — blend a warmer ember ink so sidebars/cards stay readable.
+ */
+function ironEmberDarkLine(pct: number): string {
+  const ink = mix(IRON_EMBER_DARK.primary, IRON_EMBER_DARK.highlight, 0.42);
+  return mix(ink, IRON_EMBER_DARK.background, (100 - pct) / 100);
+}
+
 function ironEmberSurface(
   tokens: typeof IRON_EMBER_LIGHT | typeof IRON_EMBER_DARK,
   pct: number,
@@ -461,17 +470,17 @@ export const ironEmberSkin: ForgeSkin = {
     secondaryForeground: IRON_EMBER_DARK.highlight,
     accent: ironEmberSurface(IRON_EMBER_DARK, 28),
     accentForeground: IRON_EMBER_DARK.highlight,
-    border: ironEmberLine(IRON_EMBER_DARK, 12),
-    input: ironEmberLine(IRON_EMBER_DARK, 18),
+    border: ironEmberDarkLine(28),
+    input: ironEmberDarkLine(34),
     ring: IRON_EMBER_DARK.accent,
     midground: IRON_EMBER_DARK.accent,
     composerRing: IRON_EMBER_DARK.accent,
     destructive: "#D64545",
     destructiveForeground: IRON_EMBER_DARK.text,
     sidebarBackground: "#0D0E10",
-    sidebarBorder: ironEmberLine(IRON_EMBER_DARK, 8),
+    sidebarBorder: ironEmberDarkLine(30),
     userBubble: IRON_EMBER_DARK.card,
-    userBubbleBorder: ironEmberLine(IRON_EMBER_DARK, 24),
+    userBubbleBorder: ironEmberDarkLine(42),
     success: "#5A9E6F",
     info: "#6B8FA8",
   },

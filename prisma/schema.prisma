@@ -56,6 +56,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   processes           Process[]
+  conversations       Conversation[]
   memories            Memory[]
   events              BusinessEvent[]
   decisions           BusinessDecision[]
@@ -118,17 +119,23 @@ model BusinessDecision {
   @@index([businessId, decidedAt(sort: Desc)])
 }
 
+// kind: process (workshop mapping) | studio (global chatbar co-pilot)
+// processId is null for studio threads; businessId is always set (4.17 PR-2).
 model Conversation {
-  id          String   @id @default(cuid())
-  processId   String
-  process     Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
-  title       String   @default("Main")
-  forkedFromId String?  // conversation this was forked from
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(cuid())
+  businessId   String
+  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  processId    String?
+  process      Process?  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  kind         String    @default("process") // process | studio
+  title        String    @default("Main")
+  forkedFromId String? // conversation this was forked from
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  messages    ChatMessage[]
+  messages ChatMessage[]
 
+  @@index([businessId, kind, updatedAt(sort: Desc)])
   @@index([processId, createdAt(sort: Desc)])
 }
 
@@ -196,16 +203,19 @@ model AutomationMessage {
   createdAt    DateTime   @default(now())
 }
 
+// processId is required for process mapping messages; null for studio chatbar messages.
 model ChatMessage {
-  id             String   @id @default(cuid())
-  processId      String
-  process        Process  @relation(fields: [processId], references: [id], onDelete: Cascade)
+  id             String         @id @default(cuid())
+  processId      String?
+  process        Process?       @relation(fields: [processId], references: [id], onDelete: Cascade)
   conversationId String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  role      String   // user | assistant
+  role      String // user | assistant
   content   String
   createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 model Memory {

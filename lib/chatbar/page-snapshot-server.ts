@@ -1,0 +1,215 @@
+/**
+ * Server-side page snapshot builder for hermes.forge.context.v1 (PR-3).
+ * Summaries only — no API keys, no full diagram dumps.
+ */
+
+import { prisma } from "@/lib/prisma";
+import { pageBlurbForPath } from "./page-registry";
+import { clampSnapshotText, SNAPSHOT_MAX_CHARS } from "./context-protocol";
+import { redactSecrets } from "./redaction";
+
+export type PageSnapshotResult = {
+  route: string;
+  routeKey: string;
+  pageTitle: string;
+  text: string;
+  approxChars: number;
+  redactionCount: number;
+};
+
+function deptCounts(
+  processes: { department: string | null }[],
+): string {
+  const map = new Map<string, number>();
+  for (const p of processes) {
+    const d = (p.department || "Unassigned").trim() || "Unassigned";
+    map.set(d, (map.get(d) || 0) + 1);
+  }
+  return [...map.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([d, n]) => `${d}: ${n}`)
+    .join("; ");
+}
+
+/**
+ * Build a read-only snapshot for the active business + route.
+ */
+export async function buildServerPageSnapshot(options: {
+  businessId: string;
+  businessName: string;
+  route: string;
+}): Promise<PageSnapshotResult> {
+  const route = options.route || "/home";
+  const blurb = pageBlurbForPath(route);
+  const lines: string[] = [
+    `Business: ${options.businessName}`,
+    `Page: ${blurb.title}`,
+  ];
+
+  // Settings: purpose only — never keys
+  if (blurb.routeKey === "settings" || blurb.routeKey === "profile") {
+    lines.push("Snapshot: page help only (no connection secrets).");
+    const joined = lines.join("\n");
+    const redacted = redactSecrets(joined);
+    const clamped = clampSnapshotText(redacted.text, SNAPSHOT_MAX_CHARS);
+    return {
+      route,
+      routeKey: blurb.routeKey,
+      pageTitle: blurb.title,
+      text: clamped.text,
+      approxChars: clamped.approxChars,
+      redactionCount: redacted.redactionCount,
+    };
+  }
+
+  const processes = await prisma.process.findMany({
+    where: { businessId: options.businessId },
+    select: {
+      id: true,
+      name: true,
+      department: true,
+      status: true,
+      updatedAt: true,
+      automationScore: true,
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 40,
+  });
+
+  lines.push(`Process count: ${processes.length}`);
+  if (processes.length) {
+    const depts = deptCounts(processes);
+    if (depts) lines.push(`Departments: ${depts}`);
+  }
+
+  switch (blurb.routeKey) {
+    case "home": {
+      const recent = processes.slice(0, 6);
+      if (recent.length) {
+        lines.push("Recent processes:");
+        for (const p of recent) {
+          lines.push(`- ${p.name} [${p.status}] (${p.department || "—"})`);
+        }
+      } else {
+        lines.push("Recent processes: none yet — user can start from a brief.");
+      }
+      lines.push("Hint: Home composer creates a process and seeds workshop chat.");
+      break;
+    }
+    case "functions": {
+      lines.push("Functions view: org chart + analytics from process departments.");
+      const byStatus = new Map<string, number>();
+      for (const p of processes) {
+        byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1);
+      }
+      if (byStatus.size) {
+        lines.push(
+          `Status mix: ${[...byStatus.entries()].map(([s, n]) => `${s}=${n}`).join(", ")}`,
+        );
+      }
+      break;
+    }
+    case "personnel": {
+      const [humans, agents] = await Promise.all([
+        prisma.humanPersonnel.count({ where: { businessId: options.businessId } }),
+        prisma.hermesAgentProfile.count({ where: { businessId: options.businessId } }),
+      ]);
+      lines.push(`Humans on roster: ${humans}`);
+      lines.push(`Hermes agent profiles: ${agents}`);
+      const sample = await prisma.humanPersonnel.findMany({
+        where: { businessId: options.businessId },
+        select: { name: true, role: true, isOwner: true },
+        orderBy: [{ isOwner: "desc" }, { createdAt: "desc" }],
+        take: 8,
+      });
+      if (sample.length) {
+        lines.push("Roster sample:");
+        for (const h of sample) {
+          lines.push(
+            `- ${h.name} — ${h.role}${h.isOwner ? " (owner)" : ""}`,
+          );
+        }
+      }
+      break;
+    }
+    case "workshop": {
+      lines.push(
+        "Workshop: process mapping surface. Studio chat is co-pilot; process chat column still maps diagrams.",
+      );
+      if (processes.length) {
+        lines.push("Processes available:");
+        for (const p of processes.slice(0, 10)) {
+          lines.push(`- ${p.name} [${p.status}] id=${p.id}`);
+        }
+      } else {
+        lines.push("No processes yet.");
+      }
+      break;
+    }
+    case "automations": {
+      const approved = processes.filter(
+        (p) => p.status === "approved" || p.status === "ready_for_automation",
+      );
+      lines.push(`Candidates (approved-ish): ${approved.length}`);
+      for (const p of approved.slice(0, 8)) {
+        lines.push(
+          `- ${p.name} score=${p.automationScore ?? "—"} [${p.status}]`,
+        );
+      }
+      break;
+    }
+    case "log": {
+      const events = await prisma.businessEvent.findMany({
+        where: { businessId: options.businessId },
+        select: { type: true, summary: true, recordedAt: true },
+        orderBy: { recordedAt: "desc" },
+        take: 12,
+      });
+      lines.push(`Recent events (summaries only): ${events.length}`);
+      for (const e of events) {
+        const when = e.recordedAt.toISOString().slice(0, 16);
+        lines.push(`- [${when}] ${e.type}: ${e.summary}`);
+      }
+      break;
+    }
+    case "business-manager": {
+      const count = await prisma.business.count({
+        where: {
+          // same user as this business
+          userId: (
+            await prisma.business.findUnique({
+              where: { id: options.businessId },
+              select: { userId: true },
+            })
+          )?.userId,
+        },
+      });
+      lines.push(`User business count: ${count || 1}`);
+      lines.push(`Active business: ${options.businessName}`);
+      break;
+    }
+    default: {
+      if (processes.length) {
+        lines.push("Process names:");
+        for (const p of processes.slice(0, 8)) {
+          lines.push(`- ${p.name}`);
+        }
+      }
+      break;
+    }
+  }
+
+  const joined = lines.join("\n");
+  const redacted = redactSecrets(joined);
+  const clamped = clampSnapshotText(redacted.text, SNAPSHOT_MAX_CHARS);
+
+  return {
+    route,
+    routeKey: blurb.routeKey,
+    pageTitle: blurb.title,
+    text: clamped.text,
+    approxChars: clamped.approxChars,
+    redactionCount: redacted.redactionCount,
+  };
+}

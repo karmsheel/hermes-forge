@@ -5,7 +5,6 @@ import { User } from "lucide-react";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
-import { HermesStatusBadge } from "@/components/hermes/HermesStatusBadge";
 import { BusinessSwitcher } from "./BusinessSwitcher";
 import { useShell } from "./ShellContext";
 
@@ -24,7 +23,6 @@ export function AppTopBar() {
           {showHermesModelSwitcher && (
             <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           )}
-          <HermesStatusBadge onClick={openHermesConnection} />
           {!userLoading && user && (
             <Link
               href="/profile"

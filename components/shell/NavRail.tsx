@@ -8,6 +8,7 @@ import {
   FolderKanban,
   Hammer,
   Home,
+  MessageSquare,
   PlugZap,
   Plus,
   Scale,
@@ -16,6 +17,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { NavRailVersion } from "./NavRailVersion";
@@ -34,6 +36,7 @@ type NavItem = {
 export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
+  const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
   const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
 
   const mainItems: NavItem[] = [
@@ -127,6 +130,17 @@ export function NavRail() {
           aria-label="New process"
         >
           <Plus className="w-5 h-5" />
+        </button>
+
+        <button
+          type="button"
+          className={`nav-rail__item${chatOpen ? " is-active" : ""}`}
+          onClick={toggleChat}
+          title={chatOpen ? "Hide Hermes chat (Alt+H)" : "Show Hermes chat (Alt+H)"}
+          aria-label={chatOpen ? "Hide Hermes chat" : "Show Hermes chat"}
+          aria-pressed={chatOpen}
+        >
+          <MessageSquare className="w-5 h-5" />
         </button>
       </div>
 

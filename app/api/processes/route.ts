@@ -79,7 +79,11 @@ export async function POST(request: NextRequest) {
             diagramMermaid,
             diagramUpdatedAt: diagramMermaid ? new Date() : null,
             conversations: {
-              create: { title: 'Main' },
+              create: {
+                title: 'Main',
+                businessId: business.id,
+                kind: 'process',
+              },
             },
           },
           include: {

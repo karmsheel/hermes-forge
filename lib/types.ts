@@ -70,21 +70,32 @@ export interface Process {
 
 export interface ChatMessage {
   id: string;
-  processId: string;
+  processId: string | null;
   conversationId: string | null;
   role: 'user' | 'assistant';
   content: string;
   createdAt: string;
 }
 
+export type ConversationKind = 'process' | 'studio';
+
 export interface Conversation {
   id: string;
-  processId: string;
+  businessId?: string;
+  processId: string | null;
+  kind?: ConversationKind;
   title: string;
   forkedFromId: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { messages: number };
+}
+
+/** Shell-level studio chat thread (global chatbar). */
+export interface StudioConversation extends Conversation {
+  businessId: string;
+  kind: 'studio';
+  processId: null;
 }
 
 export interface ProcessSummary {

@@ -1,8 +1,8 @@
 # Global Chatbar — Spec & Extension Parity Checklist
 
-> **Status:** Spec (not implemented)  
+> **Status:** PR-1–PR-3 shipped (shell dock + studio chat + page context protocol)  
 > **Inspired by:** [hermes-browser-extension](https://github.com/abundantbeing/hermes-browser-extension) v0.1.10 side panel  
-> **Backlog id:** **4.17 Global chatbar** (proposed)  
+> **Backlog id:** **4.17 Global chatbar**  
 > **Depends on:** Shell (1.2), Hermes connection, workshop chat/composer (Phase 3), design tokens (1.1 / 4.6)
 
 ---
@@ -493,27 +493,33 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 
 ## 11. Implementation phases (PR plan)
 
-### PR-1 — Shell dock + residency (UI only)
+### PR-1 — Shell dock + residency (UI only) — **DONE**
 
 - `ChatbarPanel` open/collapsed, nav toggle, collapsed edge tab  
+- Side swap (left/right dock) + persisted preference  
 - Empty state: connect Hermes / “Ask about this page”  
-- No streaming yet (or stub)  
 - **Acceptance:** toggle works on Home + Functions; state persists reload  
+- **Shipped surface:** `components/chatbar/*`, `lib/chatbar/residency.ts`, `AppShell` + `NavRail` wiring, `Alt+H`  
 
-### PR-2 — Studio conversations + unified send
+### PR-2 — Studio conversations + unified send — **DONE**
 
-- Schema migration (option B)  
-- Studio thread CRUD  
-- Stream through chatbar on Follow-page with static route purpose only  
-- **Acceptance:** multi-page chat history per business; survives navigation  
+- Schema: `Conversation.businessId` + `kind` + optional `processId`; optional `ChatMessage.processId`  
+- APIs: `/api/studio/conversations`, `/api/studio/conversations/[id]`, `…/chat` (SSE stream)  
+- Chatbar: session switcher, new chat, streaming composer, history across routes  
+- Static page purpose context only (rich snapshots = PR-3)  
+- Workshop `ProcessChat` still separate  
+- **Acceptance:** multi-page chat history per business; survives navigation
 
-### PR-3 — Page context protocol + intro + receipt
+### PR-3 — Page context protocol + intro + receipt — **DONE**
 
-- Providers for Home, Functions, Workshop (read-only snapshot)  
-- First-visit intro  
-- “What Hermes used”  
-- Scope chip: chat-only / follow-page  
-- **Acceptance:** assistant answers “what is on this page?” using injected snapshot; receipt visible  
+- Protocol `hermes.forge.context.v1` (`lib/chatbar/context-protocol.ts`) + redaction  
+- Server snapshots: `GET /api/studio/page-snapshot` + per-route builders  
+- Page providers: Home / Functions / Workshop (`components/chatbar/page-providers/*`)  
+- First-visit intro banner (local; once per business+routeKey)  
+- Scope chip: chat-only / follow-page / pinned-entity  
+- SSE `receipt` event + “What Hermes used” under user turns  
+- Studio chat injects full untrusted envelope (rebuilds snapshot server-side)  
+- **Acceptance:** “what is on this page?” uses injected snapshot; receipt visible  
 
 ### PR-4 — Composer parity (stop / queue / tool strip)
 

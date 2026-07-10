@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
 
     const conversations = await prisma.conversation.findMany({
-      where: { processId: id },
+      where: { processId: id, kind: 'process' },
       orderBy: { createdAt: 'asc' },
       include: {
         _count: { select: { messages: true } },
@@ -70,10 +70,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Create new conversation + copy messages in a transaction
     const title = body.title?.trim() || `Fork of "${sourceConversation.title}"`;
 
+    const businessId = result.process.businessId;
+
     const newConversation = await prisma.$transaction(async (tx) => {
       const conv = await tx.conversation.create({
         data: {
+          businessId,
           processId: id,
+          kind: 'process',
           title,
           forkedFromId: body.forkFromConversationId,
         },

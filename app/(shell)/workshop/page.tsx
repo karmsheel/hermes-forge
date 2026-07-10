@@ -11,6 +11,7 @@ import {
   normaliseLabel,
   serializeNodeCommentSummary,
 } from "@/lib/node-comment";
+import { WorkshopPageContext } from "@/components/chatbar/page-providers/WorkshopPageContext";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
@@ -822,6 +823,15 @@ export default function WorkshopPage() {
 
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+        <WorkshopPageContext
+          processId={activeProcess?.id ?? activeId}
+          processName={activeProcess?.name ?? null}
+          processStatus={activeProcess?.status ?? null}
+          department={activeProcess?.department ?? null}
+          functionFilter={functionFilter}
+          processCount={processes.length}
+          selectedNodeLabel={selectedNode?.label ?? null}
+        />
         <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
