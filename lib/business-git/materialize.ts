@@ -7,6 +7,7 @@ import {
   serializeLogEventLine,
 } from '@/lib/business-log-export';
 import type { BusinessRepoManifestV1 } from '@/lib/business-git/types';
+import { buildProcessMdFromBusiness } from '@/lib/process-md';
 
 async function writeJson(filePath: string, data: unknown): Promise<void> {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -89,6 +90,37 @@ export async function materializeBusinessRepo(
     createdAt: business.createdAt.toISOString(),
     updatedAt: business.updatedAt.toISOString(),
   });
+
+  // 4.2 — durable process mapping contract for agents + Git consumers
+  await writeText(
+    path.join(repoPath, 'PROCESS.md'),
+    buildProcessMdFromBusiness({
+      name: business.name,
+      description: business.description,
+      industry: business.industry,
+      goals: business.goals,
+      constraints: business.constraints,
+      processes: business.processes.map((p) => ({
+        name: p.name,
+        department: p.department,
+        status: p.status,
+        description: p.description,
+        trigger: p.trigger,
+        inputs: p.inputs,
+        outputs: p.outputs,
+        manualSteps: p.manualSteps,
+      })),
+      humanPersonnel: business.humanPersonnel.map((h) => ({
+        name: h.name,
+        role: h.role,
+      })),
+      hermesAgentProfiles: business.hermesAgentProfiles.map((a) => ({
+        displayName: a.displayName,
+        description: a.description,
+        isHired: a.isHired,
+      })),
+    })
+  );
 
   await writeNdjson(
     path.join(repoPath, 'memories.ndjson'),

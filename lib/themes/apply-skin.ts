@@ -178,7 +178,11 @@ export function forgeVarsFromColors(c: SkinColors): ForgeSkinVars {
 }
 
 export function forgeVarsFromSkin(skin: ForgeSkin, mode: "light" | "dark"): ForgeSkinVars {
-  return forgeVarsFromColors(resolveSkinPalette(skin, mode));
+  const vars = forgeVarsFromColors(resolveSkinPalette(skin, mode));
+  if (skin.typography?.fontDisplay) {
+    vars["--font-display"] = skin.typography.fontDisplay;
+  }
+  return vars;
 }
 
 export function applySkinVars(
@@ -243,6 +247,7 @@ export function clearSkinVars(el: HTMLElement = document.documentElement): void 
     "--composer-border",
     "--composer-border-soft",
     "--composer-border-strong",
+    "--font-display",
   ];
   for (const key of toRemove) {
     el.style.removeProperty(key);
@@ -254,6 +259,8 @@ export function applySkin(
   mode: "light" | "dark",
   el: HTMLElement = document.documentElement,
 ): void {
+  // Clear previous skin typography so non-display skins fall back to tokens.css.
+  el.style.removeProperty("--font-display");
   applySkinVars(forgeVarsFromSkin(skin, mode), el);
   el.setAttribute("data-skin", skin.name);
 }

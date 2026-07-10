@@ -1,3 +1,14 @@
+/**
+ * Workflow template library (backlog 4.1).
+ * Curated templates live as JSON under `templates/workflows/`.
+ */
+
+import approvalFlow from "@/templates/workflows/approval-flow.json" with { type: "json" };
+import customerJourney from "@/templates/workflows/customer-journey.json" with { type: "json" };
+import incident from "@/templates/workflows/incident.json" with { type: "json" };
+import onboarding from "@/templates/workflows/onboarding.json" with { type: "json" };
+import sop from "@/templates/workflows/sop.json" with { type: "json" };
+
 export type WorkflowTemplateId =
   | "sop"
   | "customer-journey"
@@ -18,67 +29,43 @@ export interface WorkflowTemplate {
   gradientTo: string;
 }
 
-const SOP_STARTER_DIAGRAM = `flowchart TD
-  Start([Start]) --> Define[Define procedure]
-  Define --> Execute[Execute steps]
-  Execute --> Review{Review OK?}
-  Review -->|Yes| End([End])
-  Review -->|No| Execute`;
+function asTemplate(raw: {
+  id: string;
+  title: string;
+  description: string;
+  seedPrompt: string;
+  processName: string;
+  diagramMermaid?: string;
+  gradientFrom: string;
+  gradientTo: string;
+}): WorkflowTemplate {
+  return {
+    id: raw.id as WorkflowTemplateId,
+    title: raw.title,
+    description: raw.description,
+    seedPrompt: raw.seedPrompt,
+    processName: raw.processName,
+    diagramMermaid: raw.diagramMermaid,
+    gradientFrom: raw.gradientFrom,
+    gradientTo: raw.gradientTo,
+  };
+}
 
+/** Ordered catalog loaded from `templates/workflows/*.json`. */
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
-  {
-    id: "sop",
-    title: "SOP",
-    description: "Standard operating procedures",
-    processName: "Standard operating procedure",
-    seedPrompt:
-      "Map a standard operating procedure for our team. Include the trigger, each step in order, who owns each step, and how we know the process is complete.",
-    diagramMermaid: SOP_STARTER_DIAGRAM,
-    gradientFrom: "#c96442",
-    gradientTo: "#8b3a28",
-  },
-  {
-    id: "customer-journey",
-    title: "Customer journey",
-    description: "End-to-end customer flow",
-    processName: "Customer journey",
-    seedPrompt:
-      "Map the end-to-end customer journey from first touch through purchase, onboarding, and renewal. Note key moments, handoffs, and pain points.",
-    gradientFrom: "#2b6cb0",
-    gradientTo: "#1a4070",
-  },
-  {
-    id: "approval-flow",
-    title: "Approval flow",
-    description: "Sign-off chains",
-    processName: "Approval workflow",
-    seedPrompt:
-      "Document an approval workflow: what gets submitted, who reviews at each stage, escalation rules, and final sign-off criteria.",
-    gradientFrom: "#7c4dbd",
-    gradientTo: "#4a2d78",
-  },
-  {
-    id: "onboarding",
-    title: "Onboarding",
-    description: "New hire or customer onboarding",
-    processName: "Onboarding process",
-    seedPrompt:
-      "Map our onboarding process from day zero through the first successful milestone. Include owners, tools used, and checkpoints.",
-    gradientFrom: "#4a8f5c",
-    gradientTo: "#2d5c3a",
-  },
-  {
-    id: "incident",
-    title: "Incident response",
-    description: "Ops escalation",
-    processName: "Incident response",
-    seedPrompt:
-      "Document our incident response flow: detection, triage, escalation paths, communication, resolution, and post-mortem.",
-    gradientFrom: "#c44d7a",
-    gradientTo: "#7a2f4c",
-  },
+  asTemplate(sop),
+  asTemplate(customerJourney),
+  asTemplate(approvalFlow),
+  asTemplate(onboarding),
+  asTemplate(incident),
 ];
+
+export const WORKFLOW_TEMPLATE_IDS = WORKFLOW_TEMPLATES.map((t) => t.id) as WorkflowTemplateId[];
 
 export function getWorkflowTemplate(id: WorkflowTemplateId): WorkflowTemplate | undefined {
   return WORKFLOW_TEMPLATES.find((t) => t.id === id);
+}
+
+export function isWorkflowTemplateId(value: string | null | undefined): value is WorkflowTemplateId {
+  return Boolean(value && WORKFLOW_TEMPLATE_IDS.includes(value as WorkflowTemplateId));
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { getActiveBusinessForUser, requireSession, setActiveBusinessCookie } from '@/lib/auth';
-import { deriveProjectName } from '@/lib/home-prompt';
+import { deriveBusinessName } from '@/lib/home-prompt';
 import { formatStandardTag } from '@/lib/process-standards';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         business = await tx.business.create({
           data: {
             userId: session.userId,
-            name: deriveProjectName(trimmed),
+            name: deriveBusinessName(trimmed),
             description: trimmed,
           },
           select: {

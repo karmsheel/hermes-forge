@@ -43,6 +43,8 @@ export interface SkinColors {
 export interface SkinTypography {
   fontSans: string;
   fontMono: string;
+  /** Optional display/heading face (e.g. Sigurd for Nous). Maps to --font-display. */
+  fontDisplay?: string;
   fontUrl?: string;
 }
 

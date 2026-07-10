@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
-import { useTheme } from "@/components/theme/ThemeProvider";
-import { getProjectCardThumbStyle } from "@/lib/home/project-card-thumb";
+import { ProcessCardThumb } from "@/components/home/ProcessCardThumb";
 import { setActiveProcessId } from "@/lib/workshop-storage";
 import type { ProcessSummary } from "@/lib/types";
 
@@ -21,7 +20,6 @@ function timeAgo(dateStr: string): string {
 
 export function RecentProcessesStrip() {
   const router = useRouter();
-  const { skin, resolved } = useTheme();
   const { currentBusiness } = useShell();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [business, setBusiness] = useState<{ id: string; name: string } | null>(null);
@@ -66,39 +64,38 @@ export function RecentProcessesStrip() {
   }
 
   return (
-    <div className="recent-projects">
-      <div className="recent-projects__header">
-        <div className="recent-projects__title">Recent processes</div>
-        <Link href="/functions" className="recent-projects__view-all">
+    <div className="recent-processes">
+      <div className="recent-processes__header">
+        <div className="recent-processes__title">Recent processes</div>
+        <Link href="/functions" className="recent-processes__view-all">
           View functions <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 
-      <div className="recent-projects__grid">
+      <div className="recent-processes__grid">
         {processes.map((proc) => (
           <button
             key={proc.id}
             type="button"
             onClick={() => selectProcess(proc.id)}
-            className="project-card"
+            className="process-card"
             aria-label={`Open ${proc.name}`}
           >
-            <div
-              className="project-card__thumb"
-              style={getProjectCardThumbStyle(proc.name, skin, resolved)}
-            >
-              <span className="project-card__initial">{proc.name[0]?.toUpperCase() || "P"}</span>
-            </div>
-            <div className="project-card__body">
-              <div className="project-card__name" title={proc.name}>
+            <ProcessCardThumb
+              processId={proc.id}
+              name={proc.name}
+              diagramMermaid={proc.diagramMermaid}
+            />
+            <div className="process-card__body">
+              <div className="process-card__name" title={proc.name}>
                 {proc.name}
               </div>
-              <div className="project-card__meta">
+              <div className="process-card__meta">
                 <span className="pill">{proc.department}</span>
-                <span className="project-card__dot">·</span>
-                <span className="project-card__time">{timeAgo(proc.updatedAt)}</span>
+                <span className="process-card__dot">·</span>
+                <span className="process-card__time">{timeAgo(proc.updatedAt)}</span>
               </div>
-              <div className="project-card__count">
+              <div className="process-card__count">
                 {proc._count?.messages ?? 0} message{(proc._count?.messages ?? 0) !== 1 ? "s" : ""}
               </div>
             </div>

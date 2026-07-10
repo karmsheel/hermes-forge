@@ -33,7 +33,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Workflow map | `Process` | "process" | Lives under a function (department) |
 | Business area / department | `Process.department` | "function" | `/functions` aggregates processes by department |
 
-**Legacy aliases still in UI copy:** "project" (`RecentProjectsStrip`, `NewProjectDialog`) — means `Business`, not a separate entity. `/projects` redirects to `/functions`.
+**Legacy aliases:** some file names still say "project" (e.g. `RecentProjectsStrip.tsx`, `project-card-thumb.ts`) but UI copy and CSS use business/process. `/projects` redirects to `/functions`.
 
 **Redirects:** `/interview` → `/home`; `/dashboard` → `/functions` (dashboard merged into Functions page).
 
@@ -65,7 +65,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Process chat | `components/workshop/ProcessChat.tsx` | Hermes chat, rich composer, message queue |
 | Mermaid diagram | `components/workshop/MermaidDiagram.tsx` | Streaming diagram, node comments |
 | Workspace tabs | `components/workshop/WorkspaceTabs.tsx` | Diagram, Details, Questions, Source, Export |
-| New business modal | `components/projects/NewProjectDialog.tsx` | Name + description (legacy "project" naming) |
+| New business modal | `components/projects/NewBusinessDialog.tsx` | Name + description + avatar |
 | Hermes connection | `components/hermes/*`, `app/api/hermes/**` | BYOK OpenAI-compatible proxy |
 | Client state | `lib/workshop-storage.ts` | Per-business `activeProcessId`, conversation, function filter |
 
@@ -440,34 +440,41 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 3.8 Export handoff — **PARTIAL**
+### 3.8 Export handoff — **DONE** (client-side)
 
 **Goal:** Export Mermaid, PNG, PDF, Markdown SOP; optional "Open in Cursor" context bundle.
 
-**Files:** `components/export/ExportMenu.tsx` (Export workspace tab)
+**Files:** `components/export/ExportMenu.tsx`, `lib/export-diagram.ts` (Export workspace tab)
 
-**Shipped:** Markdown SOP, Mermaid source, Cursor JSON bundle; copy/download; "Open in Cursor" prompt; `/export` slash command opens Export tab.
+**Shipped:** Markdown SOP, Mermaid source, PNG diagram, PDF diagram, Cursor JSON bundle; copy/download; "Open in Cursor" prompt; `/export` slash command opens Export tab; scope to active conversation when forks exist.
 
-**Remaining:**
-- [ ] PNG / PDF export
-- [ ] `app/api/processes/[id]/export/route.ts` (server-side render pipeline)
-- [x] Scope export to active conversation when forks exist
+**Notes:** PNG/PDF use client-side Mermaid → SVG → canvas (and a minimal PDF wrapper). Server-side `app/api/processes/[id]/export/route.ts` deferred — not required for desktop/BYOK deliverables.
 
 ---
 
 ## Phase 4 — Extensibility
 
-### 4.1 Workflow template library
+### 4.1 Workflow template library — **DONE** (foundation)
 
 **Goal:** Curated templates as repo files (`templates/workflows/*.json`).
 
+**Shipped:** JSON templates under `templates/workflows/`; loaded by `lib/workflow-templates.ts` into home TemplateCards.
+
 ---
 
-### 4.2 PROCESS.md contract
+### 4.2 PROCESS.md contract — **DONE** (foundation)
 
-**Goal:** Per-project `PROCESS.md` schema: notation, actors, systems, automation goals.
+**Goal:** Per-business `PROCESS.md` schema: notation, actors, systems, automation goals.
 
 **Schema sections:** Overview, Actors, Systems, Notation, Anti-patterns, Export format
+
+**Shipped:**
+- [x] `lib/process-md.ts` — generate contract from business + processes + personnel
+- [x] Git materialize writes root `PROCESS.md`
+- [x] Chat system prompt injects truncated contract
+- [x] Schema reference: `docs/references/PROCESS.md`
+
+**Remaining (optional):** editable UI for overrides; persist custom contract on Business.
 
 ---
 
@@ -545,31 +552,32 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.10 Personnel roster — **SCAFFOLD** (shipped outside backlog)
+### 4.10 Personnel roster — **MOSTLY DONE** (workshop wired)
 
 **Goal:** Org roster for humans and hired Hermes agents; feed swimlanes, `@actor` mentions, and automation assignment.
 
-**Status:** UI, API, and DB exist. **Not integrated** with workshop, process diagrams, automations, or chat agent prompts. Page + hire dialog copy state roster-only scope (honesty pass shipped).
+**Status:** UI, API, DB, and **workshop integration** (mentions + chat/diagram prompts + swimlane lane hints). Automation binding still open.
 
 **Files:** `app/(shell)/personnel/page.tsx`, `app/api/personnel/**`, `components/personnel/*`, `lib/personnel/*`, `prisma/schema.prisma` (`HumanPersonnel`, `HermesAgentProfile`)
 
-**Shipped (scaffold):**
+**Shipped:**
 - [x] Personnel nav + page: human add/fire, icon picker
 - [x] Owner bootstrap on business create/import/seed (`lib/personnel/ensure-owner.ts`)
 - [x] Hermes agent filesystem scan, hire/fire, icon on profile
-- [x] Business log events: `personnel.added`, `personnel.hired`, `personnel.fired`
+- [x] Business log events: `personnel.added`, `personnel.hired`, `personnel.updated`, `personnel.fired`
 - [x] Git export writes `personnel.json` (`lib/business-git/materialize.ts`)
+- [x] Workshop `@` mentions for actors (humans + hired agents) and roles/departments
+- [x] Inject personnel context into chat + diagram agent prompts
+- [x] Swimlane / auto notation: prefer roster lanes in diagram system prompt
+- [x] Hire dialog + page copy aligned with workshop wiring
+- [x] Human edit PATCH (name, role, `roleDescription`); display description on cards
 
-**Remaining (required before marking Done):**
-- [ ] Wire roster into workshop `@` mentions (`@actor`, `@department`, `@system` — overlaps 3.5)
-- [ ] Swimlane lanes generated from personnel when process standard = swimlane
+**Remaining:**
 - [ ] `Automation` → `hermesAgentProfileId` (or equivalent) for hired agents
-- [ ] Inject personnel context into chat + diagram agent prompts
-- [ ] Human edit PATCH (name, role, `roleDescription`); display description on cards
 - [ ] Import `personnel.json` on business git import
-- [x] Align hire dialog + page copy with actual behavior (honesty pass)
+- [ ] Explicit `@system` mentionables (beyond roster roles)
 
-**Do not:** Treat personnel as complete for BPM workflows until process linkage ships.
+**Do not:** Treat automation assignment as done until agent bind ships.
 
 ---
 
@@ -678,6 +686,30 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+### 4.17 Global chatbar — shell-level Hermes co-pilot — **PLANNED**
+
+**Goal:** Elevate Hermes chat from workshop-only to a **first-class shell citizen**: right dock on every shell page, open/collapse from the left nav rail, page-aware context (intros + “help me use this company data”), and extension-parity composer UX (stop/queue/steer, tool activity strip, context receipts).
+
+**Status:** Spec complete; not implemented.
+
+**Reference:** [`docs/references/GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md)
+
+**Inspired by:** [hermes-browser-extension](https://github.com/abundantbeing/hermes-browser-extension) side panel (v0.1.10).
+
+**Depends on:** 1.2 (shell), Phase 3 chat/composer, Hermes connection, design tokens (1.1 / 4.6)
+
+**Key deliverables (see reference for full parity checklist + PR-1…PR-6):**
+- [ ] Shell right dock + open/collapsed residency + nav rail toggle + edge restore tab
+- [ ] Business-scoped studio conversations (schema generalize `Conversation`)
+- [ ] `hermes.forge.context.v1` page context protocol + first-visit intros + “What Hermes used” receipts
+- [ ] Composer FSM (stop / queue / steer) + Tool Activity Strip
+- [ ] Absorb workshop `ProcessChat` into the same dock (no dual chat panels)
+- [ ] Model dock / context meter (follow-up polish)
+
+**Do not:** Keep a permanent second chat UI next to workshop chat; inject settings API keys into page context; block 4.15 multi-tab with irrecoverable singletons.
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -698,9 +730,9 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 3.5 | Rich composer | 3 | Mostly done |
 | 3.6 | Workspace tabs | 3 | Done |
 | 3.7 | Queued messages | 3 | Done |
-| 3.8 | Export handoff | 3 | Partial |
-| 4.1 | Template library | 4 | Pending |
-| 4.2 | PROCESS.md | 4 | Pending |
+| 3.8 | Export handoff | 3 | **Done** (client PNG/PDF) |
+| 4.1 | Template library | 4 | **Done** (JSON files) |
+| 4.2 | PROCESS.md | 4 | **Done** (foundation) |
 | 4.3 | Template marketplace | 4 | Pending |
 | 4.4 | Automations page | 4 | Done |
 | 4.5 | Integrations page | 4 | Pending |
@@ -708,13 +740,14 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.7 | User theme install (JSON) | 4 | Done |
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
-| 4.10 | Personnel roster | 4 | **Scaffold** |
+| 4.10 | Personnel roster | 4 | **Mostly done** (workshop wired) |
 | 4.11 | Immutable business log | 4 | Mostly done |
 | 4.12 | Business decisions | 4 | **Scaffold** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
+| 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **Planned** — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
 
 ---
 
@@ -729,11 +762,11 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-3 | Remove legacy Interview (`/interview`, `/api/extract`) | **Done** |
 | AUDIT-4 | Merge Dashboard into Functions (org chart + analytics) | **Done** |
 | AUDIT-5 | Dev-gate God Mode in nav + route guard | **Done** |
-| AUDIT-6 | Dead code cleanup (accent, duplicate next.config, theme exports, dead CSS) | **Partial** — personnel dead components removed |
-| AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | Pending |
-| AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | Pending |
-| AUDIT-9 | Terminology pass ("project" → "business" in UI) | Pending |
-| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | Deferred — honesty pass shipped instead |
+| AUDIT-6 | Dead code cleanup (accent, duplicate next.config, theme exports, dead CSS) | **Mostly done** — accent.ts removed, next.config.mjs removed, accent-swatch CSS removed; residual theme export pruning optional |
+| AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Partial** — removed unused `PERSONNEL_REMOVED`; Decisions scaffold honesty; schema still no CRUD |
+| AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
+| AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
+| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; automation bind still open |
 
 **Session outcomes (code):**
 - `docs/references/audit.md` committed as canonical audit
@@ -761,7 +794,7 @@ When picking up a backlog item:
 - Business isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
 - Settings: System / Light / Dark mode + skin picker (`components/settings/SettingsMenu.tsx`, `SkinPicker.tsx`, `lib/themes/`)
 - Process approval + automation studio + n8n integration (4.4)
-- Personnel roster scaffold (4.10) — **do not assume workshop integration**
+- Personnel roster + workshop wiring (4.10) — mentions/prompts; automation bind still open
 - Business log + git materialize (4.11)
 - God Mode canvas (4.13)
 - Cronalytics dev tooling (4.14)
@@ -771,8 +804,7 @@ When picking up a backlog item:
 - `/dashboard` — merged into `/functions` (analytics section below org chart)
 
 **Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-6 … AUDIT-10** above. Highlights:
-- Terminology drift: "project" in UI vs `Business` in DB (AUDIT-9)
-- `BusinessDecision` schema without runtime (4.12 / AUDIT-7)
-- Personnel not wired to workshop/automations (4.10 / AUDIT-10)
-- Zero automated tests (AUDIT-8)
-- Accent legacy, duplicate `next.config` (AUDIT-6)
+- `BusinessDecision` schema without CRUD runtime (4.12 / AUDIT-7)
+- Personnel automation agent bind still open (4.10 remainder)
+- No HTTP/SSE integration tests yet (unit smoke via `npm test` only)
+- Optional theme export pruning (AUDIT-6 residual)

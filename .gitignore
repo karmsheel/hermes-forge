@@ -46,6 +46,8 @@ next-env.d.ts
 # env & local db
 .env
 *.db
+*.db-shm
+*.db-wal
 .next
 
 # temp logs

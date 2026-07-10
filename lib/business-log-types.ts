@@ -25,8 +25,10 @@ export const BUSINESS_EVENT_TYPES = {
   MEMORY_FACT_ADDED: 'memory.fact_added',
 
   PERSONNEL_ADDED: 'personnel.added',
-  PERSONNEL_REMOVED: 'personnel.removed',
   PERSONNEL_HIRED: 'personnel.hired',
+  /** Name / role / roleDescription changes on a human roster member. */
+  PERSONNEL_UPDATED: 'personnel.updated',
+  /** Human delete + agent fire both emit this (no separate personnel.removed). */
   PERSONNEL_FIRED: 'personnel.fired',
 
   DECISION_RECORDED: 'decision.recorded',

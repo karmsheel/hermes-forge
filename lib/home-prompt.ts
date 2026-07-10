@@ -6,12 +6,16 @@ export const HOME_PROMPT_EXAMPLES = [
   "Map the manufacturing handoff from order to shipment",
 ] as const;
 
-export function deriveProjectName(brief: string): string {
+/** Derive a short business name from a home brief when creating a new business. */
+export function deriveBusinessName(brief: string): string {
   const line = brief.trim().split("\n")[0]?.trim() ?? "";
-  if (!line) return "Untitled Function";
+  if (!line) return "Untitled Business";
 
   const candidate =
     line.length > 60 ? (line.split(/[,.\n]/)[0]?.trim() || line) : line;
   if (candidate.length <= 60) return candidate;
   return `${candidate.slice(0, 57).trim()}…`;
 }
+
+/** @deprecated Use deriveBusinessName */
+export const deriveProjectName = deriveBusinessName;

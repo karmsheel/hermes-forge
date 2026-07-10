@@ -7,6 +7,7 @@ import { encodeDiagramSse, streamDiagramMermaid } from '@/lib/diagram-stream';
 import { requireProcessAccess } from '@/lib/auth';
 import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { loadPersonnelRoster } from '@/lib/personnel/load-roster';
 
 const AgentSchema = z.object({
   baseUrl: z.string(),
@@ -45,12 +46,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       content: m.content,
     }));
 
+    // 4.10 — roster for actors + swimlane lanes
+    const personnel = await loadPersonnelRoster(process.businessId);
+
     const diagramInput = {
       processName: process.name,
       processDescription: process.description,
       conversation,
       currentDiagram: process.diagramMermaid,
       discovery: pickDiscoveryFields(process),
+      personnel,
     };
 
     const hermesConfig = {

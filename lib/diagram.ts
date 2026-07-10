@@ -9,6 +9,12 @@ import {
   formatDiscoveryContext,
   type ProcessDiscoveryFields,
 } from './process-discovery';
+import { processMdPromptAddon } from './process-md';
+import {
+  formatPersonnelPromptContext,
+  formatSwimlanePersonnelAddon,
+  type PersonnelRoster,
+} from './personnel/context';
 
 const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
 
@@ -41,6 +47,8 @@ export interface DiagramGenerationInput {
   currentDiagram: string | null;
   processStandard?: ProcessStandardId;
   discovery?: ProcessDiscoveryFields;
+  /** Business personnel roster for actors / swimlanes (4.10). */
+  personnel?: PersonnelRoster | null;
 }
 
 export function buildDiagramMessages(input: DiagramGenerationInput): {
@@ -55,10 +63,22 @@ export function buildDiagramMessages(input: DiagramGenerationInput): {
     ? formatDiscoveryContext(input.discovery)
     : null;
 
+  const personnelBlock = input.personnel
+    ? formatPersonnelPromptContext(input.personnel)
+    : '';
+
+  const swimlaneExtra =
+    standardId === 'swimlane' && input.personnel
+      ? formatSwimlanePersonnelAddon(input.personnel)
+      : standardId === 'auto' && input.personnel
+        ? `\nIf you choose swimlane notation, prefer lanes from this roster:\n${formatSwimlanePersonnelAddon(input.personnel)}`
+        : '';
+
   const context = [
     `Process name: ${input.processName}`,
     `Description: ${input.processDescription || 'Not yet described'}`,
     discoveryBlock ? `\n${discoveryBlock}` : '',
+    personnelBlock ? `\n${personnelBlock}` : '',
     input.currentDiagram
       ? `\nCurrent diagram (update this incrementally):\n${input.currentDiagram}`
       : '\nNo diagram yet — create an initial skeleton.',
@@ -70,7 +90,7 @@ export function buildDiagramMessages(input: DiagramGenerationInput): {
   return [
     {
       role: 'system',
-      content: `${DIAGRAM_SYSTEM_PROMPT}\n\n${standard.diagramPromptAddon}`,
+      content: `${DIAGRAM_SYSTEM_PROMPT}\n\n${standard.diagramPromptAddon}${swimlaneExtra ? `\n\n${swimlaneExtra}` : ''}`,
     },
     { role: 'user', content: context },
   ];
@@ -96,6 +116,10 @@ export function buildChatSystemPrompt(context: {
   hasDiagram: boolean;
   shouldAskAccuracy: boolean;
   discovery?: ProcessDiscoveryFields;
+  /** Full or truncated PROCESS.md contract for this business (4.2) */
+  processMd?: string | null;
+  /** Business personnel roster (4.10) */
+  personnel?: PersonnelRoster | null;
 }): string {
   const standardId = context.processStandard ?? resolveProcessStandard(context.description);
   const standard = getProcessStandard(standardId);
@@ -123,6 +147,17 @@ export function buildChatSystemPrompt(context: {
       ? `\nA diagram exists but may still need more detail. Keep mapping — do not ask about accuracy until the flow is substantially complete.`
       : '';
 
+  const contractNote = context.processMd?.trim()
+    ? `\n${processMdPromptAddon(context.processMd)}\n`
+    : '';
+
+  const personnelBlock = context.personnel
+    ? formatPersonnelPromptContext(context.personnel)
+    : '';
+  const personnelNote = personnelBlock
+    ? `\n${personnelBlock}\nWhen the user @-mentions a person or role, treat that as the actor for the step they are discussing.\n`
+    : '';
+
   return `You are Hermes, an expert Business Process Analyst for Hermes Forge.
 
 You are helping the user map ONE specific business process through conversation. A live Mermaid diagram updates in the background as you learn more — the user can see it and give corrections.
@@ -145,7 +180,7 @@ Workflow splitting (important):
 - If the user asks to split, separate, or break apart flows, acknowledge and confirm which flow goes where.
 - After a split, the sidebar will show a new workflow — tell the user to check the left panel.
 
-${namingNote}${approvedNote}${discoveryNote}${accuracyNote}
+${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${personnelNote}
 
 ${standard.chatPromptAddon}
 

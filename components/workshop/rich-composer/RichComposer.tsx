@@ -62,7 +62,7 @@ export function RichComposer({
   willQueue = false,
   isConnected = true,
   onOpenConnection,
-  placeholder = "Describe steps, actors, tools… try / for commands or @ to mention a step",
+  placeholder = "Describe steps, actors, tools… try / for commands or @ for people, roles, or steps",
 }: RichComposerProps) {
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<Mode>("idle");

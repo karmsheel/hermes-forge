@@ -19,11 +19,11 @@ Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_B
 | AUDIT-3 | Remove legacy Interview flow | **Done** | Deleted `app/interview/page.tsx`, `app/api/extract/route.ts`; `/interview` → `/home` |
 | AUDIT-4 | Merge Dashboard into Functions | **Done** | Org chart + analytics on `/functions`; dashboard page deleted; `/dashboard` → `/functions` |
 | AUDIT-5 | Dev-gate God Mode | **Done** | Nav hidden by default; Settings → Developer toggle; route guard |
-| AUDIT-6 | Dead code cleanup | **Partial** | `PersonnelIcon`, `HumanPersonnelCard` removed; accent legacy, duplicate `next.config`, theme dead exports remain |
-| AUDIT-7 | Schema honesty | **Pending** | `BusinessDecision` still schema-only; `PERSONNEL_REMOVED` unused; personnel git import missing |
-| AUDIT-8 | Repo hygiene | **Pending** | `*.db-shm` / `*.db-wal` gitignore; no API smoke tests |
-| AUDIT-9 | Terminology pass | **Pending** | "Project" still in `RecentProjectsStrip`, `NewProjectDialog` |
-| AUDIT-10 | Personnel workshop integration | **Deferred** | Honesty pass chosen over wiring mentions/swimlanes/automation binding |
+| AUDIT-6 | Dead code cleanup | **Mostly done** | accent.ts removed; next.config.mjs removed; accent-swatch CSS removed; optional theme export prune remains |
+| AUDIT-7 | Schema honesty | **Partial** | Removed unused `PERSONNEL_REMOVED`; Decisions page + types state scaffold clearly; `BusinessDecision` still schema-only (no CRUD); personnel git import still missing |
+| AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; `npm test` unit smoke suite (17 tests via node:test); HTTP API smoke still optional |
+| AUDIT-9 | Terminology pass | **Done** | `NewBusinessDialog`, shell `openNewBusiness`, auth copy, `process-card` / `recent-processes` CSS |
+| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH shipped; automation bind still open |
 
 ---
 
@@ -40,7 +40,7 @@ flowchart LR
   Workshop --> Approve["Process approval"]
   Approve --> Auto["Automation studio + n8n"]
   Functions["Functions org chart"] --> Workshop
-  Personnel["Personnel roster"] -.->|"not wired"| Workshop
+  Personnel["Personnel roster"] -->|"mentions + prompts"| Workshop
   Log["Business log"] --> GitExport["Git materialize"]
   Themes["Skin engine"] --> UI["All UI surfaces"]
 ```
@@ -55,7 +55,7 @@ flowchart LR
 - Functions page: org chart + merged automation analytics (`app/(shell)/functions/page.tsx`, `components/functions/*`)
 
 **Scaffold / disconnected (do not treat as complete):**
-- Personnel — roster UI/API only; not wired to workshop, swimlanes, or automations (4.10)
+- Personnel — workshop mentions + prompts wired; automation agent bind still open (4.10)
 - BusinessDecision — Prisma model only; no API (4.12)
 
 **Dev-gated tooling:**
@@ -73,9 +73,9 @@ Features that look finished in navigation but don't participate in the core valu
 
 | Feature | Risk | Current state (post-remediation) |
 |---------|------|--------------------------------|
-| Personnel | Hire copy implied workshop assignment | **Fixed** — honesty pass; still not integrated |
-| Swimlane standard | Lanes from roster | **Open** — not implemented |
-| Rich composer `@` mentions | Actor/department/system | **Open** — diagram nodes only (3.5) |
+| Personnel | Hire copy implied workshop assignment | **Fixed** — workshop mentions + prompts wired; automation bind still open |
+| Swimlane standard | Lanes from roster | **Partial** — diagram prompt prefers roster lanes when standard is swimlane/auto |
+| Rich composer `@` mentions | Actor/department/system | **Partial** — actors + roles + diagram nodes; systems still open |
 | BusinessDecision | Governance record | **Open** — schema only |
 | Git `personnel.json` | Round-trip import | **Open** — export only |
 
@@ -83,7 +83,7 @@ Features that look finished in navigation but don't participate in the core valu
 
 `PRODUCT_BACKLOG.md` baseline was stale (old `/projects` paths, missing personnel/log/themes). Baseline and terminology section updated 2026-07-07. Keep backlog in sync when shipping features outside numbered items.
 
-### 3. Terminology chaos — **documented; UI pass pending (AUDIT-9)**
+### 3. Terminology chaos — **UI pass done (AUDIT-9)**
 
 | Concept | Database | UI label |
 |---------|----------|----------|
@@ -99,21 +99,21 @@ Was 9 always-visible items including overlapping Functions / God Mode / Dashboar
 
 Interview + `/api/extract` removed. Primary flow: Home → `start-from-brief` → Workshop + Questions panel.
 
-### 6. Schema ahead of product — **open (AUDIT-7)**
+### 6. Schema ahead of product — **partial (AUDIT-7)**
 
-`BusinessDecision`, unused `PERSONNEL_REMOVED`, inert Git mirror fields on `Business`.
+`BusinessDecision` remains schema-only (honest scaffold copy). Unused `PERSONNEL_REMOVED` removed — fire uses `personnel.fired`. Personnel git import and full 4.12 API still open. Inert Git mirror fields on `Business` unchanged.
 
-### 7. Zero automated tests — **open (AUDIT-8)**
+### 7. Zero automated tests — **partial (AUDIT-8)**
 
-No `*.test.ts` / `*.spec.ts` for ~52 API routes, SSE, Electron IPC, theme boot.
+Unit smoke suite: `npm test` → `tests/unit/*.test.ts` (process-md, templates, home-prompt, log types, export filename). No HTTP/SSE/Electron integration tests yet.
 
-### 8. Repo hygiene — **open (AUDIT-8)**
+### 8. Repo hygiene — **mostly done (AUDIT-8)**
 
-SQLite WAL sidecars may be tracked; duplicate `next.config.mjs` + `next.config.ts`; theme/accent dead code.
+SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent module removed; unit tests added.
 
-### 9. Theme over-investment vs. BPM backlog — **open**
+### 9. Theme over-investment vs. BPM backlog — **partially addressed**
 
-10 skins, VS Code import, design-system preview vs. pending PROCESS.md (4.2), template library (4.1), PNG/PDF export (3.8). Legacy `lib/accent.ts` + dead CSS remain.
+10 skins / VS Code import remain. PROCESS.md (4.2), template library (4.1), and PNG/PDF export (3.8) foundation shipped 2026-07-09.
 
 ### 10. Security footgun on test endpoints — **open**
 
@@ -130,9 +130,9 @@ SQLite WAL sidecars may be tracked; duplicate `next.config.mjs` + `next.config.t
 | 2.4 | Function status lifecycle badges | Deferred |
 | 3.4 | Fork-from-message UI; delete/rename conversation | Partial |
 | 3.5 | `@department` / `@system` / actor mentionables | Partial |
-| 3.8 | PNG/PDF export; server export API | Partial |
-| 4.1 | Workflow template library as repo files | Pending |
-| 4.2 | Per-business `PROCESS.md` contract | Pending |
+| 3.8 | PNG/PDF export; server export API | **Done** (client PNG/PDF; server route deferred) |
+| 4.1 | Workflow template library as repo files | **Done** |
+| 4.2 | Per-business `PROCESS.md` contract | **Done** (generated + Git + chat inject) |
 | 4.3 | Template marketplace / import | Pending |
 | 4.5 | Integrations page | Pending |
 | 4.15 | Desktop multi-tab shell | Planned — see `DESKTOP_MULTI_TAB_SHELL.md` |
@@ -141,10 +141,10 @@ SQLite WAL sidecars may be tracked; duplicate `next.config.mjs` + `next.config.t
 
 1. Personnel ↔ process (assignees, swimlanes, chat/diagram context) — deferred after honesty pass
 2. Personnel ↔ automation (`hermesAgentProfileId`)
-3. Human edit CRUD + show `roleDescription` on cards
+3. ~~Human edit CRUD + show `roleDescription` on cards~~ **done**
 4. BusinessDecision implementation or schema removal
 5. Git import round-trip (`personnel.json`, etc.)
-6. `ARCHITECTURE.md`, `PROCESS.md` reference docs
+6. `ARCHITECTURE.md` reference doc (`PROCESS.md` schema ref shipped)
 7. Minimal API smoke tests
 
 ---
@@ -159,9 +159,9 @@ SQLite WAL sidecars may be tracked; duplicate `next.config.mjs` + `next.config.t
 | `PersonnelIcon` | `components/personnel/PersonnelIcon.tsx` | **Removed** |
 | Interview page + extract API | `app/interview/`, `app/api/extract/` | **Removed** |
 | Dashboard page | `app/(shell)/dashboard/page.tsx` | **Removed** (merged into Functions) |
-| Accent preset API | `lib/accent.ts` | Pending — migration key only |
-| Dead globals CSS | `app/globals.css` ~accent/theme-row rules | Pending |
-| Duplicate Next config | `next.config.mjs` vs `next.config.ts` | Pending — pick one |
+| Accent preset API | `lib/accent.ts` | **Removed** (migration inlined in theme storage) |
+| Dead accent swatch CSS | `app/globals.css` | **Removed** |
+| Duplicate Next config | `next.config.mjs` vs `next.config.ts` | **Removed** `.mjs` |
 | `PERSONNEL_REMOVED` event | `lib/business-log-types.ts` | Pending |
 | Unused theme exports | `lib/themes/*` | Pending |
 
@@ -185,27 +185,24 @@ Cronalytics, business log/git materialize (partial import), VS Code theme import
 
 ```mermaid
 flowchart TD
-  P4["Dead code + repo hygiene"] --> P5["Resume backlog core"]
-  P7["Schema honesty"] --> P5
-  P9["Terminology UI pass"] --> P5
-  P10["Personnel integration"] --> P5
-
-  P5 --- P5a["PROCESS.md + templates + export PNG/PDF"]
-  P5 --- P5b["4.15 desktop multi-tab when ready"]
+  P7["Schema honesty AUDIT-7"] --> P10["Personnel integration"]
+  P8["API smoke tests AUDIT-8"] --> Core["Core polish"]
+  P10 --> Core
+  Core --- C1["4.15 desktop multi-tab"]
+  Core --- C2["4.5 integrations / 4.12 decisions"]
 ```
 
-1. **AUDIT-6 / AUDIT-8** — subtraction pass (accent, next.config, gitignore, tests)
-2. **AUDIT-7** — implement or remove `BusinessDecision`
-3. **AUDIT-9** — rename "project" → "business" in home modals/strips
-4. **AUDIT-10** — personnel workshop wiring when product-ready
-5. Resume numbered backlog: 3.8 export, 4.1–4.2, 4.5
+1. **AUDIT-7 / 4.12** — implement Decisions API or drop schema; personnel git import
+2. **4.10 remainder** — automation ↔ hired agent binding; personnel.json import
+3. **4.15** desktop multi-tab / **4.16** code signing when shipping desktop
+4. Optional: HTTP-level API smoke against a running server
 
 ---
 
 ## Bottom line
 
-The **workshop core is strong**. Remaining damage is mostly **peripheral scaffolding**, **schema stubs**, and **cleanup debt**. The 2026-07-07 session fixed documentation truthfulness, personnel copy honesty, nav thinning, and overview consolidation. Next wins: dead-code pass, tests, and wiring personnel or deferring its nav prominence until integrated.
+The **workshop core is strong**. 2026-07-07 fixed documentation truthfulness, personnel honesty, nav thinning, and overview consolidation. **2026-07-09** shipped PNG/PDF export, PROCESS.md foundation, template JSON library, terminology pass, and most dead-code cleanup. Remaining damage is **personnel/decision scaffolding**, **schema stubs**, and **missing automated tests**.
 
 ---
 
-*Original audit produced in agent session 2026-07-07. Previously stored only in an ephemeral Grok plan file; committed here as the canonical reference.*
+*Original audit produced in agent session 2026-07-07. Previously stored only in an ephemeral Grok plan file; committed here as the canonical reference. Updated 2026-07-09 for Tier A implementation.*

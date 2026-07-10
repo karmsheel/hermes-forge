@@ -38,9 +38,13 @@ export default function DecisionsPage() {
       </div>
 
       <div className="card p-10 text-center text-text-muted">
-        <p className="text-sm">Decision recording is not available yet.</p>
-        <p className="text-xs mt-2">
-          Recorded decisions will appear here and in the{" "}
+        <p className="text-sm font-medium text-text">
+          Scaffold only — no decision API yet
+        </p>
+        <p className="text-xs mt-2 max-w-md mx-auto">
+          The database has a <code className="text-text-muted">BusinessDecision</code> model,
+          but create/list/supersede is not wired. This page is developer-gated until backlog 4.12
+          ships. Events will land here and in the{" "}
           <Link href="/log" className="text-accent hover:underline">
             business log
           </Link>

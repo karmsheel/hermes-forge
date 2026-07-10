@@ -1,8 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileText, FileCode, FileJson, Copy, Check, Terminal } from 'lucide-react';
+import {
+  Download,
+  FileText,
+  FileCode,
+  FileJson,
+  FileImage,
+  FileType,
+  Copy,
+  Check,
+  Terminal,
+  Loader2,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { useTheme } from '@/components/theme/ThemeProvider';
+import {
+  downloadBlob,
+  exportMermaidPdf,
+  exportMermaidPng,
+} from '@/lib/export-diagram';
 import type { ChatMessage } from '@/lib/types';
 
 interface ExportMenuProps {
@@ -15,7 +32,7 @@ interface ExportMenuProps {
   conversationTitle?: string | null;
 }
 
-type TabKey = 'markdown' | 'mermaid' | 'cursor';
+type TabKey = 'markdown' | 'mermaid' | 'png' | 'pdf' | 'cursor';
 
 function buildMarkdown(
   processName: string,
@@ -99,16 +116,9 @@ ${messages.length > 0 ? messages.map(m => `**${m.role === 'user' ? 'Me' : 'Herme
 Please help me refine this process, identify bottlenecks, or convert it into an automation plan.`;
 }
 
-function download(filename: string, content: string, mime: string) {
+function downloadText(filename: string, content: string, mime: string) {
   const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(filename, blob);
 }
 
 export function ExportMenu({
@@ -118,8 +128,11 @@ export function ExportMenu({
   messages,
   conversationTitle,
 }: ExportMenuProps) {
+  const { resolved } = useTheme();
+  const isDark = resolved === 'dark';
   const [tab, setTab] = useState<TabKey>('markdown');
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const md = buildMarkdown(processName, mermaid, messages, conversationTitle);
   const bundle = JSON.stringify(
@@ -129,12 +142,14 @@ export function ExportMenu({
   );
   const mermaidSrc = mermaid ?? '';
 
-  const content = tab === 'markdown' ? md : tab === 'mermaid' ? mermaidSrc : bundle;
-  const filename = `${processName}-${tab === 'markdown' ? 'sop.md' : tab === 'mermaid' ? 'diagram.mmd' : 'cursor.json'}`;
+  const isImageTab = tab === 'png' || tab === 'pdf';
+  const textContent = tab === 'markdown' ? md : tab === 'mermaid' ? mermaidSrc : tab === 'cursor' ? bundle : '';
+  const textFilename = `${processName}-${tab === 'markdown' ? 'sop.md' : tab === 'mermaid' ? 'diagram.mmd' : 'cursor.json'}`;
 
   async function copyToClipboard() {
+    if (isImageTab) return;
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(textContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -152,17 +167,59 @@ export function ExportMenu({
     }
   }
 
-  function downloadCurrent() {
+  function downloadTextCurrent() {
     const mime =
       tab === 'markdown' ? 'text/markdown' : tab === 'mermaid' ? 'text/plain' : 'application/json';
-    download(filename, content, mime);
+    downloadText(textFilename, textContent, mime);
+  }
+
+  async function downloadImage(format: 'png' | 'pdf') {
+    if (!mermaid?.trim()) {
+      toast.error('No diagram to export yet');
+      return;
+    }
+    setExporting(true);
+    try {
+      if (format === 'png') {
+        const result = await exportMermaidPng(mermaid, processName, isDark);
+        downloadBlob(result.filename, result.blob);
+        toast.success('PNG downloaded');
+      } else {
+        const result = await exportMermaidPdf(mermaid, processName, isDark);
+        downloadBlob(result.filename, result.blob);
+        toast.success('PDF downloaded');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function handleDownload() {
+    if (tab === 'png') {
+      void downloadImage('png');
+      return;
+    }
+    if (tab === 'pdf') {
+      void downloadImage('pdf');
+      return;
+    }
+    downloadTextCurrent();
   }
 
   const tabs: { key: TabKey; label: string; icon: typeof FileText }[] = [
     { key: 'markdown', label: 'Markdown SOP', icon: FileText },
     { key: 'mermaid', label: 'Mermaid Source', icon: FileCode },
+    { key: 'png', label: 'PNG', icon: FileImage },
+    { key: 'pdf', label: 'PDF', icon: FileType },
     { key: 'cursor', label: 'Agent Bundle (Cursor)', icon: FileJson },
   ];
+
+  const canDownloadImage = Boolean(mermaid?.trim());
+  const downloadDisabled =
+    exporting ||
+    (isImageTab ? !canDownloadImage : !textContent);
 
   return (
     <section className="space-y-4 p-6 overflow-y-auto">
@@ -174,8 +231,7 @@ export function ExportMenu({
         </p>
       </div>
 
-      {/* Format tabs */}
-      <div className="flex items-center gap-1 border-b border-border">
+      <div className="flex items-center gap-1 border-b border-border flex-wrap">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -193,35 +249,40 @@ export function ExportMenu({
         ))}
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
-          onClick={downloadCurrent}
-          disabled={!content}
+          onClick={handleDownload}
+          disabled={downloadDisabled}
           className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
         >
-          <Download className="w-3.5 h-3.5" />
-          Download
-        </button>
-        <button
-          type="button"
-          onClick={copyToClipboard}
-          disabled={!content}
-          className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-green" />
-              Copied
-            </>
+          {exporting ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              Copy
-            </>
+            <Download className="w-3.5 h-3.5" />
           )}
+          {exporting ? 'Exporting…' : 'Download'}
         </button>
+        {!isImageTab && (
+          <button
+            type="button"
+            onClick={copyToClipboard}
+            disabled={!textContent}
+            className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-green" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                Copy
+              </>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={copyForCursor}
@@ -233,10 +294,30 @@ export function ExportMenu({
         </button>
       </div>
 
-      {/* Preview */}
-      <pre className="bg-bg-panel border border-border rounded-lg p-4 text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto">
-        {content || '(nothing to show yet — start mapping to see content here)'}
-      </pre>
+      {isImageTab ? (
+        <div className="bg-bg-panel border border-border rounded-lg p-6 text-sm text-text-muted space-y-2">
+          {!mermaid?.trim() ? (
+            <p>No diagram yet — map the process in chat, then export a PNG or PDF of the rendered flowchart.</p>
+          ) : (
+            <>
+              <p>
+                Download the live Mermaid diagram as a{' '}
+                <strong className="text-text">{tab === 'png' ? 'PNG image' : 'PDF document'}</strong>
+                {' '}stakeholders can open without Hermes Forge.
+              </p>
+              <p className="text-xs text-text-faint">
+                {tab === 'pdf'
+                  ? 'PDF uses a print-friendly palette: white background, dark outlines, and dark text (2× resolution).'
+                  : 'PNG matches your current theme colors (2× resolution). Use PDF for printing or sharing documents.'}
+              </p>
+            </>
+          )}
+        </div>
+      ) : (
+        <pre className="bg-bg-panel border border-border rounded-lg p-4 text-xs font-mono text-text-muted whitespace-pre-wrap break-words max-h-[40vh] overflow-y-auto">
+          {textContent || '(nothing to show yet — start mapping to see content here)'}
+        </pre>
+      )}
     </section>
   );
 }

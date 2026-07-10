@@ -1,0 +1,9 @@
+{
+  "id": "incident",
+  "title": "Incident response",
+  "description": "Ops escalation",
+  "processName": "Incident response",
+  "seedPrompt": "Document our incident response flow: detection, triage, escalation paths, communication, resolution, and post-mortem.",
+  "gradientFrom": "#c44d7a",
+  "gradientTo": "#7a2f4c"
+}

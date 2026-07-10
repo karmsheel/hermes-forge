@@ -62,7 +62,8 @@ export const SLASH_COMMANDS: ReadonlyArray<SlashCommandDescriptor> = [
   {
     command: "export",
     label: "Open the export menu",
-    description: "Switch to the Export tab (Markdown, Mermaid, Cursor bundle).",
+    description: "Switch to the Export tab (Markdown, Mermaid, PNG, PDF, Cursor bundle).",
+    argHint: "md | mermaid | png | pdf",
     // No handler — parent page routes this to the Export tab.
   },
   {

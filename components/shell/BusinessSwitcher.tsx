@@ -9,7 +9,7 @@ import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessSummary } from "@/lib/types";
 
 export function BusinessSwitcher() {
-  const { currentBusiness, switchBusiness, openNewProject } = useShell();
+  const { currentBusiness, switchBusiness, openNewBusiness } = useShell();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
@@ -181,7 +181,7 @@ export function BusinessSwitcher() {
           role="menuitem"
           onClick={() => {
             setOpen(false);
-            openNewProject();
+            openNewBusiness();
           }}
           className="business-switcher__create"
         >

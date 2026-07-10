@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
 import { buildChatSystemPrompt } from '@/lib/diagram';
 import { formatDiscoveryContext, pickDiscoveryFields } from '@/lib/process-discovery';
+import { buildProcessMdFromBusiness } from '@/lib/process-md';
+import { loadPersonnelRoster } from '@/lib/personnel/load-roster';
 import { requireProcessAccess } from '@/lib/auth';
 import { buildApprovalUpdate } from '@/lib/process-approve';
 import {
@@ -189,6 +191,43 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const discovery = pickDiscoveryFields(process);
     const discoveryContext = formatDiscoveryContext(discovery);
 
+    // 4.2 PROCESS.md — business snapshot for contract injection
+    const businessSnapshot = await prisma.business.findUnique({
+      where: { id: process.businessId },
+      select: {
+        name: true,
+        description: true,
+        industry: true,
+        goals: true,
+        constraints: true,
+        processes: {
+          select: {
+            name: true,
+            department: true,
+            status: true,
+            description: true,
+            trigger: true,
+            inputs: true,
+            outputs: true,
+            manualSteps: true,
+          },
+          orderBy: { updatedAt: 'desc' },
+          take: 20,
+        },
+        humanPersonnel: { select: { name: true, role: true } },
+        hermesAgentProfiles: {
+          where: { isHired: true },
+          select: { displayName: true, description: true, isHired: true },
+        },
+      },
+    });
+    const processMd = businessSnapshot
+      ? buildProcessMdFromBusiness(businessSnapshot)
+      : null;
+
+    // 4.10 — full roster for actor-aware chat (roles + hired agents)
+    const personnel = await loadPersonnelRoster(process.businessId);
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
@@ -201,6 +240,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             status: approvedFromChat ? 'approved' : process.status,
             hasDiagram,
             discovery,
+            processMd,
+            personnel,
             shouldAskAccuracy:
               !approvedFromChat &&
               process.status !== 'approved' &&

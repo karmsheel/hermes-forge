@@ -6,7 +6,7 @@ import { BusinessAvatarPickerFields } from "@/components/business-manager/Busine
 import type { BusinessIconKey } from "@/lib/business-avatar";
 import type { NewBusinessInput } from "@/lib/new-business";
 
-interface NewProjectDialogProps {
+interface NewBusinessDialogProps {
   open: boolean;
   creating: boolean;
   onClose: () => void;
@@ -15,7 +15,14 @@ interface NewProjectDialogProps {
   subtitle?: string;
 }
 
-export function NewProjectDialog({ open, creating, onClose, onCreate, title, subtitle }: NewProjectDialogProps) {
+export function NewBusinessDialog({
+  open,
+  creating,
+  onClose,
+  onCreate,
+  title,
+  subtitle,
+}: NewBusinessDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
@@ -72,7 +79,7 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
       <button
         type="button"
         className="absolute inset-0 bg-black/70"
-        aria-label="Close new project dialog"
+        aria-label="Close new business dialog"
         onClick={creating ? undefined : onClose}
         disabled={creating}
       />
@@ -95,11 +102,11 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="project-name" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
+            <label htmlFor="business-name" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
               Name
             </label>
             <input
-              id="project-name"
+              id="business-name"
               className="input w-full text-sm"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -111,11 +118,11 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
           </div>
 
           <div>
-            <label htmlFor="project-description" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
+            <label htmlFor="business-description" className="block text-xs uppercase tracking-widest text-text-muted mb-2">
               Description <span className="normal-case tracking-normal text-text-soft">(optional)</span>
             </label>
             <textarea
-              id="project-description"
+              id="business-description"
               className="input w-full text-sm min-h-[88px] resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -162,3 +169,6 @@ export function NewProjectDialog({ open, creating, onClose, onCreate, title, sub
     </div>
   );
 }
+
+/** @deprecated Use NewBusinessDialog — alias kept for any stale imports */
+export const NewProjectDialog = NewBusinessDialog;

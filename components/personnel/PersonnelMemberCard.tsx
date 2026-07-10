@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Crown, Loader2, MoreVertical, Trash2 } from "lucide-react";
+import { Crown, Loader2, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PersonnelIconPicker } from "@/components/personnel/PersonnelIconPicker";
 
@@ -32,6 +32,7 @@ export type EmployeeItem = HumanEmployeeItem | AgentEmployeeItem;
 interface PersonnelMemberCardProps {
   employee: EmployeeItem;
   onIconChange: (id: string, kind: "human" | "agent", iconKey: string | null) => void;
+  onEditHuman?: (human: HumanEmployeeItem) => void;
   onFireHuman: (id: string) => Promise<void>;
   onFireAgent: (id: string) => Promise<void>;
 }
@@ -41,6 +42,7 @@ const MENU_WIDTH = 168;
 export function PersonnelMemberCard({
   employee,
   onIconChange,
+  onEditHuman,
   onFireHuman,
   onFireAgent,
 }: PersonnelMemberCardProps) {
@@ -55,6 +57,9 @@ export function PersonnelMemberCard({
   const isOwner = employee.kind === "human" && employee.isOwner;
   const isHuman = employee.kind === "human";
   const name = isHuman ? employee.name : employee.displayName;
+  const canEditHuman = isHuman && Boolean(onEditHuman);
+  const canFire = !isOwner;
+  const showMenu = canEditHuman || canFire;
   const fireMenuLabel = isHuman ? "Remove from organization" : "Fire from organization";
   const fireConfirmTitle = isHuman ? "Remove from organization?" : "Fire from organization?";
   const fireConfirmAction = isHuman ? "Remove" : "Fire";
@@ -62,6 +67,10 @@ export function PersonnelMemberCard({
     employee.kind === "human"
       ? employee.role
       : employee.model || (employee.isDefault ? "Default agent" : "Hermes agent");
+  const description =
+    employee.kind === "human"
+      ? employee.roleDescription?.trim() || null
+      : employee.description?.trim() || null;
 
   const closeMenu = useCallback(() => {
     menuTriggerRef.current = null;
@@ -141,7 +150,7 @@ export function PersonnelMemberCard({
               onIconChange(employee.id, employee.kind, next);
             }}
           />
-          {!isOwner && (
+          {showMenu && (
             <div className="personnel-card__menu">
               <button
                 type="button"
@@ -178,6 +187,11 @@ export function PersonnelMemberCard({
           <span className="personnel-card__meta" title={subtitle}>
             {subtitle}
           </span>
+          {description && (
+            <span className="personnel-card__desc" title={description}>
+              {description}
+            </span>
+          )}
         </div>
       </li>
 
@@ -189,19 +203,36 @@ export function PersonnelMemberCard({
           aria-label={`Options for ${name}`}
           style={{ top: menuAnchor.top, left: menuAnchor.left, width: MENU_WIDTH }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item workflow-menu__item--danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              setFireConfirm(true);
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            {fireMenuLabel}
-          </button>
+          {canEditHuman && employee.kind === "human" && (
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                onEditHuman?.(employee);
+              }}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit person
+            </button>
+          )}
+          {canFire && (
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item workflow-menu__item--danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                setFireConfirm(true);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {fireMenuLabel}
+            </button>
+          )}
         </div>
       )}
 

@@ -14,7 +14,7 @@ const forgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampun
 
 export default function BusinessManagerPage() {
   const router = useRouter();
-  const { switchBusiness, openNewProject, currentBusiness, refreshCurrentBusiness } = useShell();
+  const { switchBusiness, openNewBusiness, currentBusiness, refreshCurrentBusiness } = useShell();
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -173,7 +173,7 @@ export default function BusinessManagerPage() {
           <div ref={forgeActionsRef} className="business-manager__forge-actions">
           <button
             type="button"
-            onClick={openNewProject}
+            onClick={openNewBusiness}
             className="business-manager__forge-btn business-manager__forge-btn--primary"
           >
             <span className="business-manager__forge-btn-icon" aria-hidden>

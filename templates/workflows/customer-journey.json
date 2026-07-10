@@ -1,0 +1,9 @@
+{
+  "id": "customer-journey",
+  "title": "Customer journey",
+  "description": "End-to-end customer flow",
+  "processName": "Customer journey",
+  "seedPrompt": "Map the end-to-end customer journey from first touch through purchase, onboarding, and renewal. Note key moments, handoffs, and pain points.",
+  "gradientFrom": "#2b6cb0",
+  "gradientTo": "#1a4070"
+}

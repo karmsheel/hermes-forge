@@ -9,6 +9,10 @@ import {
   AvailableAgentCard,
   type AvailableAgentItem,
 } from "@/components/personnel/AvailableAgentCard";
+import {
+  EditHumanDialog,
+  type EditHumanValues,
+} from "@/components/personnel/EditHumanDialog";
 import { HireAgentDialog } from "@/components/personnel/HireAgentDialog";
 import {
   PersonnelMemberCard,
@@ -75,6 +79,8 @@ function PersonnelLists({
   const [addHumanOpen, setAddHumanOpen] = useState(false);
   const [humanFormKey, setHumanFormKey] = useState(0);
   const [creatingHuman, setCreatingHuman] = useState(false);
+  const [editingHuman, setEditingHuman] = useState<HumanEmployeeItem | null>(null);
+  const [savingHuman, setSavingHuman] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [hiringAgent, setHiringAgent] = useState<AvailableAgentItem | null>(null);
   const [hiring, setHiring] = useState(false);
@@ -173,6 +179,44 @@ function PersonnelLists({
     setHumans((prev) => prev.filter((person) => person.id !== id));
     toast.success("Employee removed from organization");
   }, []);
+
+  const handleSaveHuman = useCallback(
+    async (values: EditHumanValues) => {
+      if (!editingHuman) return;
+      setSavingHuman(true);
+      try {
+        const body: Record<string, string | null> = {
+          role: values.role,
+          roleDescription: values.roleDescription || null,
+        };
+        if (!editingHuman.isOwner) {
+          body.name = values.name;
+        }
+
+        const res = await fetch(`/api/personnel/humans/${editingHuman.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to update person");
+        }
+
+        const updated = toHumanEmployee(data);
+        setHumans((prev) =>
+          prev.map((person) => (person.id === updated.id ? updated : person))
+        );
+        setEditingHuman(null);
+        toast.success(`Updated ${updated.name}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not update person");
+      } finally {
+        setSavingHuman(false);
+      }
+    },
+    [editingHuman]
+  );
 
   const handleFireAgent = useCallback(async (id: string) => {
     const res = await fetch(`/api/personnel/agents/${id}/fire`, { method: "POST" });
@@ -322,6 +366,7 @@ function PersonnelLists({
                   key={`${employee.kind}-${employee.id}`}
                   employee={employee}
                   onIconChange={handleIconChange}
+                  onEditHuman={setEditingHuman}
                   onFireHuman={handleFireHuman}
                   onFireAgent={handleFireAgent}
                 />
@@ -399,6 +444,20 @@ function PersonnelLists({
         onCreate={handleCreateHuman}
       />
 
+      <EditHumanDialog
+        open={editingHuman !== null}
+        personName={editingHuman?.name ?? ""}
+        initial={{
+          name: editingHuman?.name ?? "",
+          role: editingHuman?.role ?? "",
+          roleDescription: editingHuman?.roleDescription ?? "",
+        }}
+        nameLocked={editingHuman?.isOwner ?? false}
+        saving={savingHuman}
+        onClose={() => !savingHuman && setEditingHuman(null)}
+        onSave={(values) => void handleSaveHuman(values)}
+      />
+
       <HireAgentDialog
         open={hiringAgent !== null}
         agentName={hiringAgent?.displayName ?? ""}
@@ -422,11 +481,13 @@ export default function PersonnelPage() {
         {currentBusiness && <p className="text-sm text-accent mt-1">in {currentBusiness.name}</p>}
         <p className="text-sm text-text-muted mt-3 max-w-2xl">
           Manage your org roster — humans and Hermes agents for this business. Scan your local
-          Hermes installation to discover agent profiles.
+          Hermes installation to discover agent profiles. People and hired agents show up as{" "}
+          <span className="text-text">@-mentions</span> in Workshop and feed swimlane lanes when
+          mapping.
         </p>
         <p className="text-xs text-text-soft mt-3 max-w-2xl rounded-lg border border-border bg-bg-subtle px-3 py-2">
-          Roster only for now. This list is not yet linked to workshop diagrams, swimlanes, or
-          automations.
+          Connected to Workshop (mentions + diagram/chat context). Automation agent assignment is
+          not wired yet.
         </p>
       </div>
 

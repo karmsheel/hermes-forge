@@ -1,0 +1,9 @@
+{
+  "id": "approval-flow",
+  "title": "Approval flow",
+  "description": "Sign-off chains",
+  "processName": "Approval workflow",
+  "seedPrompt": "Document an approval workflow: what gets submitted, who reviews at each stage, escalation rules, and final sign-off criteria.",
+  "gradientFrom": "#7c4dbd",
+  "gradientTo": "#4a2d78"
+}

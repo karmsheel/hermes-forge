@@ -130,7 +130,17 @@ export async function requireProcessAccess(request: NextRequest, processId: stri
     include: {
       messages: { orderBy: { createdAt: 'asc' } },
       conversations: { orderBy: { createdAt: 'asc' } },
-      business: { select: { id: true, name: true, userId: true } },
+      business: {
+        select: {
+          id: true,
+          name: true,
+          userId: true,
+          description: true,
+          industry: true,
+          goals: true,
+          constraints: true,
+        },
+      },
     },
   });
 

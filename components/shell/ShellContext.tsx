@@ -13,7 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
-import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
+import { NewBusinessDialog } from "@/components/projects/NewBusinessDialog";
 import { SettingsOverlay } from "@/components/settings/SettingsOverlay";
 import { DEFAULT_SETTINGS_VIEW, type SettingsViewId } from "@/lib/settings-views";
 
@@ -42,12 +42,16 @@ interface ShellContextValue {
   user: UserProfile | null;
   userLoading: boolean;
   currentBusiness: ActiveBusiness | null;
-  newProjectOpen: boolean;
+  newBusinessOpen: boolean;
   connectionOpen: boolean;
   settingsOpen: boolean;
   settingsTab: SettingsViewId;
-  creatingProject: boolean;
+  creatingBusiness: boolean;
+  openNewBusiness: () => void;
+  closeNewBusiness: () => void;
+  /** @deprecated Use openNewBusiness */
   openNewProject: () => void;
+  /** @deprecated Use closeNewBusiness */
   closeNewProject: () => void;
   openHermesConnection: () => void;
   closeHermesConnection: () => void;
@@ -56,7 +60,7 @@ interface ShellContextValue {
   setSettingsTab: (tab: SettingsViewId) => void;
   switchBusiness: (id: string) => Promise<boolean>;
   refreshCurrentBusiness: () => Promise<void>;
-  createProject: (input: NewBusinessInput) => Promise<void>;
+  createBusiness: (input: NewBusinessInput) => Promise<void>;
   requestNewProcess: () => void;
   registerWorkshopNewProcess: (handler: (() => void | Promise<void>) | null) => void;
 }
@@ -68,11 +72,11 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [currentBusiness, setCurrentBusiness] = useState<ActiveBusiness | null>(null);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [newBusinessOpen, setNewBusinessOpen] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTabState] = useState<SettingsViewId>(DEFAULT_SETTINGS_VIEW);
-  const [creatingProject, setCreatingProject] = useState(false);
+  const [creatingBusiness, setCreatingBusiness] = useState(false);
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -106,9 +110,9 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createProject = useCallback(
+  const createBusiness = useCallback(
     async ({ name, description, avatarEmoji, avatarIcon }: NewBusinessInput) => {
-      setCreatingProject(true);
+      setCreatingBusiness(true);
       try {
         const res = await fetch("/api/businesses", {
           method: "POST",
@@ -123,7 +127,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error("Failed to create");
         const business = await res.json();
         clearLegacyActiveProcessId();
-        setNewProjectOpen(false);
+        setNewBusinessOpen(false);
         const active = toActiveBusiness(business);
         if (active) {
           setCurrentBusiness(active);
@@ -134,7 +138,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       } catch {
         toast.error("Could not create business");
       } finally {
-        setCreatingProject(false);
+        setCreatingBusiness(false);
       }
     },
     [router, refreshCurrentBusiness]
@@ -177,18 +181,23 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     router.push("/workshop");
   }, [router]);
 
+  const openNewBusiness = useCallback(() => setNewBusinessOpen(true), []);
+  const closeNewBusiness = useCallback(() => setNewBusinessOpen(false), []);
+
   const value = useMemo(
     () => ({
       user,
       userLoading,
       currentBusiness,
-      newProjectOpen,
+      newBusinessOpen,
       connectionOpen,
       settingsOpen,
       settingsTab,
-      creatingProject,
-      openNewProject: () => setNewProjectOpen(true),
-      closeNewProject: () => setNewProjectOpen(false),
+      creatingBusiness,
+      openNewBusiness,
+      closeNewBusiness,
+      openNewProject: openNewBusiness,
+      closeNewProject: closeNewBusiness,
       openHermesConnection: () => setConnectionOpen(true),
       closeHermesConnection: () => setConnectionOpen(false),
       openSettings: (tab?: SettingsViewId) => {
@@ -199,21 +208,21 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       setSettingsTab: setSettingsTabState,
       switchBusiness,
       refreshCurrentBusiness,
-      createProject,
+      createBusiness,
       requestNewProcess,
       registerWorkshopNewProcess,
     }),
-    [user, userLoading, currentBusiness, newProjectOpen, connectionOpen, settingsOpen, settingsTab, creatingProject, createProject, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, creatingBusiness, openNewBusiness, closeNewBusiness, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (
     <ShellContext.Provider value={value}>
       {children}
-      <NewProjectDialog
-        open={newProjectOpen}
-        creating={creatingProject}
-        onClose={() => setNewProjectOpen(false)}
-        onCreate={createProject}
+      <NewBusinessDialog
+        open={newBusinessOpen}
+        creating={creatingBusiness}
+        onClose={() => setNewBusinessOpen(false)}
+        onCreate={createBusiness}
       />
       <HermesConnectionDialog open={connectionOpen} onClose={() => setConnectionOpen(false)} />
       <SettingsOverlay

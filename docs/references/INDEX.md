@@ -38,8 +38,9 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `BUSINESS_LOG_AND_GIT.md` | Immutable business log + per-business Git versioning architecture | High | When implementing business log, export, sync, or GitHub integration |
 | `DESKTOP_MULTI_TAB_SHELL.md` | Desktop multi-tab shell design (Notion-style parallel sessions) | Medium | When implementing desktop tab bar or per-tab business scoping (4.15) |
 | `WINDOWS_CODE_SIGNING.md` | Windows Authenticode signing for NSIS installer and SmartScreen trust | Medium | When implementing desktop installer signing or release hardening (4.16) |
+| `GLOBAL_CHATBAR.md` | Global shell chatbar: extension parity checklist, residency, page context protocol, PR plan (4.17) | High | When implementing or reviewing the elevated in-app Hermes chatbar |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
-| *(Future)* `PROCESS.md`    | Process notation standards & contracts      | Medium   | When building diagram/workflow features |
+| `PROCESS.md` | Process mapping contract schema (4.2) | Medium | When implementing PROCESS.md, templates, or agent prompt contracts |
 | *(Future)* `DESIGN.md`     | Visual & interaction guidelines             | Low      | When working on UI components |
 
 ## Agent Session Checklist

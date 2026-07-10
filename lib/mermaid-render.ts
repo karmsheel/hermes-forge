@@ -1,9 +1,15 @@
-import { forgeMermaidThemeVariables } from "@/lib/themes/mermaid-vars";
+import {
+  forgeMermaidThemeVariables,
+  printMermaidThemeVariables,
+} from "@/lib/themes/mermaid-vars";
 
 export interface SvgDimensions {
   width: number;
   height: number;
 }
+
+/** UI themes follow the app skin; `print` is fixed high-contrast for PDF/paper. */
+export type MermaidAppearance = "dark" | "light" | "print";
 
 export function getSvgDimensions(svg: SVGSVGElement): SvgDimensions {
   const viewBox = svg.viewBox?.baseVal;
@@ -28,30 +34,44 @@ export function getSvgDimensionsFromHtml(svgHtml: string): SvgDimensions {
   return getSvgDimensions(svg);
 }
 
-let mermaidInitialized = false;
-let mermaidThemeKey = "";
+function resolveAppearance(appearance: MermaidAppearance | boolean): MermaidAppearance {
+  if (typeof appearance === "boolean") {
+    return appearance ? "dark" : "light";
+  }
+  return appearance;
+}
 
-async function ensureMermaid(isDark: boolean) {
-  const themeKey = isDark ? "dark" : "light";
+/** Always re-apply themeVariables so skin switches take effect mid-session. */
+async function ensureMermaid(appearance: MermaidAppearance) {
   const mermaid = (await import("mermaid")).default;
 
-  if (!mermaidInitialized || mermaidThemeKey !== themeKey) {
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "loose",
-      theme: isDark ? "dark" : "neutral",
-      themeVariables: forgeMermaidThemeVariables(isDark),
-      flowchart: {
-        htmlLabels: false,
-        curve: "basis",
-        padding: 12,
-        nodeSpacing: 40,
-        rankSpacing: 50,
-      },
-    });
-    mermaidInitialized = true;
-    mermaidThemeKey = themeKey;
-  }
+  const isPrint = appearance === "print";
+  const isDark = appearance === "dark";
+
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: "loose",
+    // `base` + full themeVariables gives the most control for print output
+    theme: isPrint ? "base" : isDark ? "dark" : "neutral",
+    themeVariables: isPrint
+      ? printMermaidThemeVariables()
+      : forgeMermaidThemeVariables(isDark),
+    // Prefer native SVG text so export can rasterize labels (FO HTML does not paint as <img>)
+    flowchart: {
+      htmlLabels: false,
+      curve: "basis",
+      padding: 12,
+      nodeSpacing: 40,
+      rankSpacing: 50,
+    },
+    themeCSS: isPrint
+      ? `
+        text, tspan { fill: #1a1a1a !important; color: #1a1a1a !important; }
+        .nodeLabel, .edgeLabel, .label { color: #1a1a1a !important; fill: #1a1a1a !important; }
+        .node rect, .node circle, .node ellipse, .node polygon { fill: #ffffff !important; stroke: #333333 !important; }
+      `
+      : undefined,
+  });
 
   return mermaid;
 }
@@ -60,13 +80,18 @@ export type MermaidRenderResult =
   | { ok: true; svg: string; width: number; height: number }
   | { ok: false; error: string };
 
+/**
+ * Render Mermaid source to SVG HTML.
+ * @param appearance - `true`/`"dark"`, `false`/`"light"`, or `"print"` for PDF-friendly colors
+ */
 export async function renderMermaidSvg(
   source: string,
   renderId: string,
-  isDark: boolean,
+  appearance: MermaidAppearance | boolean,
 ): Promise<MermaidRenderResult> {
   try {
-    const mermaid = await ensureMermaid(isDark);
+    const mode = resolveAppearance(appearance);
+    const mermaid = await ensureMermaid(mode);
     await mermaid.parse(source);
     const { svg } = await mermaid.render(renderId, source);
     const { width, height } = getSvgDimensionsFromHtml(svg);

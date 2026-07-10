@@ -8,7 +8,13 @@
  * Pure functions, no React. Safe to unit test in isolation.
  */
 
-export type MentionKind = "node" | "step" | "system" | "actor" | "custom";
+export type MentionKind =
+  | "node"
+  | "step"
+  | "system"
+  | "actor"
+  | "department"
+  | "custom";
 
 export interface Mentionable {
   /** Stable reference id (e.g. Mermaid node id, system slug). */

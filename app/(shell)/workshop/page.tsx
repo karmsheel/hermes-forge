@@ -45,6 +45,12 @@ import {
   waitUntilAgentsIdle,
   type QueuedMessage,
 } from "@/lib/message-queue";
+import {
+  buildPersonnelRoster,
+  personnelToMentionables,
+  type PersonnelRoster,
+} from "@/lib/personnel/context";
+import type { Mentionable } from "@/components/workshop/rich-composer/parse";
 
 export default function WorkshopPage() {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
@@ -53,6 +59,8 @@ export default function WorkshopPage() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [functionFilter, setFunctionFilter] = useState<string | null>(null);
+  /** 4.10 — roster for @-mentions (actors + roles) */
+  const [personnelRoster, setPersonnelRoster] = useState<PersonnelRoster | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingProcess, setLoadingProcess] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -119,6 +127,40 @@ export default function WorkshopPage() {
   useEffect(() => {
     agentsRunningRef.current = agentsRunning;
   }, [agentsRunning]);
+
+  // 4.10 — load humans + hired agents when active business changes
+  useEffect(() => {
+    const bid = currentBusiness?.id ?? businessId;
+    if (!bid) {
+      setPersonnelRoster(null);
+      return;
+    }
+    let cancelled = false;
+    async function loadRoster() {
+      try {
+        const [humansRes, agentsRes] = await Promise.all([
+          fetch("/api/personnel/humans"),
+          fetch("/api/personnel/agents"),
+        ]);
+        if (!humansRes.ok || !agentsRes.ok) return;
+        const humansData = await humansRes.json();
+        const agentsData = await agentsRes.json();
+        if (cancelled) return;
+        setPersonnelRoster(
+          buildPersonnelRoster({
+            humans: humansData.humans ?? [],
+            agents: agentsData.hired ?? agentsData.agents?.filter((a: { isHired?: boolean }) => a.isHired) ?? [],
+          }),
+        );
+      } catch {
+        if (!cancelled) setPersonnelRoster(null);
+      }
+    }
+    void loadRoster();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentBusiness?.id, businessId]);
 
   const syncQueuedMessages = useCallback(() => {
     setQueuedMessages([...messageQueueRef.current]);
@@ -731,6 +773,23 @@ export default function WorkshopPage() {
     [diagramNodes],
   );
 
+  /** 4.10 + 3.5: actors/roles from roster first, then diagram steps */
+  const workshopMentionables = useMemo((): Mentionable[] => {
+    const fromPersonnel = personnelRoster
+      ? personnelToMentionables(personnelRoster).map((m) => ({
+          ref: m.ref,
+          label: m.label,
+          kind: m.kind as Mentionable["kind"],
+        }))
+      : [];
+    // Prefer personnel when labels collide with a node name
+    const personLabels = new Set(fromPersonnel.map((m) => m.label.toLowerCase()));
+    const fromDiagram = diagramMentionables.filter(
+      (n) => !personLabels.has(n.label.toLowerCase()),
+    );
+    return [...fromPersonnel, ...fromDiagram];
+  }, [personnelRoster, diagramMentionables]);
+
   const handleDiagramNodesChange = useCallback((nodes: MermaidNodeInfo[]) => {
     setDiagramNodes((prev) => {
       if (
@@ -965,7 +1024,7 @@ export default function WorkshopPage() {
               composerFocusKey={composerFocusKey}
               selectedNode={selectedNode}
               onClearNodeContext={clearSelectedNode}
-              mentionables={diagramMentionables}
+              mentionables={workshopMentionables}
               onSlashCommand={handleSlashCommand}
               onCommentsChange={handleCommentsChange}
               scrollToRequest={chatScrollRequest}

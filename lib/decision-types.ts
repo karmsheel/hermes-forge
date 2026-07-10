@@ -2,7 +2,9 @@
  * Business decision types — design contract for /decisions and the business log.
  * See docs/references/BUSINESS_LOG_AND_GIT.md § Business decisions.
  *
- * No persistence layer yet; included so log metadata and future APIs share one shape.
+ * Persistence: `BusinessDecision` exists in Prisma schema, but there is **no CRUD API
+ * or UI runtime yet** (backlog 4.12 / AUDIT-7). Types + event constants stay so log
+ * metadata and a future API share one shape. Do not treat /decisions as complete.
  */
 
 export type DecisionStatus = 'active' | 'superseded' | 'revoked';

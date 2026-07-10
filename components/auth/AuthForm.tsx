@@ -77,10 +77,10 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
           </h1>
           <p className="text-sm text-text-muted mt-2">
             {isSignup
-              ? "Create an account — add your project details as you chat"
+              ? "Create an account — add your business details as you chat"
               : welcome
                 ? "Sign in or create an account to start mapping your business processes"
-                : "Access your projects and process workshops"}
+                : "Access your businesses and process workshops"}
           </p>
         </div>
 

@@ -48,7 +48,7 @@ interface ProcessChatProps {
   /** Current selected node for targeting corrections (3.2). */
   selectedNode?: MermaidNodeInfo | null;
   onClearNodeContext?: () => void;
-  /** Diagram nodes surfaced as @-mention candidates. */
+  /** @-mention candidates: personnel actors/roles + diagram nodes. */
   mentionables?: Mentionable[];
   /**
    * Optional hook for slash commands owned by the parent page

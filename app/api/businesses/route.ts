@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       const created = await tx.business.create({
         data: {
           userId: session.userId,
-          name: body.name?.trim() || 'Untitled Project',
+          name: body.name?.trim() || 'Untitled Business',
           description: body.description?.trim() || null,
           industry: body.industry?.trim() || null,
           avatarEmoji: avatarIcon ? null : avatarEmoji,

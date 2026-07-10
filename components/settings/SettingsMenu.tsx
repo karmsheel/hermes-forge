@@ -148,14 +148,14 @@ export function SettingsMenu({ className }: SettingsMenuProps) {
                 <Palette className="w-3.5 h-3.5" />
                 <span>Skin</span>
               </div>
-              <p className="settings-menu__accent-hint">{skinHint}</p>
+              <p className="settings-menu__skin-hint">{skinHint}</p>
               <div className="settings-menu__skin-grid" role="group" aria-label="Built-in skins">
                 {builtinSkins.map((skin) => renderSkinOption(skin, false))}
               </div>
 
               {installedSkins.length > 0 && (
                 <>
-                  <p className="settings-menu__accent-hint settings-menu__accent-hint--spaced">
+                  <p className="settings-menu__skin-hint settings-menu__skin-hint--spaced">
                     Installed themes
                   </p>
                   <div className="settings-menu__skin-grid" role="group" aria-label="Installed skins">

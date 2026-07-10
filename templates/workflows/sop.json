@@ -1,0 +1,10 @@
+{
+  "id": "sop",
+  "title": "SOP",
+  "description": "Standard operating procedures",
+  "processName": "Standard operating procedure",
+  "seedPrompt": "Map a standard operating procedure for our team. Include the trigger, each step in order, who owns each step, and how we know the process is complete.",
+  "diagramMermaid": "flowchart TD\n  Start([Start]) --> Define[Define procedure]\n  Define --> Execute[Execute steps]\n  Execute --> Review{Review OK?}\n  Review -->|Yes| End([End])\n  Review -->|No| Execute",
+  "gradientFrom": "#c96442",
+  "gradientTo": "#8b3a28"
+}

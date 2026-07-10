@@ -85,7 +85,7 @@ export function SkinPicker() {
 
       {installedSkins.length > 0 && (
         <>
-          <p className="settings-menu__accent-hint settings-menu__accent-hint--spaced">
+          <p className="settings-menu__skin-hint settings-menu__skin-hint--spaced">
             Installed themes
           </p>
           <div className="settings-menu__skin-grid" role="group" aria-label="Installed skins">

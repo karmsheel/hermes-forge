@@ -1,0 +1,9 @@
+{
+  "id": "onboarding",
+  "title": "Onboarding",
+  "description": "New hire or customer onboarding",
+  "processName": "Onboarding process",
+  "seedPrompt": "Map our onboarding process from day zero through the first successful milestone. Include owners, tools used, and checkpoints.",
+  "gradientFrom": "#4a8f5c",
+  "gradientTo": "#2d5c3a"
+}
