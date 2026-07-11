@@ -2412,6 +2412,157 @@ body {
   filter: brightness(1.06);
 }
 
+
+/* Chatbar desktop bar — model + context meter (PR-6) */
+.chatbar-desktop-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0 0.15rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  margin-top: 0.35rem;
+  min-width: 0;
+}
+
+.chatbar-desktop-bar__model {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 42%;
+}
+
+.chatbar-desktop-bar__label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chatbar-desktop-bar__select {
+  min-width: 0;
+  max-width: 9.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.6875rem;
+  padding: 0 0.35rem;
+  cursor: pointer;
+}
+
+.chatbar-desktop-bar__select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chatbar-desktop-bar__spin {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.chatbar-desktop-bar__meter {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.chatbar-desktop-bar__meter-track {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.chatbar-desktop-bar__meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 160ms ease;
+}
+
+.chatbar-desktop-bar__meter--warn .chatbar-desktop-bar__meter-fill {
+  background: var(--amber, #f59e0b);
+}
+
+.chatbar-desktop-bar__meter--critical .chatbar-desktop-bar__meter-fill {
+  background: var(--danger, #ef4444);
+}
+
+.chatbar-desktop-bar__meter--unknown .chatbar-desktop-bar__meter-fill {
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+
+.chatbar-desktop-bar__meter-label {
+  font-size: 0.5625rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatbar-desktop-bar__diag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chatbar-desktop-bar__diag:hover {
+  color: var(--text);
+  border-color: var(--accent-soft);
+}
+
+.chatbar-panel__composer-actions--row {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.chatbar-panel__steer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-elevated));
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.chatbar-panel__steer:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chatbar-panel__steer:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+
+.chatbar-panel--process .chatbar-desktop-bar {
+  margin: 0;
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
 /* Tool Activity Strip (PR-4) */
 .tool-activity-strip {
   margin-top: 0.5rem;

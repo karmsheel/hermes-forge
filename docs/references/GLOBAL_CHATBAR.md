@@ -1,6 +1,6 @@
 # Global Chatbar — Spec & Extension Parity Checklist
 
-> **Status:** PR-1–PR-5 shipped (shell dock + studio chat + page context + composer parity + workshop absorption)  
+> **Status:** PR-1–PR-6 shipped — global chatbar epic complete for 4.17  
 > **Inspired by:** [hermes-browser-extension](https://github.com/abundantbeing/hermes-browser-extension) v0.1.10 side panel  
 > **Backlog id:** **4.17 Global chatbar**  
 > **Depends on:** Shell (1.2), Hermes connection, workshop chat/composer (Phase 3), design tokens (1.1 / 4.6)
@@ -539,12 +539,15 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - **Acceptance:** one chat surface for process mapping; studio chat on other routes
 - **Shipped surface:** ChatbarProvider processSession, ChatbarPanel process mode, workshop page binding
 
-### PR-6 — Model dock, context meter, steer, polish
+### PR-6 — Model dock, context meter, steer, polish — **DONE**
 
-- Footer model picker, context meter  
-- Steer if capable  
-- Diagnostics copy  
-- Design-system alignment  
+- Footer model picker (Forge-scoped via HermesConnectionProvider `setModel`)
+- Context window meter estimate (history + draft + page context)
+- Steer when gateway advertises run steer + active `run_id` (else queue)
+- Copy redacted diagnostics from the dock
+- Design-token styling for meter / model / steer controls
+- **Acceptance:** model switchable in dock; meter updates with draft; steer capability-gated
+- **Shipped surface:** `ChatbarDesktopBar`, `context-meter.ts`, `capabilities.ts`, `diagnostics.ts`
 
 ---
 

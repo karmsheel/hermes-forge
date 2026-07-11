@@ -14,6 +14,7 @@ import {
   ListPlus,
   Loader2,
   MessageSquare,
+  Navigation,
   PanelLeftClose,
   PanelRightClose,
   Plus,
@@ -32,6 +33,10 @@ import {
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
+import {
+  canSteerFromFeatures,
+  steerActiveRun,
+} from "@/lib/chatbar/capabilities";
 import {
   composerControlState,
   composerKeyAction,
@@ -63,6 +68,7 @@ import {
 } from "@/lib/message-queue";
 import type { ChatMessage, Conversation } from "@/lib/types";
 import { ChatbarContextChip } from "./ChatbarContextChip";
+import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
 import { ContextReceipt } from "./ContextReceipt";
 import { ToolActivityStrip } from "./ToolActivityStrip";
 import { useChatbar } from "./ChatbarProvider";
@@ -86,7 +92,7 @@ type IntroBanner = {
 
 /**
  * Shell-level Hermes chat dock.
- * PR-1 residency · PR-2 studio · PR-3 context · PR-4 stop/queue/tools · PR-5 process scope.
+ * PR-1…PR-6: residency, studio, context, stop/queue/tools, process scope, model dock.
  */
 export function ChatbarPanel() {
   const pathname = usePathname() || "/home";
@@ -95,6 +101,8 @@ export function ChatbarPanel() {
     collapse,
     isLeft,
     swapSide,
+    side,
+    residency,
     contextMode,
     setContextMode,
     pageRegistration,
@@ -141,7 +149,8 @@ export function ChatbarPanel() {
   sendingRef.current = sending;
   activeRunIdRef.current = activeRunId;
 
-  const canSteer = false; // PR-6
+  /** Gateway advertises active-run steering (run_id still required at send time). */
+  const canSteer = canSteerFromFeatures(status.features);
   const composerState = composerControlState({
     connected: isConnected,
     sending,
@@ -211,6 +220,51 @@ export function ChatbarPanel() {
     }
     toast.message("Stopping Hermes…");
   }, [config]);
+
+  const steerCurrentDraft = useCallback(async () => {
+    const text = draft.trim();
+    if (!text) return;
+    if (!sendingRef.current) {
+      toast.message("Nothing to steer", {
+        description: "Hermes is not currently running. Send or queue instead.",
+      });
+      return;
+    }
+    const runId = activeRunIdRef.current;
+    if (!config?.baseUrl) {
+      openHermesConnection();
+      return;
+    }
+    if (!canSteerFromFeatures(status.features)) {
+      toast.message("Steering unavailable", {
+        description: "Queued instead — gateway does not advertise run steer yet.",
+      });
+      enqueueDraft(text);
+      return;
+    }
+    if (!runId) {
+      toast.message("Run id not ready", {
+        description: "Queued instead — try steer again once streaming starts.",
+      });
+      enqueueDraft(text);
+      return;
+    }
+    try {
+      await steerActiveRun({
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        runId,
+        text,
+      });
+      setDraft("");
+      toast.success("Steer sent", {
+        description: "Hermes will apply it at the next injection point.",
+      });
+      textareaRef.current?.focus();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Steer failed");
+    }
+  }, [draft, config, status.features, openHermesConnection, enqueueDraft]);
 
   // Fetch shell-level page snapshot when follow-page (or pinned) + business + route change
   useEffect(() => {
@@ -675,12 +729,11 @@ export function ChatbarPanel() {
     });
 
     if (action === "ignore") return;
-    if (action === "queue" || (action === "steer" && !canSteer)) {
-      enqueueDraft(text);
+    if (action === "steer") {
+      void steerCurrentDraft();
       return;
     }
-    if (action === "steer") {
-      // PR-6: steer path
+    if (action === "queue") {
       enqueueDraft(text);
       return;
     }
@@ -688,7 +741,7 @@ export function ChatbarPanel() {
     // send
     setDraft("");
     void sendMessageNow(text);
-  }, [draft, sending, canSteer, enqueueDraft, sendMessageNow]);
+  }, [draft, sending, canSteer, enqueueDraft, sendMessageNow, steerCurrentDraft]);
 
   const drainMessageQueue = useCallback(async () => {
     if (isDrainingQueueRef.current) return;
@@ -743,7 +796,11 @@ export function ChatbarPanel() {
       handleComposerSubmit();
       return;
     }
-    if (action === "queue" || action === "steer") {
+    if (action === "steer") {
+      void steerCurrentDraft();
+      return;
+    }
+    if (action === "queue") {
       if (draft.trim()) enqueueDraft(draft);
     }
   };
@@ -751,6 +808,26 @@ export function ChatbarPanel() {
   const busyLabel = sending
     ? "Hermes is thinking — new messages will queue"
     : null;
+
+  const processMeterInput = {
+    messages: processSession?.messages ?? [],
+    draftText: "",
+    contextText: pageRegistration?.snapshotLines?.join("\n") ?? "",
+  };
+
+  const processDiagnosticsInput = {
+    route: pathname,
+    businessId,
+    businessName: currentBusiness?.name ?? null,
+    contextMode,
+    residency,
+    side,
+    isProcessScoped: true,
+    processId: processSession?.processId ?? null,
+    processName: processSession?.processName ?? null,
+    conversationId: processSession?.conversationId ?? null,
+    messageCount: processSession?.messages?.length ?? 0,
+  };
 
   // Process mode: workshop registers a live process session (PR-5).
   // Studio history/composer are hidden; ProcessChat (mentions + slash) runs in the dock.
@@ -850,6 +927,12 @@ export function ChatbarPanel() {
             embedded
           />
         </div>
+
+        <ChatbarDesktopBar
+          meterInput={processMeterInput}
+          diagnosticsInput={processDiagnosticsInput}
+          disabled={!businessId}
+        />
       </aside>
     );
   }
@@ -1121,7 +1204,7 @@ export function ChatbarPanel() {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onComposerKeyDown}
             />
-            <div className="chatbar-panel__composer-actions">
+            <div className="chatbar-panel__composer-actions chatbar-panel__composer-actions--row">
               {!composerState.controls.stop.hidden ? (
                 <button
                   type="button"
@@ -1132,6 +1215,18 @@ export function ChatbarPanel() {
                   aria-label={composerState.controls.stop.label || "Stop Hermes"}
                 >
                   <Square className="w-3.5 h-3.5 fill-current" />
+                </button>
+              ) : null}
+              {!composerState.controls.steer.hidden ? (
+                <button
+                  type="button"
+                  className="chatbar-panel__steer"
+                  disabled={composerState.controls.steer.disabled || !businessId}
+                  onClick={() => void steerCurrentDraft()}
+                  title={composerState.controls.steer.label || "Steer"}
+                  aria-label={composerState.controls.steer.label || "Steer run"}
+                >
+                  <Navigation className="w-4 h-4" />
                 </button>
               ) : null}
               {!composerState.controls.queue.hidden ? (
@@ -1166,11 +1261,40 @@ export function ChatbarPanel() {
               ) : null}
             </div>
           </div>
+          <ChatbarDesktopBar
+            meterInput={{
+              messages,
+              draftText: draft,
+              contextText: [
+                contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY ? "" : shellSnapshotText,
+                ...(pageRegistration?.snapshotLines ?? []),
+                pageRegistration?.selection?.summary
+                  ? `Selection: ${pageRegistration.selection.summary}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            }}
+            diagnosticsInput={{
+              route: pathname,
+              businessId,
+              businessName: currentBusiness?.name ?? null,
+              contextMode,
+              residency,
+              side,
+              isProcessScoped: false,
+              conversationId: activeConversationId,
+              messageCount: messages.length,
+            }}
+            disabled={!businessId}
+          />
           <p className="chatbar-panel__composer-help">
             {sending
-              ? "Stop ends the run · Enter queues while busy · "
+              ? canSteer
+                ? "Stop · Steer · Queue while busy · "
+                : "Stop ends the run · Enter queues while busy · "
               : "Enter sends · "}
-            Scope chip controls page context · <kbd>Alt</kbd>+<kbd>H</kbd> toggles
+            Scope chip · model dock · <kbd>Alt</kbd>+<kbd>H</kbd>
           </p>
         </div>
       </footer>
