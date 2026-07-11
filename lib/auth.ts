@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { BUSINESS_HEADER } from '@/lib/business-header';
 import {
   BUSINESS_COOKIE,
   SESSION_COOKIE,
@@ -21,6 +22,7 @@ export {
   setActiveBusinessCookie,
   SESSION_COOKIE,
   BUSINESS_COOKIE,
+  BUSINESS_HEADER,
 };
 
 export async function hashPassword(password: string): Promise<string> {
@@ -61,8 +63,14 @@ export async function getCurrentUser() {
   });
 }
 
+/**
+ * Resolve active business id.
+ * Priority: `X-Forge-Business-Id` header (desktop multi-tab) → cookie → null.
+ */
 export async function getActiveBusinessId(request?: NextRequest): Promise<string | null> {
   if (request) {
+    const fromHeader = request.headers.get(BUSINESS_HEADER)?.trim();
+    if (fromHeader) return fromHeader;
     return request.cookies.get(BUSINESS_COOKIE)?.value ?? null;
   }
   const cookieStore = await cookies();
@@ -112,20 +120,23 @@ export async function getActiveBusinessForUser(userId: string, request?: NextReq
   });
 }
 
+/**
+ * Load a process the user owns. Resolves by processId + userId so desktop
+ * multi-tab background sessions can call process APIs without fighting the
+ * global `forge_business` cookie. Optional `X-Forge-Business-Id` still narrows
+ * the lookup when present.
+ */
 export async function requireProcessAccess(request: NextRequest, processId: string) {
   const session = await requireSession(request);
   if (session instanceof NextResponse) return { error: session };
 
-  const activeBusiness = await getActiveBusinessForUser(session.userId, request);
-  if (!activeBusiness) {
-    return { error: NextResponse.json({ error: 'No active business' }, { status: 400 }) };
-  }
+  const headerBusinessId = request.headers.get(BUSINESS_HEADER)?.trim() || null;
 
   const process = await prisma.process.findFirst({
     where: {
       id: processId,
-      businessId: activeBusiness.id,
       business: { userId: session.userId },
+      ...(headerBusinessId ? { businessId: headerBusinessId } : {}),
     },
     include: {
       messages: { orderBy: { createdAt: 'asc' } },

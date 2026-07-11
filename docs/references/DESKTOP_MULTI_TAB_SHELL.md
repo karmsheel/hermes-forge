@@ -1,6 +1,6 @@
 # Desktop Multi-Tab Shell
 
-**Status:** Planned (not implemented)  
+**Status:** Phase 1–3 shipped (tabs, parallel workshops, polish). Optional future: automation multi-mount.  
 **Surface:** Desktop app only (Electron)  
 **Goal:** Notion-style tab bar so users can run multiple live sessions in parallel — different businesses, processes, or shell routes — with background Hermes chat/diagram streams continuing while working in another tab.
 
@@ -86,7 +86,7 @@ New `components/shell/ForgeTabProvider.tsx` (child of `ShellProvider` in `AppShe
 
 New `components/shell/ForgeTabBar.tsx`:
 
-- Horizontal strip below `AppTopBar` (Notion/open-design pattern)
+- Horizontal strip at the **top** of the main column, above `AppTopBar` (browser-style chrome)
 - Tab pill: title, close button, optional business initial
 - `+` opens duplicate of current context or `/home`
 - Middle-click / Ctrl+W close; Ctrl+T new; Ctrl+Tab cycle
@@ -245,13 +245,13 @@ Optional v2 polish in `electron/main.mjs`:
 
 ## Implementation checklist
 
-- [ ] **tab-model** — Add ForgeTab types, localStorage persistence, and ForgeTabProvider (desktop-gated)
-- [ ] **business-header** — Add `X-Forge-Business-Id` header support in `lib/auth.ts` + `lib/forge-fetch.ts`; update scoped API routes
-- [ ] **tab-bar-ui** — Build ForgeTabBar in AppShell with create/close/activate and keyboard shortcuts
-- [ ] **workshop-extract** — Extract WorkshopSession from `workshop/page.tsx`; wire forgeFetch and tab props
-- [ ] **tab-outlet** — Implement ForgeTabOutlet with multi-mounted sessions and tab-aware NavRail navigation
-- [ ] **process-access** — Relax `requireProcessAccess` to resolve by processId+userId (not cookie business)
-- [ ] **polish** — Add open-in-new-tab actions, tab restore on launch, memory guard, automation session (optional phase 3)
+- [x] **tab-model** — Add ForgeTab types, localStorage persistence, and ForgeTabProvider (desktop-gated)
+- [x] **business-header** — Add `X-Forge-Business-Id` header support in `lib/auth.ts` + `lib/forge-fetch.ts` (header wins over cookie via `getActiveBusinessId`)
+- [x] **tab-bar-ui** — Build ForgeTabBar in AppShell with create/close/activate and keyboard shortcuts (Ctrl+T/W/Tab)
+- [x] **workshop-extract** — Extract WorkshopSession from `workshop/page.tsx`; wire forgeFetch and tab props
+- [x] **tab-outlet** — Implement ForgeTabOutlet with multi-mounted sessions and tab-aware NavRail navigation
+- [x] **process-access** — Relax `requireProcessAccess` to resolve by processId+userId (not cookie business)
+- [x] **polish** — Drag-reorder, context menu (Duplicate / Close others / Unload), open-in-new-tab from Home/Functions/Business Manager, LRU workshop unload soft-max, inactive-tab toast mute. Automation multi-mount still optional.
 
 ---
 

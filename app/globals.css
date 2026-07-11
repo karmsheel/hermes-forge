@@ -1322,6 +1322,16 @@ body {
   position: relative;
   z-index: 40;
   overflow: visible;
+  flex-shrink: 0;
+}
+
+/* Below sticky tab strip: keep top bar in the fixed chrome stack when tabs are on */
+.app-shell-layout--tabs .app-topbar {
+  position: sticky;
+  /* Approximate tab bar height so top bar sticks just under tabs if window scrolls */
+  top: 2.25rem;
+  z-index: 45;
+  background: var(--bg);
 }
 
 @keyframes desktop-update-glow {
@@ -2074,6 +2084,275 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+}
+
+/*
+ * 4.15 — When desktop tabs are on, lock the shell to the viewport so the tab
+ * strip (and top bar) stay fixed while only the content region scrolls.
+ */
+.app-shell-layout--tabs {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-layout--tabs .app-shell-layout__main {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-layout--tabs .app-shell-layout__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Full / home already manage their own overflow; keep nested scroll areas working */
+.app-shell-layout--tabs.app-shell-layout--full .app-shell-layout__content,
+.app-shell-layout--tabs.app-shell-layout--home .app-shell-layout__content {
+  overflow: hidden;
+}
+
+/* 4.15 Desktop multi-tab shell — tab strip at top of main column (above top bar) */
+.forge-tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.5rem 0;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  /* Stay pinned if a parent ever scrolls; solid bg so content doesn't show through */
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.forge-tab-bar__scroll {
+  display: flex;
+  align-items: stretch;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.forge-tab-bar__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 14rem;
+  min-width: 5.5rem;
+  height: 1.85rem;
+  padding: 0 0.35rem 0 0.5rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 0.4rem 0.4rem 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background var(--dur-quick, 120ms) var(--ease-out, ease),
+    color var(--dur-quick, 120ms) var(--ease-out, ease),
+    border-color var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+.forge-tab-bar__tab:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.forge-tab-bar__tab.is-active {
+  /* Blend into the top bar strip below (AppTopBar uses --bg) */
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: inset 0 -1px 0 var(--bg);
+}
+
+.forge-tab-bar__initial {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 0.25rem;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.forge-tab-bar__tab.is-active .forge-tab-bar__initial {
+  background: var(--accent-tint, color-mix(in srgb, var(--accent) 18%, transparent));
+  color: var(--accent);
+}
+
+.forge-tab-bar__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forge-tab-bar__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--dur-quick, 120ms) var(--ease-out, ease),
+    background var(--dur-quick, 120ms) var(--ease-out, ease),
+    color var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+.forge-tab-bar__tab:hover .forge-tab-bar__close,
+.forge-tab-bar__tab.is-active .forge-tab-bar__close,
+.forge-tab-bar__close:focus-visible {
+  opacity: 1;
+}
+
+.forge-tab-bar__close:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.forge-tab-bar__close:disabled {
+  opacity: 0;
+  cursor: default;
+  pointer-events: none;
+}
+
+.forge-tab-bar__new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-bottom: 0;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.forge-tab-bar__new:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.forge-tab-bar__new:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.forge-tab-bar__tab.is-dragging {
+  opacity: 0.55;
+}
+
+.forge-tab-bar__tab.is-drag-over {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.forge-tab-bar__tab.is-unloaded {
+  opacity: 0.72;
+  font-style: italic;
+}
+
+.forge-tab-bar__badge {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.forge-tab-bar__menu {
+  position: fixed;
+  z-index: 80;
+  min-width: 11rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--bg-elevated);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.forge-tab-bar__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.forge-tab-bar__menu-item:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+
+.forge-tab-bar__menu-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.forge-tab-bar__menu-item--danger {
+  color: var(--red);
+}
+
+/* 4.15 Phase 2 — multi-mounted tab panes (keep-alive workshops) */
+.forge-tab-outlet {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.forge-tab-pane {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.forge-tab-pane.is-inactive {
+  display: none;
+}
+
+.forge-tab-pane--route {
   min-height: 0;
 }
 

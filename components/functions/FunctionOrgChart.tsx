@@ -1,12 +1,13 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { Building2 } from "lucide-react";
 import type { FunctionSummary } from "@/lib/functions";
 
 interface FunctionOrgChartProps {
   businessName: string;
   functions: FunctionSummary[];
-  onSelectFunction: (functionName: string) => void;
+  onSelectFunction: (functionName: string, event?: MouseEvent) => void;
 }
 
 export function FunctionOrgChart({
@@ -33,7 +34,8 @@ export function FunctionOrgChart({
                 <button
                   type="button"
                   className="function-org-chart__node function-org-chart__node--function"
-                  onClick={() => onSelectFunction(fn.name)}
+                  title="Open in workshop · Ctrl+click for new tab"
+                  onClick={(e) => onSelectFunction(fn.name, e)}
                 >
                   <span className="function-org-chart__function-name">{fn.name}</span>
                   <span className="function-org-chart__function-count">

@@ -642,22 +642,22 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.15 Desktop multi-tab shell — **PLANNED**
+### 4.15 Desktop multi-tab shell — **DONE** (Phase 1–3)
 
 **Goal:** Notion/open-design-style tab bar in the Electron desktop app so users can work on different businesses or aspects of a business **at the same time**, with background Hermes chat/diagram streams continuing in inactive tabs.
 
-**Status:** Design complete; not implemented. Full architecture, phases, and checklist in the reference doc below.
+**Status:** Shipped. Phase 1 tab chrome + business header; Phase 2 parallel `WorkshopSession` multi-mount; Phase 3 drag-reorder, context menu, open-in-new-tab from cards, LRU unload, inactive toast mute. Optional later: automation studio multi-mount.
 
 **Reference:** [`docs/references/DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md)
 
 **Depends on:** 4.8 (desktop packaging), workshop (Phase 3), active business cookie model (today's baseline)
 
 **Key deliverables:**
-- [ ] `ForgeTabProvider` + `ForgeTabBar` (desktop-gated via `isForgeDesktop()`)
-- [ ] `X-Forge-Business-Id` header + `forgeFetch` for per-tab API scoping
-- [ ] `WorkshopSession` extraction + `ForgeTabOutlet` multi-mount for true parallel streams
-- [ ] Tab-aware `NavRail`; tab persistence across app restart
-- [ ] Phase 3 polish: keyboard shortcuts, open-in-new-tab, memory guard
+- [x] `ForgeTabProvider` + `ForgeTabBar` (desktop-gated via `isForgeDesktop()`) — Phase 1
+- [x] `X-Forge-Business-Id` header + `forgeFetch` for per-tab API scoping — Phase 1
+- [x] `WorkshopSession` extraction + `ForgeTabOutlet` multi-mount for true parallel streams — Phase 2
+- [x] Tab-aware `NavRail`; tab persistence across app restart — Phase 1
+- [x] Phase 3 polish: drag-reorder, open-in-new-tab from cards, memory guard, context menu
 
 **Do not:** Implement via Electron `BrowserView` partitions (duplicates providers, heavy memory). Prefer in-renderer mounted sessions per the reference doc.
 
@@ -745,7 +745,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.12 | Business decisions | 4 | **Scaffold** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
-| 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+| 4.15 | Desktop multi-tab shell | 4 | **Done** (Phase 1–3) — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
 | 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **Done** (PR-1–6) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
 

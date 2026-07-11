@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { usePathname } from "next/navigation";
+import type { MouseEvent } from "react";
 import {
   Clock,
   FolderKanban,
@@ -20,6 +21,7 @@ import {
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
+import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
@@ -38,6 +40,9 @@ export function NavRail() {
   const { requestNewProcess, openHermesConnection } = useShell();
   const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
   const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
+  const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
+  /** Prefer active tab route for highlight so desktop tabs stay consistent */
+  const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
 
   const mainItems: NavItem[] = [
     {
@@ -106,8 +111,19 @@ export function NavRail() {
   ];
 
   function isActive(item: NavItem) {
-    if (item.match) return item.match(pathname);
-    return item.href === pathname;
+    if (item.match) return item.match(activePath);
+    return item.href === activePath;
+  }
+
+  function handleShellNav(href: string, e: MouseEvent) {
+    if (!tabsEnabled) return;
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      openInNewTab(href);
+      return;
+    }
+    e.preventDefault();
+    navigateActiveTab(href);
   }
 
   return (
@@ -115,9 +131,10 @@ export function NavRail() {
       <div className="nav-rail__section">
         <Link
           href="/business-manager"
-          className={`nav-rail__logo${pathname.startsWith("/business-manager") ? " is-active" : ""}`}
+          className={`nav-rail__logo${activePath.startsWith("/business-manager") ? " is-active" : ""}`}
           title="Business Manager"
           aria-label="Business Manager"
+          onClick={(e) => handleShellNav("/business-manager", e)}
         >
           <HermesForgeMark className="hermes-forge-mark nav-rail__logo-art" />
         </Link>
@@ -177,6 +194,7 @@ export function NavRail() {
               title={item.label}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
+              onClick={(e) => handleShellNav(item.href!, e)}
             >
               <Icon className="w-5 h-5" />
             </Link>

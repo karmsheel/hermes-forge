@@ -1,6 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
 
+import { BUSINESS_HEADER } from '@/lib/business-header';
+
+export { BUSINESS_HEADER };
+
 export const SESSION_COOKIE = 'forge_session';
 export const BUSINESS_COOKIE = 'forge_business';
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;

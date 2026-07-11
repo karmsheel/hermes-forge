@@ -9,6 +9,7 @@ import { BusinessTileCard } from "@/components/business-manager/BusinessTileCard
 import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { NavThemeModeToggle } from "@/components/shell/NavThemeModeToggle";
 import { useShell } from "@/components/shell/ShellContext";
+import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import type { BusinessExportPayload, BusinessSummary } from "@/lib/types";
 
 const forgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
@@ -16,6 +17,7 @@ const forgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampun
 export default function BusinessManagerPage() {
   const router = useRouter();
   const { switchBusiness, openNewBusiness, currentBusiness, refreshCurrentBusiness } = useShell();
+  const { openBusinessHome, enabled: tabsEnabled } = useShellNavigate();
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -60,14 +62,28 @@ export default function BusinessManagerPage() {
     return () => observer.disconnect();
   }, [loading, importing]);
 
-  async function enterBusiness(id: string) {
+  async function enterBusiness(id: string, name?: string) {
     setSwitchingId(id);
     try {
-      const switched = await switchBusiness(id);
-      if (switched) router.push("/home");
+      const bizName =
+        name ?? businesses.find((b) => b.id === id)?.name ?? "Business";
+      await openBusinessHome({
+        businessId: id,
+        businessName: bizName,
+        switchAndEnter: switchBusiness,
+      });
     } finally {
       setSwitchingId(null);
     }
+  }
+
+  async function openBusinessInNewTab(id: string, name: string) {
+    await openBusinessHome({
+      businessId: id,
+      businessName: name,
+      newTab: true,
+      switchAndEnter: switchBusiness,
+    });
   }
 
   async function handleBusinessDeleted(deletedId: string) {
@@ -239,7 +255,12 @@ export default function BusinessManagerPage() {
                   key={business.id}
                   business={business}
                   isSwitching={switchingId === business.id}
-                  onEnter={() => void enterBusiness(business.id)}
+                  onEnter={() => void enterBusiness(business.id, business.name)}
+                  onOpenInNewTab={
+                    tabsEnabled
+                      ? () => void openBusinessInNewTab(business.id, business.name)
+                      : undefined
+                  }
                   onUpdate={(updated) =>
                     setBusinesses((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
                   }

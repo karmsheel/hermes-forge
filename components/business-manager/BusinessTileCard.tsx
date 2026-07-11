@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, MoreVertical, Pencil, Smile, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, MoreVertical, Pencil, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
@@ -22,6 +22,8 @@ interface BusinessTileCardProps {
   business: BusinessSummary;
   isSwitching: boolean;
   onEnter: () => void;
+  /** Desktop multi-tab: open this business in a new shell tab (4.15). */
+  onOpenInNewTab?: () => void;
   onUpdate: (updated: BusinessSummary) => void;
   onDelete: () => void;
 }
@@ -30,6 +32,7 @@ export function BusinessTileCard({
   business,
   isSwitching,
   onEnter,
+  onOpenInNewTab,
   onUpdate,
   onDelete,
 }: BusinessTileCardProps) {
@@ -190,9 +193,21 @@ export function BusinessTileCard({
       <div className={`business-manager__tile${isSwitching ? " is-loading" : ""}`}>
         <button
           type="button"
-          onClick={onEnter}
+          onClick={(e) => {
+            if (onOpenInNewTab && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              onOpenInNewTab();
+              return;
+            }
+            onEnter();
+          }}
           disabled={isSwitching}
           className="business-manager__tile-main"
+          title={
+            onOpenInNewTab
+              ? "Open business · Ctrl+click for new tab"
+              : "Open business"
+          }
         >
           <div
             className="business-manager__tile-thumb"
@@ -251,6 +266,21 @@ export function BusinessTileCard({
           aria-label={`Options for ${business.name}`}
           style={{ top: menuAnchor.top, left: menuAnchor.left, width: MENU_WIDTH }}
         >
+          {onOpenInNewTab ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                onOpenInNewTab();
+              }}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open in new tab
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import { FunctionsPageContext } from "@/components/chatbar/page-providers/FunctionsPageContext";
 import {
   BusinessAnalyticsSection,
@@ -20,6 +21,7 @@ import { setActiveFunctionFilter } from "@/lib/workshop-storage";
 export default function FunctionsPage() {
   const router = useRouter();
   const { currentBusiness } = useShell();
+  const { go, openWorkshop, enabled: tabsEnabled } = useShellNavigate();
   const [business, setBusiness] = useState<AnalyticsBusiness | null>(null);
   const [processes, setProcesses] = useState<AnalyticsProcess[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,12 +93,25 @@ export default function FunctionsPage() {
     load();
   }, [load, currentBusiness?.id]);
 
-  function openFunctionInWorkshop(functionName: string) {
+  function openFunctionInWorkshop(functionName: string, e?: MouseEvent) {
     const businessId = business?.id || currentBusiness?.id;
     if (businessId) {
       setActiveFunctionFilter(businessId, functionName);
     }
-    router.push("/workshop");
+    const newTab = Boolean(e && (e.metaKey || e.ctrlKey));
+    openWorkshop({
+      businessId: businessId ?? undefined,
+      businessName: business?.name || currentBusiness?.name,
+      newTab,
+    });
+  }
+
+  function openWorkshopClick(e: MouseEvent) {
+    openWorkshop({
+      businessId: business?.id || currentBusiness?.id,
+      businessName: business?.name || currentBusiness?.name,
+      newTab: e.metaKey || e.ctrlKey,
+    });
   }
 
   const businessName = business?.name || currentBusiness?.name || "Your business";
@@ -114,10 +129,16 @@ export default function FunctionsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Functions</h1>
           <p className="text-sm text-text-muted mt-2 max-w-2xl">
             Business areas and workflows for the active business. Click a function to open it in the
-            workshop.
+            workshop
+            {tabsEnabled ? " (Ctrl+click for a new tab)" : ""}.
           </p>
         </div>
-        <button type="button" onClick={() => router.push("/workshop")} className="btn-primary text-sm">
+        <button
+          type="button"
+          onClick={openWorkshopClick}
+          className="btn-primary text-sm"
+          title={tabsEnabled ? "Open workshop · Ctrl+click for new tab" : "Open workshop"}
+        >
           <Plus className="w-4 h-4" />
           New process
         </button>
@@ -131,7 +152,7 @@ export default function FunctionsPage() {
       ) : !business ? (
         <div className="card p-10 text-center border-dashed">
           <p className="text-text-muted mb-4">No active business. Select or create one in Business Manager.</p>
-          <button type="button" onClick={() => router.push("/business-manager")} className="btn-primary">
+          <button type="button" onClick={() => go("/business-manager")} className="btn-primary">
             Open Business Manager
           </button>
         </div>
@@ -150,7 +171,12 @@ export default function FunctionsPage() {
                   (e.g. Marketing, Operations).
                 </p>
                 <div className="flex justify-center mt-4">
-                  <button type="button" onClick={() => router.push("/workshop")} className="btn-primary text-sm">
+                  <button
+                    type="button"
+                    onClick={openWorkshopClick}
+                    className="btn-primary text-sm"
+                    title={tabsEnabled ? "Open workshop · Ctrl+click for new tab" : "Open workshop"}
+                  >
                     <Plus className="w-4 h-4" />
                     Go to workshop
                   </button>

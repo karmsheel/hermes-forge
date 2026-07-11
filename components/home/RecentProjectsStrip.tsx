@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
+import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import { ProcessCardThumb } from "@/components/home/ProcessCardThumb";
-import { setActiveProcessId } from "@/lib/workshop-storage";
 import type { ProcessSummary } from "@/lib/types";
 
 function timeAgo(dateStr: string): string {
@@ -19,8 +18,8 @@ function timeAgo(dateStr: string): string {
 }
 
 export function RecentProcessesStrip() {
-  const router = useRouter();
   const { currentBusiness } = useShell();
+  const { openWorkshop } = useShellNavigate();
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [business, setBusiness] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,13 +45,15 @@ export function RecentProcessesStrip() {
     load();
   }, [load, currentBusiness?.id]);
 
-  function selectProcess(processId: string) {
-    if (!business) {
-      router.push("/workshop");
-      return;
-    }
-    setActiveProcessId(business.id, processId);
-    router.push("/workshop");
+  function selectProcess(processId: string, processName: string, e?: MouseEvent) {
+    const newTab = Boolean(e && (e.metaKey || e.ctrlKey || e.button === 1));
+    openWorkshop({
+      processId,
+      processName,
+      businessId: business?.id,
+      businessName: business?.name,
+      newTab,
+    });
   }
 
   if (loading) {
@@ -77,9 +78,16 @@ export function RecentProcessesStrip() {
           <button
             key={proc.id}
             type="button"
-            onClick={() => selectProcess(proc.id)}
+            onClick={(e) => selectProcess(proc.id, proc.name, e)}
+            onAuxClick={(e) => {
+              if (e.button === 1) {
+                e.preventDefault();
+                selectProcess(proc.id, proc.name, e);
+              }
+            }}
             className="process-card"
             aria-label={`Open ${proc.name}`}
+            title="Open in workshop · Ctrl+click for new tab"
           >
             <ProcessCardThumb
               processId={proc.id}

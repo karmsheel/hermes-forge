@@ -5,11 +5,14 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Check, ChevronDown, Loader2, Plus } from "lucide-react";
 import { BusinessAvatarMark } from "@/components/shell/BusinessAvatarMark";
+import { useForgeTabs } from "@/components/shell/ForgeTabProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { formatTabTitle } from "@/lib/forge-tabs";
 import type { BusinessSummary } from "@/lib/types";
 
 export function BusinessSwitcher() {
   const { currentBusiness, switchBusiness, openNewBusiness } = useShell();
+  const { enabled: tabsEnabled, updateActiveTab, activeTab } = useForgeTabs();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
@@ -100,7 +103,16 @@ export function BusinessSwitcher() {
 
     setSwitchingId(id);
     try {
-      await switchBusiness(id);
+      const ok = await switchBusiness(id);
+      if (ok && tabsEnabled) {
+        const picked = businesses.find((b) => b.id === id);
+        const name = picked?.name ?? id;
+        updateActiveTab({
+          businessId: id,
+          businessName: name,
+          title: formatTabTitle(name, activeTab?.route ?? "/home"),
+        });
+      }
       setOpen(false);
     } catch {
       toast.error("Could not switch business");
