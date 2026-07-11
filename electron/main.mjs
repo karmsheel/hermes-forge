@@ -106,19 +106,42 @@ function getUserDataEnv() {
 function runProcess(command, args, options = {}) {
   // execFile uses CreateProcessW directly on Windows — no cmd.exe needed,
   // and it handles spaces in the exe path correctly.
+  const { timeoutMs = 0, ...execOpts } = options;
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      fn();
+    };
+
     const child = execFile(command, args, {
       windowsHide: true,
       maxBuffer: 10 * 1024 * 1024,
-      ...options,
+      ...execOpts,
     });
+
+    const timer =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            try {
+              child.kill();
+            } catch {
+              /* ignore */
+            }
+            finish(() =>
+              reject(new Error(`${path.basename(command)} timed out after ${timeoutMs}ms`)),
+            );
+          }, timeoutMs)
+        : null;
 
     child.stdout?.on("data", (chunk) => console.log(`[${path.basename(command)}]`, chunk.toString()));
     child.stderr?.on("data", (chunk) => console.error(`[${path.basename(command)}]`, chunk.toString()));
-    child.on("error", reject);
+    child.on("error", (err) => finish(() => reject(err)));
     child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`${command} exited with code ${code}`));
+      if (code === 0) finish(() => resolve());
+      else finish(() => reject(new Error(`${command} exited with code ${code}`)));
     });
   });
 }
@@ -157,15 +180,31 @@ async function waitForServer(url, timeoutMs = 90000) {
 async function migrateDatabase(env) {
   // Run prisma CLI directly with Electron's bundled Node — avoids Windows
   // EINVAL when spawning npx.cmd via execFile.
+  // Prisma under ELECTRON_RUN_AS_NODE can hang after "No pending migrations"
+  // when the SQLite file is locked by another instance — bound with a timeout.
   const root = isDev ? path.join(__dirname, "..") : standaloneDir();
-  await runProcess(
-    process.execPath,
-    [prismaCliPath(), "migrate", "deploy", "--schema", prismaSchemaPath()],
-    {
-      cwd: root,
-      env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+  console.log("[desktop] Running database migrations…");
+  try {
+    await runProcess(
+      process.execPath,
+      [prismaCliPath(), "migrate", "deploy", "--schema", prismaSchemaPath()],
+      {
+        cwd: root,
+        env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
+        timeoutMs: 25_000,
+      },
+    );
+    console.log("[desktop] Migrations finished");
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (/timed out/i.test(msg)) {
+      console.warn(
+        "[desktop] Migration timed out (often a locked forge.db from a zombie Electron). Continuing startup.",
+      );
+      return;
     }
-  );
+    throw error;
+  }
 }
 
 function attachServerLogs(child, label = "server") {
@@ -247,8 +286,11 @@ app.whenReady().then(async () => {
 
   try {
     await migrateDatabase(env);
+    console.log("[desktop] Starting Next.js server…");
     await startServer(env);
+    console.log("[desktop] Waiting for", serverUrl());
     await waitForServer(serverUrl());
+    console.log("[desktop] Creating window");
     createWindow();
     scheduleUpdateCheck();
     schedulePeriodicUpdateChecks();

@@ -15,7 +15,8 @@ import { ShellProvider } from "./ShellContext";
 function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isOpen, isLeft, side } = useChatbar();
-  const { enabled: tabsEnabled } = useForgeTabs();
+  const { enabled: tabsEnabled, tabs } = useForgeTabs();
+  const tabStripVisible = tabsEnabled && tabs.length > 1;
   const isBusinessManager = pathname.startsWith("/business-manager");
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
@@ -30,6 +31,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     (isWorkshop || isAutomation || isGodMode) && "app-shell-layout--full",
     isHome && "app-shell-layout--home",
     tabsEnabled && "app-shell-layout--tabs",
+    tabStripVisible && "app-shell-layout--tab-strip",
   ]
     .filter(Boolean)
     .join(" ");
@@ -55,7 +57,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
       <NavRail />
       {isLeft ? chat : null}
       <div className="app-shell-layout__main">
-        {/* Tabs sit at the very top; chrome (business switcher, profile) is below */}
+        {/* Tabs + profile/settings at top; business switcher stays on AppTopBar below */}
         <ForgeTabBar />
         <AppTopBar />
         <div className="app-shell-layout__content">

@@ -6,13 +6,9 @@ import {
   setSessionCookie,
 } from '@/lib/auth';
 import { NextResponse } from 'next/server';
+import { LOCAL_USER_EMAIL } from '@/lib/local-user-email';
 
-export const LOCAL_USER_EMAIL = 'local@hermes-forge.local';
-
-/** True when the account is the machine-local placeholder (no email/GitHub identity). */
-export function isLocalUserEmail(email: string | null | undefined): boolean {
-  return email === LOCAL_USER_EMAIL;
-}
+export { LOCAL_USER_EMAIL, isLocalUserEmail } from '@/lib/local-user-email';
 
 export async function ensureLocalUser() {
   const existing = await prisma.user.findUnique({
@@ -39,7 +35,6 @@ export async function ensureLocalUser() {
 export async function createLocalSessionResponse() {
   const user = await ensureLocalUser();
   const token = await createSessionToken({ userId: user.id, email: user.email });
-
   const response = NextResponse.json({
     user: {
       id: user.id,
@@ -47,10 +42,11 @@ export async function createLocalSessionResponse() {
       name: user.name,
     },
   });
-
   setSessionCookie(response, token);
-  if (user.businesses[0]) {
-    setActiveBusinessCookie(response, user.businesses[0].id);
+
+  const business = user.businesses[0];
+  if (business) {
+    setActiveBusinessCookie(response, business.id);
   }
 
   return response;

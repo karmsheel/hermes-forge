@@ -6,7 +6,7 @@ import { useState } from "react";
 import { GitBranch, Loader2, Lock, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import iconImage from "@/assets/icon.jpg";
-import { isLocalUserEmail } from "@/lib/local-user";
+import { isLocalUserEmail } from "@/lib/local-user-email";
 
 export type SignInOptionsVariant = "page" | "profile";
 

@@ -8,7 +8,7 @@ import { Download, GitBranch, Loader2, LogOut, Pencil, Trash2, Upload } from "lu
 import type { BusinessGitStatus } from "@/lib/business-git";
 import { SignInOptions } from "@/components/auth/SignInOptions";
 import { useShell } from "@/components/shell/ShellContext";
-import { isLocalUserEmail } from "@/lib/local-user";
+import { isLocalUserEmail } from "@/lib/local-user-email";
 import type { BusinessSummary, BusinessExportPayload, UserProfile } from "@/lib/types";
 import { buildBusinessExportPayload, createBusinessExportZip, downloadBlob, makeExportFilename } from "@/lib/business-export";
 

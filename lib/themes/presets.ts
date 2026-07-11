@@ -220,59 +220,6 @@ export const cyberpunkSkin: ForgeSkin = {
   },
 };
 
-/** Black lacquer + aged brass — horological prestige palette. */
-const BRASS = {
-  background: "#0C0C0C",
-  card: "#181818",
-  brass: "#B88A2E",
-  gold: "#F4D06F",
-  text: "#ECECEC",
-  mutedText: "#888888",
-} as const;
-
-function brassLine(pct: number): string {
-  return mix(BRASS.brass, BRASS.background, (100 - pct) / 100);
-}
-
-function brassSurface(pct: number): string {
-  return mix(BRASS.brass, BRASS.card, (100 - pct) / 100);
-}
-
-export const blackBrassSkin: ForgeSkin = {
-  name: "black-brass",
-  label: "Black & Brass",
-  description: "Obsidian black with aged brass and gold — craftsmanship and prestige",
-  colors: {
-    background: BRASS.background,
-    foreground: BRASS.text,
-    card: BRASS.card,
-    cardForeground: BRASS.text,
-    muted: "#141414",
-    mutedForeground: BRASS.mutedText,
-    popover: "#1A1A1A",
-    popoverForeground: BRASS.text,
-    primary: BRASS.gold,
-    primaryForeground: BRASS.background,
-    secondary: brassSurface(22),
-    secondaryForeground: mix(BRASS.gold, BRASS.text, 0.35),
-    accent: brassSurface(38),
-    accentForeground: BRASS.gold,
-    border: brassLine(18),
-    input: brassLine(24),
-    ring: BRASS.brass,
-    midground: BRASS.gold,
-    composerRing: BRASS.brass,
-    destructive: "#A84838",
-    destructiveForeground: "#FEF2F2",
-    sidebarBackground: "#080808",
-    sidebarBorder: brassLine(12),
-    userBubble: BRASS.card,
-    userBubbleBorder: brassLine(32),
-    success: "#6B9E5C",
-    info: "#6B8AAE",
-  },
-};
-
 /** Gunmetal + electric cyan — industrial AI forge (Claude / Cursor / Vercel vibes). */
 const CYBER = {
   background: "#090A0F",
@@ -323,58 +270,6 @@ export const cyberForgeSkin: ForgeSkin = {
     userBubbleBorder: cyberLine(28),
     success: CYBER.success,
     info: "#4DA8FF",
-  },
-};
-
-/** Slate + emerald — calm operations platform palette. */
-const OPS = {
-  background: "#0C1117",
-  card: "#161B22",
-  primary: "#3FB950",
-  accent: "#58D68D",
-  text: "#F0F6FC",
-} as const;
-
-function opsLine(pct: number): string {
-  return mix(OPS.primary, OPS.background, (100 - pct) / 100);
-}
-
-function opsSurface(pct: number): string {
-  return mix(OPS.accent, OPS.card, (100 - pct) / 100);
-}
-
-export const slateEmeraldSkin: ForgeSkin = {
-  name: "slate-emerald",
-  label: "Slate & Emerald",
-  description: "Cool slate with emerald accents — trustworthy operations platform",
-  colors: {
-    background: OPS.background,
-    foreground: OPS.text,
-    card: OPS.card,
-    cardForeground: OPS.text,
-    muted: mix(OPS.background, OPS.card, 0.38),
-    mutedForeground: mix(OPS.text, OPS.background, 0.54),
-    popover: "#1C2128",
-    popoverForeground: OPS.text,
-    primary: OPS.primary,
-    primaryForeground: OPS.background,
-    secondary: opsSurface(18),
-    secondaryForeground: OPS.accent,
-    accent: opsSurface(30),
-    accentForeground: OPS.accent,
-    border: opsLine(14),
-    input: opsLine(20),
-    ring: OPS.primary,
-    midground: OPS.accent,
-    composerRing: OPS.primary,
-    destructive: "#F85149",
-    destructiveForeground: OPS.text,
-    sidebarBackground: "#090D13",
-    sidebarBorder: opsLine(9),
-    userBubble: OPS.card,
-    userBubbleBorder: opsLine(26),
-    success: OPS.primary,
-    info: "#58A6FF",
   },
 };
 
@@ -486,36 +381,6 @@ export const ironEmberSkin: ForgeSkin = {
   },
 };
 
-export const slateSkin: ForgeSkin = {
-  name: "slate",
-  label: "Slate",
-  description: "Cool slate blue — focused developer theme",
-  colors: {
-    background: "#0d1117",
-    foreground: "#c9d1d9",
-    card: "#161b22",
-    cardForeground: "#c9d1d9",
-    muted: "#21262d",
-    mutedForeground: "#8b949e",
-    popover: "#1c2128",
-    popoverForeground: "#c9d1d9",
-    primary: "#c9d1d9",
-    primaryForeground: "#0d1117",
-    secondary: "#2a3038",
-    secondaryForeground: "#adb5bf",
-    accent: "#1e2530",
-    accentForeground: "#c0c8d0",
-    border: "#30363d",
-    input: "#30363d",
-    ring: "#58a6ff",
-    midground: "#58a6ff",
-    destructive: "#cf4848",
-    destructiveForeground: "#fef2f2",
-    sidebarBackground: "#090d13",
-    sidebarBorder: "#1c2228",
-  },
-};
-
 export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
   "iron-ember": ironEmberSkin,
   nous: nousSkin,
@@ -524,9 +389,6 @@ export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
   mono: monoSkin,
   cyberpunk: cyberpunkSkin,
   "cyber-forge": cyberForgeSkin,
-  "slate-emerald": slateEmeraldSkin,
-  slate: slateSkin,
-  "black-brass": blackBrassSkin,
 };
 
 export const BUILTIN_SKIN_LIST = Object.values(BUILTIN_SKINS);

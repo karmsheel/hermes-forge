@@ -8,9 +8,13 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import { Copy, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { Copy, PanelLeftClose, Plus, Trash2, User, X } from "lucide-react";
+import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
+import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useForgeTabs } from "./ForgeTabProvider";
+import { useShell } from "./ShellContext";
 
 function businessInitial(name: string): string {
   const trimmed = name.trim();
@@ -38,6 +42,7 @@ export function ForgeTabBar() {
     unloadSession,
     isSessionUnloaded,
   } = useForgeTabs();
+  const { user, userLoading } = useShell();
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -65,14 +70,16 @@ export function ForgeTabBar() {
     };
   }, [menu]);
 
-  if (!enabled || tabs.length === 0) return null;
+  // Single-tab mode: hide strip; "+" lives next to the business picker on AppTopBar
+  if (!enabled || tabs.length <= 1) return null;
 
   const atMax = tabs.length >= FORGE_TABS_MAX;
   const menuTab = menu ? tabs.find((t) => t.id === menu.tabId) : null;
 
   return (
     <div className="forge-tab-bar" role="tablist" aria-label="Open sessions">
-      <div className="forge-tab-bar__scroll">
+      {/* Single-line strip: tabs then + immediately after last tab */}
+      <div className="forge-tab-bar__tabs-row">
         {tabs.map((tab, index) => {
           const active = tab.id === activeTabId;
           const unloaded = isSessionUnloaded(tab.id);
@@ -159,17 +166,34 @@ export function ForgeTabBar() {
             </div>
           );
         })}
+        <button
+          type="button"
+          className="forge-tab-bar__new"
+          onClick={onNew}
+          disabled={atMax}
+          title={atMax ? `Maximum ${FORGE_TABS_MAX} tabs` : "New tab (Ctrl+T)"}
+          aria-label="New tab"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
       </div>
-      <button
-        type="button"
-        className="forge-tab-bar__new"
-        onClick={onNew}
-        disabled={atMax}
-        title={atMax ? `Maximum ${FORGE_TABS_MAX} tabs` : "New tab (Ctrl+T)"}
-        aria-label="New tab"
-      >
-        <Plus className="w-3.5 h-3.5" />
-      </button>
+
+      <div className="forge-tab-bar__actions">
+        <NavThemeModeToggle className="forge-tab-bar__theme-toggle" />
+        {!userLoading && user ? (
+          <Link
+            href="/profile"
+            className="forge-tab-bar__profile"
+            title={user.name || "Profile"}
+          >
+            <User className="w-3.5 h-3.5 shrink-0" />
+            <span className="forge-tab-bar__profile-name">{user.name || "Local"}</span>
+          </Link>
+        ) : null}
+        <div className="forge-tab-bar__settings-wrap">
+          <SettingsMenu className="forge-tab-bar__settings" />
+        </div>
+      </div>
 
       {menu && menuTab ? (
         <div

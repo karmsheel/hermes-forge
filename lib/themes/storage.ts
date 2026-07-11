@@ -12,11 +12,11 @@ const LEGACY_ACCENT_TO_SKIN: Record<string, string> = {
   terracotta: "iron-ember",
   coral: "ember",
   amber: "ember",
-  sage: "slate",
+  sage: "mono",
   ocean: "nous",
   plum: "midnight",
   rose: "midnight",
-  slate: "slate",
+  slate: "mono",
 };
 
 export function getStoredSkinName(): string {

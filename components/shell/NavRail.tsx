@@ -23,7 +23,6 @@ import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndica
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
-import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 
 type NavItem = {
@@ -203,7 +202,6 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--footer">
-        <NavThemeModeToggle />
         <button
           type="button"
           className="nav-rail__item"

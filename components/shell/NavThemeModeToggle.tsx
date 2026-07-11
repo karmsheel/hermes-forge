@@ -4,7 +4,23 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { skinSupportsBothModes } from "@/lib/themes/presets";
 
-export function NavThemeModeToggle() {
+interface NavThemeModeToggleProps {
+  className?: string;
+}
+
+/** Match settings gear / profile chrome weight (settings uses 17px). */
+const ICON_PROPS = {
+  className: "theme-mode-toggle__icon",
+  size: 17,
+  strokeWidth: 1.75,
+  absoluteStrokeWidth: false as const,
+};
+
+/**
+ * Day/night mode toggle for dual-palette skins.
+ * Renders in the top chrome (tab bar / top bar), left of profile.
+ */
+export function NavThemeModeToggle({ className }: NavThemeModeToggleProps) {
   const { skin, resolved, setPreference } = useTheme();
 
   if (!skinSupportsBothModes(skin)) {
@@ -21,12 +37,12 @@ export function NavThemeModeToggle() {
   return (
     <button
       type="button"
-      className="nav-rail__item"
+      className={["theme-mode-toggle", className].filter(Boolean).join(" ")}
       onClick={handleToggle}
       title={label}
       aria-label={label}
     >
-      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+      {isDark ? <Sun {...ICON_PROPS} /> : <Moon {...ICON_PROPS} />}
     </button>
   );
 }
