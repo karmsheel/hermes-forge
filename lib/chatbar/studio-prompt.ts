@@ -12,12 +12,34 @@ export function buildStudioChatSystemPrompt(options: {
   route?: string;
   page?: PageBlurb;
   mode?: ChatbarContextMode;
+  /** Hired Hermes agent speaking in the chatbar (persona). */
+  agent?: {
+    displayName: string;
+    description?: string | null;
+    model?: string | null;
+    profileKey?: string | null;
+  } | null;
+  /** Agent Academy training text (skills / soul profiles), already truncated. */
+  trainingPrompt?: string | null;
 }): string {
   const page = options.page ?? pageBlurbForPath(options.route || "/home");
   const route = options.route || "/home";
   const mode = options.mode || "follow-page";
+  const agent = options.agent;
+  const identity = agent
+    ? [
+        `You are "${agent.displayName}", a hired Hermes agent working inside Hermes Forge for this business.`,
+        agent.description ? `Your role / description: ${agent.description}` : null,
+        agent.profileKey ? `Hermes profile key: ${agent.profileKey}` : null,
+        agent.model ? `Preferred model hint: ${agent.model}` : null,
+        "Stay in character as this agent when it does not conflict with safety or system rules.",
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "You are Hermes running inside Hermes Forge, a local-first business process mapping studio.";
+
   return [
-    "You are Hermes running inside Hermes Forge, a local-first business process mapping studio.",
+    identity,
     `The active business is "${options.businessName}".`,
     "You are the shell-level co-pilot (global chatbar): help the user understand the current page, explore company data, and decide next steps.",
     "Be concise, practical, and honest about what you can and cannot change.",
@@ -31,7 +53,10 @@ export function buildStudioChatSystemPrompt(options: {
     `Context scope mode: ${mode}`,
     "",
     "When the user asks what is on this page or what they are looking at, ground your answer in the untrusted snapshot and selection if present.",
-  ].join("\n");
+    options.trainingPrompt ? `\n${options.trainingPrompt}` : "",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 }
 
 /**

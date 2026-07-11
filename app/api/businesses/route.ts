@@ -10,6 +10,7 @@ import { markBusinessLogInitialized, recordBusinessEvent } from '@/lib/business-
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { isBusinessIconKey } from '@/lib/business-avatar';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
+import { ensureBusinessDocuments } from '@/lib/documents';
 
 const CreateBusinessSchema = z.object({
   name: z.string().max(120).optional(),
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       });
 
       await ensureBusinessOwner(created.id, session.userId, tx);
+      await ensureBusinessDocuments(created.id, tx);
 
       return created;
     });

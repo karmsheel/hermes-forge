@@ -110,6 +110,8 @@ export function BusinessSwitcher() {
         updateActiveTab({
           businessId: id,
           businessName: name,
+          avatarEmoji: picked?.avatarEmoji ?? null,
+          avatarIcon: picked?.avatarIcon ?? null,
           title: formatTabTitle(name, activeTab?.route ?? "/home"),
         });
       }

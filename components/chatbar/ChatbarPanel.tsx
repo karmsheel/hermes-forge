@@ -30,6 +30,10 @@ import { ConversationsMenu } from "@/components/workshop/ConversationsMenu";
 import { MessageQueue } from "@/components/workshop/MessageQueue";
 import { ProcessChat } from "@/components/workshop/ProcessChat";
 import {
+  loadActiveChatbarAgentId,
+  saveActiveChatbarAgentId,
+} from "@/lib/chatbar/active-agent";
+import {
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
@@ -66,7 +70,7 @@ import {
   waitUntilAgentsIdle,
   type QueuedMessage,
 } from "@/lib/message-queue";
-import type { ChatMessage, Conversation } from "@/lib/types";
+import type { ChatbarAgentOption, ChatMessage, Conversation } from "@/lib/types";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
 import { ContextReceipt } from "./ContextReceipt";
@@ -121,6 +125,8 @@ export function ChatbarPanel() {
 
   const [conversations, setConversations] = useState<StudioListItem[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [hiredAgents, setHiredAgents] = useState<ChatbarAgentOption[]>([]);
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loadingList, setLoadingList] = useState(false);
@@ -160,6 +166,8 @@ export function ChatbarPanel() {
 
   const businessId = currentBusiness?.id ?? null;
   const businessName = currentBusiness?.name ?? "this business";
+  const activeAgent =
+    hiredAgents.find((a) => a.id === activeAgentId) || hiredAgents[0] || null;
 
   const activeTitle =
     conversations.find((c) => c.id === activeConversationId)?.title || "Studio chat";
@@ -374,46 +382,96 @@ export function ChatbarPanel() {
     }
   }, []);
 
-  const loadConversations = useCallback(async () => {
-    if (!businessId) {
-      setConversations([]);
-      setActiveConversationId(null);
-      setMessages([]);
-      return;
-    }
-
-    setLoadingList(true);
-    try {
-      const res = await fetch("/api/studio/conversations");
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to load conversations");
-      }
-      const data = await res.json();
-      const list: StudioListItem[] = data.conversations || [];
-      setConversations(list);
-
-      const saved = loadActiveStudioConversationId(businessId);
-      const pick =
-        (saved && list.find((c) => c.id === saved)?.id) || list[0]?.id || null;
-
-      setActiveConversationId(pick);
-      if (pick) {
-        saveActiveStudioConversationId(businessId, pick);
-        await loadConversationMessages(pick);
-      } else {
+  const loadConversations = useCallback(
+    async (agentIdOverride?: string | null) => {
+      if (!businessId) {
+        setConversations([]);
+        setActiveConversationId(null);
+        setHiredAgents([]);
+        setActiveAgentId(null);
         setMessages([]);
+        return;
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load studio chat");
-    } finally {
-      setLoadingList(false);
-    }
-  }, [businessId, loadConversationMessages]);
+
+      setLoadingList(true);
+      try {
+        // Resolve agent first (saved → first hired)
+        const agentsRes = await fetch("/api/personnel/agents");
+        const agentsData = agentsRes.ok ? await agentsRes.json() : {};
+        const hired: ChatbarAgentOption[] = (agentsData.hired || []).map(
+          (a: ChatbarAgentOption) => ({
+            id: a.id,
+            displayName: a.displayName,
+            description: a.description,
+            model: a.model,
+            profileKey: a.profileKey,
+            iconKey: a.iconKey,
+            isDefault: a.isDefault,
+            hiredAt: a.hiredAt,
+          }),
+        );
+        setHiredAgents(hired);
+
+        const savedAgent = loadActiveChatbarAgentId(businessId);
+        const preferred =
+          agentIdOverride ||
+          (savedAgent && hired.some((a) => a.id === savedAgent) ? savedAgent : null) ||
+          hired[0]?.id ||
+          null;
+        setActiveAgentId(preferred);
+        if (preferred) saveActiveChatbarAgentId(businessId, preferred);
+
+        const q = preferred
+          ? `?hermesAgentProfileId=${encodeURIComponent(preferred)}`
+          : "";
+        const res = await fetch(`/api/studio/conversations${q}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to load conversations");
+        }
+        const data = await res.json();
+        if (Array.isArray(data.hiredAgents) && data.hiredAgents.length) {
+          setHiredAgents(data.hiredAgents);
+        }
+        const list: StudioListItem[] = data.conversations || [];
+        setConversations(list);
+
+        const saved = loadActiveStudioConversationId(businessId);
+        const pick =
+          (saved && list.find((c) => c.id === saved)?.id) || list[0]?.id || null;
+
+        setActiveConversationId(pick);
+        if (pick) {
+          saveActiveStudioConversationId(businessId, pick);
+          await loadConversationMessages(pick);
+        } else {
+          setMessages([]);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not load studio chat");
+      } finally {
+        setLoadingList(false);
+      }
+    },
+    [businessId, loadConversationMessages],
+  );
 
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  const selectAgent = useCallback(
+    async (agentId: string) => {
+      if (!businessId || !agentId || agentId === activeAgentId) return;
+      // Abort in-flight turn when switching persona
+      abortRef.current?.abort();
+      clearMessageQueue();
+      setActiveAgentId(agentId);
+      saveActiveChatbarAgentId(businessId, agentId);
+      await loadConversations(agentId);
+    },
+    [businessId, activeAgentId, loadConversations, clearMessageQueue],
+  );
 
   const selectConversation = useCallback(
     async (id: string) => {
@@ -430,7 +488,10 @@ export function ChatbarPanel() {
       const res = await fetch("/api/studio/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "New chat" }),
+        body: JSON.stringify({
+          title: "New chat",
+          hermesAgentProfileId: activeAgentId,
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -443,7 +504,7 @@ export function ChatbarPanel() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create chat");
     }
-  }, [selectConversation]);
+  }, [selectConversation, activeAgentId]);
 
   const sendMessageNow = useCallback(
     async (text: string) => {
@@ -657,7 +718,10 @@ export function ChatbarPanel() {
           toast.message("Stopped", { description: "Hermes reply was interrupted." });
         }
 
-        void fetch("/api/studio/conversations")
+        const refreshQ = activeAgentId
+          ? `?hermesAgentProfileId=${encodeURIComponent(activeAgentId)}`
+          : "";
+        void fetch(`/api/studio/conversations${refreshQ}`)
           .then((r) => r.json())
           .then((data) => {
             if (Array.isArray(data.conversations)) setConversations(data.conversations);
@@ -707,6 +771,7 @@ export function ChatbarPanel() {
       isConnected,
       config,
       activeConversationId,
+      activeAgentId,
       pathname,
       openHermesConnection,
       loadConversationMessages,
@@ -944,69 +1009,101 @@ export function ChatbarPanel() {
       aria-hidden={!isOpen}
       inert={!isOpen ? true : undefined}
     >
-      <header className="chatbar-panel__header">
-        <div className="chatbar-panel__brand chatbar-panel__brand--session">
-          <button
-            type="button"
-            className="chatbar-panel__session-btn"
-            onClick={() => setSessionMenuOpen((v) => !v)}
-            aria-haspopup="dialog"
-            aria-expanded={sessionMenuOpen}
-            title="Switch studio conversation"
-          >
-            <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
-            <span className="chatbar-panel__session-title">{activeTitle}</span>
-            <span className="chatbar-panel__session-caret" aria-hidden>
-              ⌄
+      <header className="chatbar-panel__header chatbar-panel__header--stack">
+        <div className="chatbar-panel__header-row">
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+            <button
+              type="button"
+              className="chatbar-panel__session-btn"
+              onClick={() => setSessionMenuOpen((v) => !v)}
+              aria-haspopup="dialog"
+              aria-expanded={sessionMenuOpen}
+              title="Switch studio conversation"
+            >
+              <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
+              <span className="chatbar-panel__session-title">{activeTitle}</span>
+              <span className="chatbar-panel__session-caret" aria-hidden>
+                ⌄
+              </span>
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={() => void createConversation()}
+              title="New studio chat"
+              aria-label="New studio chat"
+              disabled={!businessId || !activeAgentId}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="chatbar-panel__header-actions">
+            <span
+              className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
+              title={status.error || conn.text}
+              role="status"
+            >
+              {conn.text}
             </span>
-          </button>
-          <button
-            type="button"
-            className="chatbar-panel__icon-btn"
-            onClick={() => void createConversation()}
-            title="New studio chat"
-            aria-label="New studio chat"
-            disabled={!businessId}
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={openHermesConnection}
+              title="Hermes connection"
+              aria-label="Hermes connection"
+            >
+              <PlugZap className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="chatbar-panel__header-actions">
-          <span
-            className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
-            title={status.error || conn.text}
-            role="status"
-          >
-            {conn.text}
-          </span>
-          <button
-            type="button"
-            className="chatbar-panel__icon-btn"
-            onClick={openHermesConnection}
-            title="Hermes connection"
-            aria-label="Hermes connection"
-          >
-            <PlugZap className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            className="chatbar-panel__icon-btn"
-            onClick={swapSide}
-            title={swapLabel}
-            aria-label={swapLabel}
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            className="chatbar-panel__icon-btn"
-            onClick={collapse}
-            title="Hide chat (Alt+H)"
-            aria-label="Hide chat"
-          >
-            <CollapseIcon className="w-4 h-4" />
-          </button>
-        </div>
+        {businessId ? (
+          <div className="chatbar-panel__agent-row">
+            <label className="chatbar-panel__agent-label" htmlFor="chatbar-agent">
+              Agent
+            </label>
+            {hiredAgents.length === 0 ? (
+              <a
+                href="/personnel/hire?required=1"
+                className="chatbar-panel__agent-empty"
+              >
+                Hire an agent to chat
+              </a>
+            ) : (
+              <select
+                id="chatbar-agent"
+                className="chatbar-panel__agent-select"
+                value={activeAgentId || hiredAgents[0]?.id || ""}
+                onChange={(e) => void selectAgent(e.target.value)}
+                disabled={sending || loadingList}
+                title="Talk to a hired Hermes agent — each agent has its own conversation threads"
+              >
+                {hiredAgents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.displayName}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        ) : null}
       </header>
 
       {sessionMenuOpen ? (
@@ -1107,7 +1204,14 @@ export function ChatbarPanel() {
               <div className="chatbar-panel__empty-orb" aria-hidden />
               <h3 className="chatbar-panel__empty-title">Ask Hermes about this page</h3>
               <p className="chatbar-panel__empty-copy">
-                Studio chat is saved per business. With{" "}
+                Studio chat is saved per hired agent
+                {activeAgent ? (
+                  <>
+                    {" "}
+                    · talking to <strong>{activeAgent.displayName}</strong>
+                  </>
+                ) : null}
+                . With{" "}
                 <strong>Follow page</strong>, Hermes receives a live snapshot of what is on
                 screen (redacted, no secrets).
               </p>
@@ -1173,7 +1277,7 @@ export function ChatbarPanel() {
           />
           <div className="chatbar-panel__composer-meta">
             <label className="chatbar-panel__composer-label" htmlFor="chatbar-input">
-              Ask Hermes
+              {activeAgent ? `Ask ${activeAgent.displayName}` : "Ask Hermes"}
             </label>
             <ChatbarContextChip
               mode={contextMode}

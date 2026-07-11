@@ -30,6 +30,8 @@ export type OpenInNewTabSnapshot = Partial<
     ForgeTab,
     | "businessId"
     | "businessName"
+    | "avatarEmoji"
+    | "avatarIcon"
     | "processId"
     | "workspaceTab"
     | "automationProcessId"
@@ -174,10 +176,22 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
     const stored = loadForgeTabsState();
 
     if (stored && stored.tabs.length > 0) {
-      setTabs(stored.tabs);
+      // Enrich tabs for the current business with latest avatar (older storage had no avatar fields)
+      const restored = stored.tabs.map((t) =>
+        t.businessId === currentBusiness.id
+          ? {
+              ...t,
+              businessName: currentBusiness.name,
+              avatarEmoji: currentBusiness.avatarEmoji ?? t.avatarEmoji ?? null,
+              avatarIcon: currentBusiness.avatarIcon ?? t.avatarIcon ?? null,
+            }
+          : t,
+      );
+      setTabs(restored);
       setActiveTabId(stored.activeTabId);
-      const active = stored.tabs.find((t) => t.id === stored.activeTabId) ?? stored.tabs[0]!;
+      const active = restored.find((t) => t.id === stored.activeTabId) ?? restored[0]!;
       touchActivation(active.id);
+      persist(restored, active.id);
       // Align visible route with active tab if needed
       if (normalizeShellRoute(pathname || "/home") !== normalizeShellRoute(active.route)) {
         switchingRef.current = true;
@@ -194,6 +208,8 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
         route,
         businessId: currentBusiness.id,
         businessName: currentBusiness.name,
+        avatarEmoji: currentBusiness.avatarEmoji,
+        avatarIcon: currentBusiness.avatarIcon,
       });
       setTabs([seed]);
       setActiveTabId(seed.id);
@@ -204,45 +220,86 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, [desktop, userLoading, currentBusiness, pathname, router, switchBusiness, persist, touchActivation]);
 
-  // Keep active tab route in sync with Next navigation (in-page links, etc.)
+  // Keep active tab route in sync with Next navigation (in-page links, HireRequiredGate, etc.)
+  // switchingRef skips the *immediate* sync during intentional tab navigation so intermediate
+  // pathnames do not clobber the target, then we re-sync after the switch settles.
   useEffect(() => {
-    if (!enabled || !activeTabId || switchingRef.current) return;
-    const route = normalizeShellRoute(pathname || "/home");
-    setTabs((prev) => {
-      const idx = prev.findIndex((t) => t.id === activeTabId);
-      if (idx < 0) return prev;
-      const current = prev[idx]!;
-      if (normalizeShellRoute(current.route) === route) return prev;
-      const next = [...prev];
-      next[idx] = applyTabPatch(current, {
-        route,
-        businessName: currentBusiness?.name ?? current.businessName,
-        businessId: currentBusiness?.id ?? current.businessId,
+    if (!enabled || !activeTabId) return;
+
+    const syncFromPathname = () => {
+      if (switchingRef.current) return;
+      const route = normalizeShellRoute(pathname || "/home");
+      setTabs((prev) => {
+        const idx = prev.findIndex((t) => t.id === activeTabId);
+        if (idx < 0) return prev;
+        const current = prev[idx]!;
+        if (normalizeShellRoute(current.route) === route) return prev;
+        const next = [...prev];
+        next[idx] = applyTabPatch(current, {
+          route,
+          businessName: currentBusiness?.name ?? current.businessName,
+          businessId: currentBusiness?.id ?? current.businessId,
+          ...(currentBusiness
+            ? {
+                avatarEmoji: currentBusiness.avatarEmoji,
+                avatarIcon: currentBusiness.avatarIcon,
+              }
+            : {}),
+        });
+        persist(next, activeTabId);
+        return next;
       });
-      persist(next, activeTabId);
-      return next;
-    });
+    };
+
+    syncFromPathname();
+    // Catch navigations that landed while switchingRef was true (e.g. hire gate)
+    const t = window.setTimeout(syncFromPathname, 100);
+    return () => window.clearTimeout(t);
   }, [pathname, enabled, activeTabId, currentBusiness, persist]);
 
-  // When shell business changes (switcher), patch active tab
+  // When shell business changes (switcher / avatar refresh / tab activate), keep
+  // name + avatar in sync on every tab already scoped to that business.
+  // During intentional tab switches (switchingRef), do not reassign the active
+  // tab's businessId — only enrich tabs that already match currentBusiness.id.
   useEffect(() => {
-    if (!enabled || !activeTabId || !currentBusiness || switchingRef.current) return;
+    if (!enabled || !currentBusiness) return;
     setTabs((prev) => {
-      const idx = prev.findIndex((t) => t.id === activeTabId);
-      if (idx < 0) return prev;
-      const current = prev[idx]!;
-      if (
-        current.businessId === currentBusiness.id &&
-        current.businessName === currentBusiness.name
-      ) {
-        return prev;
-      }
-      const next = [...prev];
-      next[idx] = applyTabPatch(current, {
-        businessId: currentBusiness.id,
-        businessName: currentBusiness.name,
+      let changed = false;
+      const next = prev.map((tab) => {
+        if (tab.businessId === currentBusiness.id) {
+          if (
+            tab.businessName === currentBusiness.name &&
+            (tab.avatarEmoji ?? null) === (currentBusiness.avatarEmoji ?? null) &&
+            (tab.avatarIcon ?? null) === (currentBusiness.avatarIcon ?? null)
+          ) {
+            return tab;
+          }
+          changed = true;
+          return applyTabPatch(tab, {
+            businessName: currentBusiness.name,
+            avatarEmoji: currentBusiness.avatarEmoji,
+            avatarIcon: currentBusiness.avatarIcon,
+          });
+        }
+        // Business switcher on the active tab: adopt the new business identity
+        if (
+          !switchingRef.current &&
+          activeTabId &&
+          tab.id === activeTabId
+        ) {
+          changed = true;
+          return applyTabPatch(tab, {
+            businessId: currentBusiness.id,
+            businessName: currentBusiness.name,
+            avatarEmoji: currentBusiness.avatarEmoji,
+            avatarIcon: currentBusiness.avatarIcon,
+          });
+        }
+        return tab;
       });
-      persist(next, activeTabId);
+      if (!changed) return prev;
+      const active = activeTabId ?? next[0]?.id;
+      if (active) persist(next, active);
       return next;
     });
   }, [currentBusiness, enabled, activeTabId, persist]);
@@ -310,6 +367,12 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
           route: normalized,
           businessId: currentBusiness?.id ?? prev[idx]!.businessId,
           businessName: currentBusiness?.name ?? prev[idx]!.businessName,
+          ...(currentBusiness
+            ? {
+                avatarEmoji: currentBusiness.avatarEmoji,
+                avatarIcon: currentBusiness.avatarIcon,
+              }
+            : {}),
         });
         persist(next, id);
         return next;
@@ -320,7 +383,7 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
         switchingRef.current = false;
       }, 50);
     },
-    [currentBusiness?.id, currentBusiness?.name, persist, router],
+    [currentBusiness, persist, router],
   );
 
   const createTab = useCallback(
@@ -338,12 +401,26 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
       const businessId = partial?.businessId ?? currentBusiness?.id ?? active?.businessId;
       const businessName =
         partial?.businessName ?? currentBusiness?.name ?? active?.businessName ?? "Business";
+      const avatarEmoji =
+        partial?.avatarEmoji !== undefined
+          ? partial.avatarEmoji
+          : partial?.businessId && partial.businessId !== currentBusiness?.id
+            ? (active?.businessId === partial.businessId ? active.avatarEmoji : null)
+            : (currentBusiness?.avatarEmoji ?? active?.avatarEmoji ?? null);
+      const avatarIcon =
+        partial?.avatarIcon !== undefined
+          ? partial.avatarIcon
+          : partial?.businessId && partial.businessId !== currentBusiness?.id
+            ? (active?.businessId === partial.businessId ? active.avatarIcon : null)
+            : (currentBusiness?.avatarIcon ?? active?.avatarIcon ?? null);
       if (!businessId) return null;
 
       const tab = buildTab({
         route,
         businessId,
         businessName,
+        avatarEmoji,
+        avatarIcon,
         processId: partial?.processId ?? active?.processId,
         processName: partial?.processName,
         workspaceTab: partial?.workspaceTab ?? active?.workspaceTab,
@@ -393,6 +470,8 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
         route: source.route,
         businessId: source.businessId,
         businessName: source.businessName,
+        avatarEmoji: source.avatarEmoji,
+        avatarIcon: source.avatarIcon,
         processId: source.processId,
         workspaceTab: source.workspaceTab,
         automationProcessId: source.automationProcessId,

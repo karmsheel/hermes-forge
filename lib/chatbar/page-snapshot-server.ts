@@ -133,6 +133,47 @@ export async function buildServerPageSnapshot(options: {
       }
       break;
     }
+    case "documents": {
+      const docs = await prisma.businessDocument.findMany({
+        where: { businessId: options.businessId },
+        select: {
+          title: true,
+          kind: true,
+          slug: true,
+          pinnedForContext: true,
+          bodyMarkdown: true,
+          updatedAt: true,
+        },
+        orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+        take: 24,
+      });
+      lines.push(`Knowledge documents: ${docs.length}`);
+      if (docs.length === 0) {
+        lines.push("No documents yet — seeds appear when the Documents page is opened.");
+      } else {
+        lines.push("Document index:");
+        for (const d of docs) {
+          const pin = d.pinnedForContext ? " [pinned]" : "";
+          lines.push(`- ${d.title} (${d.kind}/${d.slug})${pin}`);
+        }
+        const pinned = docs.filter((d) => d.pinnedForContext || d.slug === "basics");
+        if (pinned.length) {
+          lines.push("Pinned / basics previews (truncated):");
+          for (const d of pinned.slice(0, 4)) {
+            const preview = d.bodyMarkdown
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 280);
+            lines.push(`--- ${d.title} ---`);
+            lines.push(preview || "(empty)");
+          }
+        }
+      }
+      lines.push(
+        "Hint: User can edit markdown in Documents; ask to draft sections they can paste or save.",
+      );
+      break;
+    }
     case "workshop": {
       lines.push(
         "Workshop: process mapping surface. Studio chat is co-pilot; process chat column still maps diagrams.",

@@ -18,9 +18,14 @@ import {
   autoStudioTitleFromText,
 } from "@/lib/chatbar/studio-prompt";
 import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
+import { formatTrainingForPrompt } from "@/lib/personnel/agent-training";
 import { streamHermesEvents } from "@/lib/hermes-stream";
 import { normalizeRuntimeEvent } from "@/lib/chatbar/runtime-events";
 import { prisma } from "@/lib/prisma";
+import {
+  documentsPromptAddon,
+  loadDocumentsForPrompt,
+} from "@/lib/documents";
 
 const PinnedSchema = z
   .object({
@@ -86,6 +91,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       include: {
         business: { select: { id: true, name: true } },
         messages: { orderBy: { createdAt: "asc" }, take: 80 },
+        hermesAgentProfile: {
+          select: {
+            id: true,
+            displayName: true,
+            description: true,
+            model: true,
+            profileKey: true,
+            isHired: true,
+          },
+        },
       },
     });
 
@@ -97,6 +112,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const page = pageBlurbForPath(route);
     const content = body.content.trim();
     const mode = normalizeChatbarContextMode(body.contextMode);
+
+    const agent = conversation.hermesAgentProfile?.isHired
+      ? conversation.hermesAgentProfile
+      : null;
+
+    let trainingPrompt: string | null = null;
+    if (agent) {
+      const training = await prisma.agentTrainingItem.findMany({
+        where: {
+          businessId: conversation.business.id,
+          OR: [
+            { hermesAgentProfileId: agent.id },
+            { hermesAgentProfileId: null },
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: { kind: true, name: true, content: true },
+      });
+      // Prefer items assigned to this agent; still include a few unassigned library items
+      const assigned = training.filter(() => true);
+      trainingPrompt = formatTrainingForPrompt(assigned) || null;
+    }
 
     let shellSnapshotText = "";
     if (mode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY) {
@@ -147,6 +185,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       role: m.role,
       content: m.content,
     }));
+
+    // 4.18 — durable knowledge docs (basics + pinned) for studio co-pilot
+    let knowledgeNote = "";
+    if (mode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY) {
+      try {
+        const docs = await loadDocumentsForPrompt(conversation.business.id, prisma);
+        knowledgeNote = documentsPromptAddon(docs, 2000);
+      } catch (err) {
+        console.warn("Studio chat knowledge docs failed", err);
+      }
+    }
+
     const hermesMessages: { role: string; content: string }[] = [
       {
         role: "system",
@@ -155,12 +205,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
           route,
           page,
           mode,
+          agent: agent
+            ? {
+                displayName: agent.displayName,
+                description: agent.description,
+                model: agent.model,
+                profileKey: agent.profileKey,
+              }
+            : null,
+          trainingPrompt,
         }),
       },
       {
         role: "system",
         content: buildStudioPageContextMessage({ payload: safePayload }),
       },
+      ...(knowledgeNote
+        ? [{ role: "system" as const, content: knowledgeNote }]
+        : []),
       ...prior,
       {
         role: "user",

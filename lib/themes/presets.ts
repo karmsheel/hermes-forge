@@ -58,7 +58,8 @@ export const nousSkin: ForgeSkin = {
     sidebarBorder: nousNeutralLine(12),
     userBubble: NOUS.blue,
     userBubbleBorder: nousLine(32),
-    composerPlaceholder: "#00cedd",
+    // Match home-composer hint grey (composer-fg-soft) — not cyan on brand blue.
+    composerPlaceholder: mix(NOUS.white, NOUS.blue, 0.48),
     info: NOUS.blue,
     success: "#1A7A42",
   },

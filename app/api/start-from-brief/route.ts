@@ -14,6 +14,7 @@ import {
 } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
+import { ensureBusinessDocuments } from '@/lib/documents';
 
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
         });
 
         await ensureBusinessOwner(business.id, session.userId, tx);
+        await ensureBusinessDocuments(business.id, tx);
       }
 
       const processTextForCat = `${body.processName || ''} ${trimmed}`;

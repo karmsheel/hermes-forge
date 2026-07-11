@@ -940,8 +940,12 @@ export function WorkshopSession({
 
   // PR-5: bind process chat into the global chatbar (one surface; no dual column).
   // Only the active multi-tab session owns the dock binding.
+  // Always clear when inactive so home / other routes never keep process-chat chrome.
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive) {
+      registerProcessSession(null);
+      return;
+    }
 
     if (!activeProcess) {
       registerProcessSession(null);

@@ -65,11 +65,13 @@ export default function BusinessManagerPage() {
   async function enterBusiness(id: string, name?: string) {
     setSwitchingId(id);
     try {
-      const bizName =
-        name ?? businesses.find((b) => b.id === id)?.name ?? "Business";
+      const picked = businesses.find((b) => b.id === id);
+      const bizName = name ?? picked?.name ?? "Business";
       await openBusinessHome({
         businessId: id,
         businessName: bizName,
+        avatarEmoji: picked?.avatarEmoji ?? null,
+        avatarIcon: picked?.avatarIcon ?? null,
         switchAndEnter: switchBusiness,
       });
     } finally {
@@ -78,9 +80,12 @@ export default function BusinessManagerPage() {
   }
 
   async function openBusinessInNewTab(id: string, name: string) {
+    const picked = businesses.find((b) => b.id === id);
     await openBusinessHome({
       businessId: id,
       businessName: name,
+      avatarEmoji: picked?.avatarEmoji ?? null,
+      avatarIcon: picked?.avatarIcon ?? null,
       newTab: true,
       switchAndEnter: switchBusiness,
     });

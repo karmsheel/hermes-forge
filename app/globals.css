@@ -46,6 +46,84 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Business knowledge document viewer (4.18) */
+.doc-md {
+  max-width: 48rem;
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 0.9375rem;
+}
+.doc-md__h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  margin: 0 0 0.75rem;
+}
+.doc-md__h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 1.5rem 0 0.5rem;
+}
+.doc-md__h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 1.25rem 0 0.4rem;
+}
+.doc-md__h4,
+.doc-md__h5,
+.doc-md__h6 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 1rem 0 0.35rem;
+}
+.doc-md__p {
+  margin: 0 0 0.85rem;
+  color: var(--text);
+}
+.doc-md__ul,
+.doc-md__ol {
+  margin: 0 0 0.85rem;
+  padding-left: 1.35rem;
+}
+.doc-md__ul { list-style: disc; }
+.doc-md__ol { list-style: decimal; }
+.doc-md li { margin: 0.2rem 0; }
+.doc-md__code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.1em 0.35em;
+}
+.doc-md__pre {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.doc-md__pre code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  background: none;
+  border: none;
+  padding: 0;
+}
+.doc-md__hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
+.doc-md em { color: var(--text-muted); font-style: italic; }
+.doc-md strong { color: var(--text-strong); font-weight: 600; }
+
 /* App shell — use on page roots */
 .app-shell {
   min-height: 100vh;
@@ -1327,17 +1405,19 @@ body {
   display: block;
 }
 
-/* Desktop tabs: keep top bar sticky; offset only when the multi-tab strip is visible */
+/* Desktop tabs: top bar sits under the tab strip as a flex sibling (not sticky —
+ * content scrolls inside .app-shell-layout__content, so sticky offsets were wrong
+ * and could stack/overlap chrome when workshop keep-alives remounted). */
 .app-shell-layout--tabs .app-topbar {
-  position: sticky;
-  top: 0;
+  position: relative;
+  top: auto;
   z-index: 45;
   background: var(--bg);
+  flex-shrink: 0;
 }
 
 .app-shell-layout--tab-strip .app-topbar {
-  /* Approximate tab bar height so top bar sticks just under tabs if window scrolls */
-  top: 2.25rem;
+  top: auto;
 }
 
 @keyframes desktop-update-glow {
@@ -2143,11 +2223,11 @@ body {
   min-height: 2.35rem;
   max-height: 2.35rem;
   padding: 0 0.65rem 0 0.4rem;
-  background: var(--bg);
+  background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
   user-select: none;
-  position: sticky;
-  top: 0;
+  /* Not sticky: tab bar is a flex sibling of the scroll region, already fixed at top of main */
+  position: relative;
   z-index: 50;
   /* visible so SettingsMenu popover can extend below the strip (tabs-row handles its own scroll) */
   overflow: visible;
@@ -2280,35 +2360,66 @@ body {
   min-width: 5.5rem;
   height: 1.85rem;
   padding: 0 0.35rem 0 0.5rem;
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 0.4rem 0.4rem 0 0;
-  background: transparent;
+  /*
+   * Inactive: thatched / pixel hatch from theme alternate colors
+   * (accent-soft + muted + faint ink grid) — not a solid fill.
+   */
+  --forge-tab-hatch: color-mix(in srgb, var(--accent-soft) 58%, var(--text) 8%);
+  --forge-tab-hatch-grid: color-mix(in srgb, var(--text) 10%, transparent);
+  background-color: var(--bg-muted);
+  background-image:
+    /* diagonal thatch */
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 2px,
+      var(--forge-tab-hatch) 2px 3px
+    ),
+    /* pixel grid (horizontal + vertical) */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      var(--forge-tab-hatch-grid) 2px 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 2px,
+      var(--forge-tab-hatch-grid) 2px 3px
+    );
+  background-size: auto, 3px 3px, 3px 3px;
   color: var(--text-muted);
   font-size: 0.75rem;
   line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background var(--dur-quick, 120ms) var(--ease-out, ease),
+    background-color var(--dur-quick, 120ms) var(--ease-out, ease),
     color var(--dur-quick, 120ms) var(--ease-out, ease),
-    border-color var(--dur-quick, 120ms) var(--ease-out, ease);
+    border-color var(--dur-quick, 120ms) var(--ease-out, ease),
+    filter var(--dur-quick, 120ms) var(--ease-out, ease);
 }
 
-.forge-tab-bar__tab:hover {
-  background: var(--bg-subtle);
+.forge-tab-bar__tab:hover:not(.is-active) {
+  --forge-tab-hatch: color-mix(in srgb, var(--accent-soft) 72%, var(--text) 10%);
+  --forge-tab-hatch-grid: color-mix(in srgb, var(--text) 14%, transparent);
+  background-color: color-mix(in srgb, var(--bg-muted) 88%, var(--bg-elevated));
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
 .forge-tab-bar__tab.is-active {
-  /* Blend into the top bar strip below (AppTopBar uses --bg) */
-  background: var(--bg);
+  --forge-tab-hatch: transparent;
+  --forge-tab-hatch-grid: transparent;
+  background-color: var(--bg);
+  background-image: none;
   border-color: var(--border);
   color: var(--text);
   box-shadow: inset 0 -1px 0 var(--bg);
 }
 
-.forge-tab-bar__initial {
+.forge-tab-bar__avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2320,11 +2431,38 @@ body {
   font-size: 0.65rem;
   font-weight: 600;
   flex-shrink: 0;
+  line-height: 1;
+  border: none;
 }
 
-.forge-tab-bar__tab.is-active .forge-tab-bar__initial {
+.forge-tab-bar__avatar.business-avatar-mark--emoji {
+  font-size: 0.75rem;
+  font-weight: 400;
+  background: transparent;
+}
+
+.forge-tab-bar__avatar.business-avatar-mark--icon {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.forge-tab-bar__avatar.business-avatar-mark--icon svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.forge-tab-bar__tab.is-active .forge-tab-bar__avatar {
   background: var(--accent-tint, color-mix(in srgb, var(--accent) 18%, transparent));
   color: var(--accent);
+}
+
+.forge-tab-bar__tab.is-active .forge-tab-bar__avatar.business-avatar-mark--emoji {
+  background: transparent;
+}
+
+.forge-tab-bar__tab.is-active .forge-tab-bar__avatar.business-avatar-mark--icon {
+  color: var(--accent);
+  background: transparent;
 }
 
 .forge-tab-bar__title {
@@ -2467,6 +2605,8 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  isolation: isolate;
+  background: var(--bg);
 }
 
 .forge-tab-pane {
@@ -2476,14 +2616,29 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: var(--bg);
 }
 
-.forge-tab-pane.is-inactive {
-  display: none;
+.forge-tab-pane.is-active {
+  position: relative;
+  z-index: 1;
+}
+
+/* Inactive keep-alive workshops must not paint or capture layout on home/etc. */
+.forge-tab-pane.is-inactive,
+.forge-tab-pane[hidden] {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
 }
 
 .forge-tab-pane--route {
   min-height: 0;
+  width: 100%;
 }
 
 /* 4.17 Global chatbar — dock residency + side (PR-1) */
@@ -2535,6 +2690,74 @@ body {
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.chatbar-panel__header--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-height: 0;
+  padding-bottom: 0.55rem;
+}
+
+.chatbar-panel__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.chatbar-panel__agent-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.chatbar-panel__agent-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+
+.chatbar-panel__agent-select {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+}
+
+.chatbar-panel__agent-select:focus {
+  outline: none;
+  border-color: var(--selected);
+}
+
+.chatbar-panel__agent-select:disabled {
+  opacity: 0.55;
+}
+
+.chatbar-panel__agent-empty {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--accent);
+  text-decoration: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chatbar-panel__agent-empty:hover {
+  text-decoration: underline;
 }
 
 .chatbar-panel__brand {

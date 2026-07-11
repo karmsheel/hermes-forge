@@ -48,7 +48,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Area | Path | Notes |
 |------|------|-------|
 | App shell | `app/(shell)/layout.tsx`, `components/shell/AppShell.tsx` | Left nav rail + content area |
-| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Workshop, Automations, Business log (+ dev-gated God Mode, Decisions, Cronalytics) |
+| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Documents, Workshop, Automations, Business log (+ dev-gated God Mode, Decisions, Cronalytics) |
 | Business manager | `app/(shell)/business-manager/page.tsx` | Multi-business switcher; logo links here |
 | Settings | `app/(shell)/settings/page.tsx`, `components/settings/*` | Appearance, About, Developer panels |
 | Theme engine | `lib/themes/*`, `components/theme/ThemeProvider.tsx` | Built-in skins, JSON/VS Code install, boot script (4.6–4.8) |
@@ -170,6 +170,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - Home → `/home`
 - Functions → `/functions` (was `/projects`; redirect in place)
 - Personnel → `/personnel`
+- Documents → `/documents` (4.18 knowledge docs)
 - Workshop → `/workshop`
 - Automations → `/automations`
 - Business log → `/log`
@@ -710,6 +711,35 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+### 4.18 Business Documents / knowledge layer — **DONE** (foundation)
+
+**Goal:** Durable business knowledge as markdown documents (basics, customers, market, strategy, freeform). Users view/edit in a simple Documents studio; pinned docs inject into Hermes process chat and chatbar page context. Sibling to `PROCESS.md` — not a generic wiki.
+
+**Status:** Foundation shipped.
+
+**Reference:** [`docs/references/BUSINESS_DOCUMENTS.md`](BUSINESS_DOCUMENTS.md)
+
+**Depends on:** Business model, business log, process chat prompts (4.2), global chatbar (4.17) for page context
+
+**Shipped:**
+- [x] `BusinessDocument` Prisma model + migration
+- [x] Seeded kinds on new business (`ensureBusinessDocuments`) + lazy seed for existing
+- [x] `/documents` list + markdown viewer / editor + import `.md`
+- [x] CRUD + import APIs under `/api/documents`
+- [x] Business log events: `document.created` / `document.updated` / `document.deleted`
+- [x] Git materialize: `documents/{slug}.md` + `documents/index.json`
+- [x] Pinned docs (+ Basics) injected into process chat system prompt
+- [x] Chatbar page blurb + server snapshot for `/documents`
+
+**Remaining (optional):**
+- [ ] Hermes propose/apply document patches via tool/API from chatbar
+- [ ] Sync Basics headings → `Business.goals` / description fields
+- [ ] Extract short `Memory` facts from documents
+
+**Do not:** Build a full Notion/wiki (folders, collab, binary office formats) in this item.
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -748,6 +778,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.15 | Desktop multi-tab shell | 4 | **Done** (Phase 1–3) — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
 | 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **Done** (PR-1–6) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
+| 4.18 | Business Documents / knowledge layer | 4 | **Done** (foundation) — see [`BUSINESS_DOCUMENTS.md`](BUSINESS_DOCUMENTS.md) |
 
 ---
 

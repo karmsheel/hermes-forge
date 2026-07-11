@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
 import {
   Clock,
+  FileText,
   FolderKanban,
   Hammer,
   Home,
@@ -64,6 +65,13 @@ export function NavRail() {
       label: "Personnel",
       icon: Users,
       match: (path) => path.startsWith("/personnel"),
+    },
+    {
+      id: "documents",
+      href: "/documents",
+      label: "Documents",
+      icon: FileText,
+      match: (path) => path.startsWith("/documents"),
     },
     {
       id: "workshop",

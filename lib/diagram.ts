@@ -11,6 +11,10 @@ import {
 } from './process-discovery';
 import { processMdPromptAddon } from './process-md';
 import {
+  documentsPromptAddon,
+  type DocumentForPrompt,
+} from './document-kinds';
+import {
   formatPersonnelPromptContext,
   formatSwimlanePersonnelAddon,
   type PersonnelRoster,
@@ -120,6 +124,8 @@ export function buildChatSystemPrompt(context: {
   processMd?: string | null;
   /** Business personnel roster (4.10) */
   personnel?: PersonnelRoster | null;
+  /** Pinned / basics knowledge documents (4.18) */
+  knowledgeDocuments?: DocumentForPrompt[] | null;
 }): string {
   const standardId = context.processStandard ?? resolveProcessStandard(context.description);
   const standard = getProcessStandard(standardId);
@@ -151,6 +157,13 @@ export function buildChatSystemPrompt(context: {
     ? `\n${processMdPromptAddon(context.processMd)}\n`
     : '';
 
+  const knowledgeAddon = context.knowledgeDocuments?.length
+    ? documentsPromptAddon(context.knowledgeDocuments)
+    : '';
+  const knowledgeNote = knowledgeAddon
+    ? `\n${knowledgeAddon}\nUse these knowledge docs for company context (purpose, customers, market, strategy). Prefer them over inventing business facts.\n`
+    : '';
+
   const personnelBlock = context.personnel
     ? formatPersonnelPromptContext(context.personnel)
     : '';
@@ -180,7 +193,7 @@ Workflow splitting (important):
 - If the user asks to split, separate, or break apart flows, acknowledge and confirm which flow goes where.
 - After a split, the sidebar will show a new workflow — tell the user to check the left panel.
 
-${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${personnelNote}
+${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${knowledgeNote}${personnelNote}
 
 ${standard.chatPromptAddon}
 

@@ -471,23 +471,38 @@ function PersonnelLists({
 }
 
 export default function PersonnelPage() {
+  const router = useRouter();
   const { currentBusiness } = useShell();
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-10 w-full">
+    <>
       <div className="mb-8">
-        <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Team</div>
-        <h1 className="text-3xl font-semibold tracking-tight">Personnel</h1>
-        {currentBusiness && <p className="text-sm text-accent mt-1">in {currentBusiness.name}</p>}
-        <p className="text-sm text-text-muted mt-3 max-w-2xl">
+        <p className="text-sm text-text-muted max-w-2xl">
           Manage your org roster — humans and Hermes agents for this business. Scan your local
           Hermes installation to discover agent profiles. People and hired agents show up as{" "}
-          <span className="text-text">@-mentions</span> in Workshop and feed swimlane lanes when
-          mapping.
+          <span className="text-text">@-mentions</span> in Workshop. Hired agents also appear in
+          the chatbar picker for separate conversations.
         </p>
+        <div className="flex flex-wrap gap-2 mt-4">
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={() => router.push("/personnel/hire")}
+          >
+            <Bot className="w-4 h-4" />
+            Hire agents
+          </button>
+          <button
+            type="button"
+            className="btn-secondary text-sm"
+            onClick={() => router.push("/personnel/academy")}
+          >
+            Agent Academy
+          </button>
+        </div>
         <p className="text-xs text-text-soft mt-3 max-w-2xl rounded-lg border border-border bg-bg-subtle px-3 py-2">
-          Connected to Workshop (mentions + diagram/chat context). Automation agent assignment is
-          not wired yet.
+          New businesses must hire a first agent before entering the studio. Train agents with
+          skills and soul profiles in Agent Academy.
         </p>
       </div>
 
@@ -496,6 +511,6 @@ export default function PersonnelPage() {
         businessId={currentBusiness?.id ?? null}
         businessName={currentBusiness?.name ?? null}
       />
-    </main>
+    </>
   );
 }

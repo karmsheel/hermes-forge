@@ -10,6 +10,10 @@ export type ForgeTab = {
   route: string;
   businessId: string;
   businessName: string;
+  /** Business avatar emoji (takes preference over icon / initial in the tab strip). */
+  avatarEmoji?: string | null;
+  /** Business avatar Lucide icon key (used when emoji is not set). */
+  avatarIcon?: string | null;
   processId?: string;
   /** In-workshop panel (diagram, details, …) — not the app tab */
   workspaceTab?: WorkspacePanelTab;
@@ -78,6 +82,8 @@ export function buildTab(input: {
   route: string;
   businessId: string;
   businessName: string;
+  avatarEmoji?: string | null;
+  avatarIcon?: string | null;
   processId?: string;
   processName?: string | null;
   workspaceTab?: WorkspacePanelTab;
@@ -93,6 +99,8 @@ export function buildTab(input: {
     route,
     businessId: input.businessId,
     businessName: input.businessName,
+    avatarEmoji: input.avatarEmoji ?? null,
+    avatarIcon: input.avatarIcon ?? null,
     processId: input.processId,
     workspaceTab: input.workspaceTab,
     automationProcessId: input.automationProcessId,

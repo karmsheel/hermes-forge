@@ -151,9 +151,10 @@ export function ForgeTabOutlet({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  const activeIsWorkshop =
-    (activeTab && isWorkshopRoute(activeTab.route)) ||
-    pathname.startsWith("/workshop");
+  // Paint from the live Next.js URL only. Tab.route can lag (HireRequiredGate
+  // redirects, switchingRef suppressing pathname→tab sync) and was causing
+  // WorkshopSession to stay "active" on /home — bleed-through of workshop UI.
+  const activeIsWorkshop = pathname.startsWith("/workshop");
 
   return (
     <div className="forge-tab-outlet">
@@ -168,6 +169,8 @@ export function ForgeTabOutlet({ children }: { children: ReactNode }) {
             key={tab.id}
             className={`forge-tab-pane${isActive ? " is-active" : " is-inactive"}`}
             aria-hidden={!isActive}
+            // Keep inactive workshops out of the accessibility tree and layout
+            hidden={!isActive}
             data-tab-id={tab.id}
           >
             <WorkshopSession

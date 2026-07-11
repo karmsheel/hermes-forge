@@ -58,10 +58,34 @@ model Business {
   processes           Process[]
   conversations       Conversation[]
   memories            Memory[]
+  documents           BusinessDocument[]
   events              BusinessEvent[]
   decisions           BusinessDecision[]
   humanPersonnel      HumanPersonnel[]
   hermesAgentProfiles HermesAgentProfile[]
+  agentTrainingItems  AgentTrainingItem[]
+}
+
+/// Durable markdown knowledge for a business (4.18) — not process maps.
+model BusinessDocument {
+  id               String   @id @default(cuid())
+  businessId       String
+  business         Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  title            String
+  kind             String   // basics | customers | market | strategy | freeform
+  slug             String
+  bodyMarkdown     String   @default("")
+  pinnedForContext Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  source           String   @default("manual") // seed | import | manual | hermes
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([businessId, slug])
+  @@index([businessId, sortOrder])
+  @@index([businessId, pinnedForContext])
 }
 
 model BusinessEvent {
@@ -121,22 +145,27 @@ model BusinessDecision {
 
 // kind: process (workshop mapping) | studio (global chatbar co-pilot)
 // processId is null for studio threads; businessId is always set (4.17 PR-2).
+// hermesAgentProfileId scopes studio threads to a hired agent (chatbar picker).
 model Conversation {
-  id           String    @id @default(cuid())
-  businessId   String
-  business     Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  processId    String?
-  process      Process?  @relation(fields: [processId], references: [id], onDelete: Cascade)
-  kind         String    @default("process") // process | studio
-  title        String    @default("Main")
-  forkedFromId String? // conversation this was forked from
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                   String              @id @default(cuid())
+  businessId           String
+  business             Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  processId            String?
+  process              Process?            @relation(fields: [processId], references: [id], onDelete: Cascade)
+  hermesAgentProfileId String?
+  hermesAgentProfile   HermesAgentProfile? @relation(fields: [hermesAgentProfileId], references: [id], onDelete: SetNull)
+  kind                 String              @default("process") // process | studio
+  title                String              @default("Main")
+  forkedFromId         String? // conversation this was forked from
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   messages ChatMessage[]
 
   @@index([businessId, kind, updatedAt(sort: Desc)])
+  @@index([businessId, kind, hermesAgentProfileId, updatedAt(sort: Desc)])
   @@index([processId, createdAt(sort: Desc)])
+  @@index([hermesAgentProfileId])
 }
 
 model Process {
@@ -266,7 +295,34 @@ model HermesAgentProfile {
   discoveredAt DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  conversations  Conversation[]
+  trainingItems  AgentTrainingItem[]
+
   @@unique([businessId, profileKey])
   @@index([businessId, discoveredAt(sort: Desc)])
   @@index([businessId, isHired])
+}
+
+// Agent Academy: uploaded skills / soul profiles / training packs (library search later).
+// kind: skill | soul | profile
+// source: upload | library (library reserved for shared catalog)
+model AgentTrainingItem {
+  id                   String              @id @default(cuid())
+  businessId           String
+  business             Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  hermesAgentProfileId String?
+  hermesAgentProfile   HermesAgentProfile? @relation(fields: [hermesAgentProfileId], references: [id], onDelete: SetNull)
+
+  kind        String // skill | soul | profile
+  name        String
+  description String?
+  content     String
+  fileName    String?
+  source      String   @default("upload") // upload | library
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, kind, createdAt(sort: Desc)])
+  @@index([hermesAgentProfileId])
 }

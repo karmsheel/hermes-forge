@@ -31,8 +31,9 @@ export function HireAgentDialog({
     >
       <p className="text-sm text-text-muted">
         Hiring adds this agent to your roster for{" "}
-        <span className="font-medium text-text">{businessName}</span>. They appear in Employees
-        and as @-mention actors in Workshop chat/diagrams. Automation binding is not connected yet.
+        <span className="font-medium text-text">{businessName}</span>. They appear in Employees,
+        as @-mention actors in Workshop, and in the chatbar agent picker so you can run separate
+        conversations with each hired agent.
       </p>
       <div className="flex justify-end gap-3 mt-6">
         <button

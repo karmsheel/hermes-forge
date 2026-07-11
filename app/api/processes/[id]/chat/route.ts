@@ -5,6 +5,7 @@ import { callHermes } from '@/lib/hermes';
 import { buildChatSystemPrompt } from '@/lib/diagram';
 import { formatDiscoveryContext, pickDiscoveryFields } from '@/lib/process-discovery';
 import { buildProcessMdFromBusiness } from '@/lib/process-md';
+import { loadDocumentsForPrompt } from '@/lib/documents';
 import { loadPersonnelRoster } from '@/lib/personnel/load-roster';
 import { requireProcessAccess } from '@/lib/auth';
 import { buildApprovalUpdate } from '@/lib/process-approve';
@@ -228,6 +229,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 4.10 — full roster for actor-aware chat (roles + hired agents)
     const personnel = await loadPersonnelRoster(process.businessId);
 
+    // 4.18 — pinned / basics knowledge documents
+    const knowledgeDocuments = await loadDocumentsForPrompt(process.businessId, prisma);
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
@@ -241,6 +245,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             hasDiagram,
             discovery,
             processMd,
+            knowledgeDocuments,
             personnel,
             shouldAskAccuracy:
               !approvedFromChat &&

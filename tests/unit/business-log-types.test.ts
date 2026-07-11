@@ -30,4 +30,9 @@ describe("business log event types", () => {
     assert.equal(BUSINESS_EVENT_TYPES.PERSONNEL_UPDATED, "personnel.updated");
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.PERSONNEL_UPDATED), "personnel");
   });
+
+  it("categorizes document events", () => {
+    assert.equal(BUSINESS_EVENT_TYPES.DOCUMENT_CREATED, "document.created");
+    assert.equal(eventCategory(BUSINESS_EVENT_TYPES.DOCUMENT_UPDATED), "document");
+  });
 });

@@ -24,6 +24,10 @@ export const BUSINESS_EVENT_TYPES = {
 
   MEMORY_FACT_ADDED: 'memory.fact_added',
 
+  DOCUMENT_CREATED: 'document.created',
+  DOCUMENT_UPDATED: 'document.updated',
+  DOCUMENT_DELETED: 'document.deleted',
+
   PERSONNEL_ADDED: 'personnel.added',
   PERSONNEL_HIRED: 'personnel.hired',
   /** Name / role / roleDescription changes on a human roster member. */
@@ -44,6 +48,7 @@ export type BusinessEntityType =
   | 'process'
   | 'automation'
   | 'memory'
+  | 'document'
   | 'chat'
   | 'personnel'
   | 'decision';
@@ -81,6 +86,9 @@ export interface BusinessEventMetadata {
   relatedEntityId?: string | null;
   supersededByDecisionId?: string | null;
   supersededDecisionId?: string;
+  documentKind?: string;
+  documentSlug?: string;
+  pinnedForContext?: boolean;
 }
 
 export interface RecordBusinessEventInput {
@@ -121,6 +129,7 @@ export type BusinessLogFilter =
   | 'automation'
   | 'chat'
   | 'memory'
+  | 'document'
   | 'personnel'
   | 'decision';
 
@@ -132,6 +141,7 @@ export function eventCategory(type: string): BusinessLogFilter {
     prefix === 'automation' ||
     prefix === 'chat' ||
     prefix === 'memory' ||
+    prefix === 'document' ||
     prefix === 'personnel' ||
     prefix === 'decision'
   ) {

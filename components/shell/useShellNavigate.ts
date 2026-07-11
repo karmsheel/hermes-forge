@@ -33,12 +33,22 @@ export function useShellNavigate() {
       processName?: string | null;
       businessId?: string;
       businessName?: string;
+      avatarEmoji?: string | null;
+      avatarIcon?: string | null;
       /** Force a new tab on desktop (Ctrl/meta click, context menu). */
       newTab?: boolean;
     }) => {
       const businessId = options?.businessId ?? currentBusiness?.id;
       const businessName =
         options?.businessName ?? currentBusiness?.name ?? "Business";
+      const avatarEmoji =
+        options?.avatarEmoji !== undefined
+          ? options.avatarEmoji
+          : currentBusiness?.avatarEmoji ?? null;
+      const avatarIcon =
+        options?.avatarIcon !== undefined
+          ? options.avatarIcon
+          : currentBusiness?.avatarIcon ?? null;
       const processId = options?.processId ?? undefined;
 
       if (businessId && processId) {
@@ -49,6 +59,8 @@ export function useShellNavigate() {
         const snapshot: OpenInNewTabSnapshot = {
           businessId: businessId ?? undefined,
           businessName,
+          avatarEmoji,
+          avatarIcon,
           processId,
           processName: options?.processName,
         };
@@ -63,6 +75,8 @@ export function useShellNavigate() {
           tabs.updateActiveTab({
             businessId,
             businessName,
+            avatarEmoji,
+            avatarIcon,
             processId,
             processName: options?.processName,
             route: "/workshop",
@@ -81,13 +95,27 @@ export function useShellNavigate() {
     async (options: {
       businessId: string;
       businessName: string;
+      avatarEmoji?: string | null;
+      avatarIcon?: string | null;
       newTab?: boolean;
       switchAndEnter?: (id: string) => Promise<boolean>;
     }) => {
-      const { businessId, businessName, newTab, switchAndEnter } = options;
+      const {
+        businessId,
+        businessName,
+        avatarEmoji = null,
+        avatarIcon = null,
+        newTab,
+        switchAndEnter,
+      } = options;
 
       if (tabs.enabled && newTab) {
-        const id = tabs.openInNewTab("/home", { businessId, businessName });
+        const id = tabs.openInNewTab("/home", {
+          businessId,
+          businessName,
+          avatarEmoji,
+          avatarIcon,
+        });
         if (!id) toast.error("Could not open a new tab (limit reached?)");
         return;
       }
@@ -98,7 +126,13 @@ export function useShellNavigate() {
       }
 
       if (tabs.enabled) {
-        tabs.updateActiveTab({ businessId, businessName, route: "/home" });
+        tabs.updateActiveTab({
+          businessId,
+          businessName,
+          avatarEmoji,
+          avatarIcon,
+          route: "/home",
+        });
         tabs.navigateActiveTab("/home");
         return;
       }

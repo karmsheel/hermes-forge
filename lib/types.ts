@@ -83,6 +83,7 @@ export interface Conversation {
   id: string;
   businessId?: string;
   processId: string | null;
+  hermesAgentProfileId?: string | null;
   kind?: ConversationKind;
   title: string;
   forkedFromId: string | null;
@@ -96,6 +97,19 @@ export interface StudioConversation extends Conversation {
   businessId: string;
   kind: 'studio';
   processId: null;
+  hermesAgentProfileId?: string | null;
+}
+
+/** Hired Hermes agent available in the chatbar picker. */
+export interface ChatbarAgentOption {
+  id: string;
+  displayName: string;
+  description?: string | null;
+  model?: string | null;
+  profileKey?: string;
+  iconKey?: string | null;
+  isDefault?: boolean;
+  hiredAt?: string | null;
 }
 
 export interface ProcessSummary {

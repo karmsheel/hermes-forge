@@ -15,6 +15,7 @@ const FILTERS: { id: BusinessLogFilter; label: string }[] = [
   { id: "chat", label: "Chat" },
   { id: "business", label: "Business" },
   { id: "memory", label: "Memory" },
+  { id: "document", label: "Documents" },
   { id: "personnel", label: "Personnel" },
   { id: "decision", label: "Decisions" },
 ];

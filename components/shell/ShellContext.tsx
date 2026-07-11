@@ -130,7 +130,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         } else {
           await refreshCurrentBusiness();
         }
-        router.push("/home");
+        // First-run for this business: force hire of a chatbar agent
+        router.push("/personnel/hire?required=1");
       } catch {
         toast.error("Could not create business");
       } finally {

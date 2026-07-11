@@ -12,15 +12,10 @@ import Link from "next/link";
 import { Copy, PanelLeftClose, Plus, Trash2, User, X } from "lucide-react";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
+import { BusinessAvatarMark } from "./BusinessAvatarMark";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useShell } from "./ShellContext";
-
-function businessInitial(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  return trimmed.charAt(0).toUpperCase();
-}
 
 type ContextMenuState = {
   tabId: string;
@@ -141,9 +136,12 @@ export function ForgeTabBar() {
                 reorderTabs(from, index);
               }}
             >
-              <span className="forge-tab-bar__initial" aria-hidden>
-                {businessInitial(tab.businessName)}
-              </span>
+              <BusinessAvatarMark
+                name={tab.businessName}
+                avatarEmoji={tab.avatarEmoji}
+                avatarIcon={tab.avatarIcon}
+                className="forge-tab-bar__avatar"
+              />
               <span className="forge-tab-bar__title">{tab.title}</span>
               {unloaded ? (
                 <span className="forge-tab-bar__badge" title="Session unloaded">

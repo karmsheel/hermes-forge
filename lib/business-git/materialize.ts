@@ -51,6 +51,7 @@ export async function materializeBusinessRepo(
         orderBy: { createdAt: 'asc' },
       },
       memories: { orderBy: { lastUpdated: 'asc' } },
+      documents: { orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }] },
       humanPersonnel: { orderBy: { createdAt: 'asc' } },
       hermesAgentProfiles: { orderBy: { discoveredAt: 'asc' } },
       decisions: { orderBy: { recordedAt: 'asc' } },
@@ -134,6 +135,27 @@ export async function materializeBusinessRepo(
       })
     )
   );
+
+  // 4.18 — business knowledge documents
+  await writeJson(
+    path.join(repoPath, 'documents', 'index.json'),
+    business.documents.map((d) => ({
+      id: d.id,
+      title: d.title,
+      kind: d.kind,
+      slug: d.slug,
+      pinnedForContext: d.pinnedForContext,
+      sortOrder: d.sortOrder,
+      source: d.source,
+      updatedAt: d.updatedAt.toISOString(),
+    }))
+  );
+  for (const d of business.documents) {
+    await writeText(
+      path.join(repoPath, 'documents', `${d.slug}.md`),
+      d.bodyMarkdown.endsWith('\n') ? d.bodyMarkdown : `${d.bodyMarkdown}\n`
+    );
+  }
 
   await writeJson(path.join(repoPath, 'personnel.json'), {
     humans: business.humanPersonnel.map((p) => ({

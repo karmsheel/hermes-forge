@@ -38,6 +38,33 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p.startsWith("/personnel/academy"),
+    blurb: {
+      routeKey: "personnel-academy",
+      title: "Agent Academy",
+      purpose:
+        "Train hired Hermes agents by uploading skills and soul profiles (shared library later).",
+      uiHints: [
+        "Upload a skill or soul profile file",
+        "Assign training to a hired agent",
+        "Ask which skills this business should teach its agents",
+      ],
+    },
+  },
+  {
+    match: (p) => p.startsWith("/personnel/hire"),
+    blurb: {
+      routeKey: "personnel-hire",
+      title: "Agent hire",
+      purpose: "Hire a Hermes agent profile into this business as the chatbar persona.",
+      uiHints: [
+        "Scan local Hermes profiles",
+        "Hire at least one agent to use the studio",
+        "Hire more later from the Personnel roster",
+      ],
+    },
+  },
+  {
     match: (p) => p.startsWith("/personnel"),
     blurb: {
       routeKey: "personnel",
@@ -45,8 +72,24 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       purpose: "Manage human teammates and Hermes agent profiles for this business.",
       uiHints: [
         "Hire humans or Hermes agent profiles",
+        "Switch chatbar agents after hiring more than one",
+        "Open Agent Academy to load skills and soul profiles",
         "Roster names feed workshop @-mentions and swimlanes",
-        "Ask how roles should show up in process maps",
+      ],
+    },
+  },
+  {
+    match: (p) => p.startsWith("/documents"),
+    blurb: {
+      routeKey: "documents",
+      title: "Documents",
+      purpose:
+        "Business knowledge docs (basics, customers, market, strategy, notes). Pinned docs feed Hermes as durable context.",
+      uiHints: [
+        "Select a document to read or edit markdown",
+        "Pin docs so Hermes uses them when mapping processes",
+        "Import existing markdown business writing",
+        "Ask me to draft or refine a section of the open document",
       ],
     },
   },

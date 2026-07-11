@@ -61,6 +61,28 @@ describe("forge-tabs routes and titles", () => {
     assert.equal(isValidForgeTab(tab), true);
     assert.equal(isValidForgeTab({ id: "x" }), false);
   });
+
+  it("stores optional business avatar on tabs", () => {
+    const withEmoji = buildTab({
+      route: "/home",
+      businessId: "b1",
+      businessName: "Acme",
+      avatarEmoji: "🚀",
+    });
+    assert.equal(withEmoji.avatarEmoji, "🚀");
+    assert.equal(withEmoji.avatarIcon, null);
+
+    const withIcon = buildTab({
+      route: "/home",
+      businessId: "b2",
+      businessName: "Beta",
+      avatarIcon: "rocket",
+    });
+    assert.equal(withIcon.avatarEmoji, null);
+    assert.equal(withIcon.avatarIcon, "rocket");
+    assert.equal(isValidForgeTab(withEmoji), true);
+    assert.equal(isValidForgeTab(withIcon), true);
+  });
 });
 
 describe("forge-tabs storage", () => {

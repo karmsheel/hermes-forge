@@ -12,6 +12,7 @@ describe("pageBlurbForPath", () => {
     assert.equal(pageBlurbForPath("/home").routeKey, "home");
     assert.equal(pageBlurbForPath("/functions").title, "Functions");
     assert.equal(pageBlurbForPath("/workshop/x").routeKey, "workshop");
+    assert.equal(pageBlurbForPath("/documents").routeKey, "documents");
   });
 
   it("falls back for unknown routes", () => {
@@ -27,6 +28,22 @@ describe("studio prompts", () => {
     });
     assert.match(system, /Acme/);
     assert.match(system, /Personnel/);
+  });
+
+  it("includes hired agent identity when provided", () => {
+    const system = buildStudioChatSystemPrompt({
+      businessName: "Acme",
+      route: "/home",
+      agent: {
+        displayName: "Ops Pilot",
+        description: "Keeps operations tidy",
+        profileKey: "ops",
+      },
+      trainingPrompt: "Agent training (Agent Academy):\n### Skill: Mapping",
+    });
+    assert.match(system, /Ops Pilot/);
+    assert.match(system, /operations tidy/i);
+    assert.match(system, /Agent training/);
   });
 
   it("wraps page context as untrusted", () => {
