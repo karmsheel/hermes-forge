@@ -690,7 +690,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Goal:** Elevate Hermes chat from workshop-only to a **first-class shell citizen**: right dock on every shell page, open/collapse from the left nav rail, page-aware context (intros + “help me use this company data”), and extension-parity composer UX (stop/queue/steer, tool activity strip, context receipts).
 
-**Status:** Spec complete. **PR-1–PR-3 shipped** (dock UI + studio conversations + page context protocol / intros / receipts). Composer FSM, workshop absorption, and model dock remain.
+**Status:** Spec complete. **PR-1–PR-4 shipped** (dock UI + studio conversations + page context + stop/queue/tool strip). Workshop absorption and model dock remain.
 
 **Reference:** [`docs/references/GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md)
 
@@ -702,7 +702,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Shell right dock + open/collapsed residency + nav rail toggle + edge restore tab (**PR-1**)
 - [x] Business-scoped studio conversations + streaming send (**PR-2**)
 - [x] `hermes.forge.context.v1` page context protocol + first-visit intros + “What Hermes used” receipts (**PR-3**)
-- [ ] Composer FSM (stop / queue / steer) + Tool Activity Strip
+- [x] Composer FSM (stop / queue) + Tool Activity Strip (**PR-4**; steer in PR-6)
 - [ ] Absorb workshop `ProcessChat` into the same dock (no dual chat panels)
 - [ ] Model dock / context meter (follow-up polish)
 
@@ -747,7 +747,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Planned** — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
-| 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **In progress** (PR-1–3 done) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
+| 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **In progress** (PR-1–4 done) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
 
 ---
 

@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
   Info,
+  ListPlus,
   Loader2,
   MessageSquare,
   PanelLeftClose,
@@ -19,14 +20,22 @@ import {
   PlugZap,
   Send,
   Sparkles,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { MessageQueue } from "@/components/workshop/MessageQueue";
 import {
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
+import {
+  composerControlState,
+  composerKeyAction,
+  resolveComposerSubmitAction,
+  shouldAutoFlushQueuedTurn,
+} from "@/lib/chatbar/composer-state";
 import {
   buildPageIntroCopy,
   type ContextReceipt as ContextReceiptData,
@@ -39,10 +48,21 @@ import {
 } from "@/lib/chatbar/intros";
 import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
 import { parseSseBlocks, parseSseJson } from "@/lib/chatbar/parse-studio-sse";
+import {
+  pruneToolActivities,
+  reduceToolActivities,
+  type ToolActivity,
+} from "@/lib/chatbar/runtime-events";
 import { hermesApiBody } from "@/lib/hermes-models";
+import {
+  createQueuedMessage,
+  waitUntilAgentsIdle,
+  type QueuedMessage,
+} from "@/lib/message-queue";
 import type { ChatMessage, Conversation } from "@/lib/types";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ContextReceipt } from "./ContextReceipt";
+import { ToolActivityStrip } from "./ToolActivityStrip";
 import { useChatbar } from "./ChatbarProvider";
 
 function connectionLabel(isConnected: boolean, state: string) {
@@ -64,7 +84,7 @@ type IntroBanner = {
 
 /**
  * Shell-level Hermes chat dock.
- * PR-1 residency · PR-2 studio chat · PR-3 context protocol + intro + receipt.
+ * PR-1 residency · PR-2 studio chat · PR-3 context · PR-4 stop/queue/tool strip.
  */
 export function ChatbarPanel() {
   const pathname = usePathname() || "/home";
@@ -99,12 +119,30 @@ export function ChatbarPanel() {
   >({});
   const [introBanner, setIntroBanner] = useState<IntroBanner | null>(null);
   const [shellSnapshotText, setShellSnapshotText] = useState("");
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [toolActivities, setToolActivities] = useState<ToolActivity[]>([]);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const activeIdRef = useRef<string | null>(null);
   const lastIntroRequestKeyRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const sendingRef = useRef(false);
+  const messageQueueRef = useRef<QueuedMessage[]>([]);
+  const isDrainingQueueRef = useRef(false);
+  const activeRunIdRef = useRef<string | null>(null);
   activeIdRef.current = activeConversationId;
+  sendingRef.current = sending;
+  activeRunIdRef.current = activeRunId;
+
+  const canSteer = false; // PR-6
+  const composerState = composerControlState({
+    connected: isConnected,
+    sending,
+    draftText: draft,
+    canSteer,
+  });
 
   const businessId = currentBusiness?.id ?? null;
   const businessName = currentBusiness?.name ?? "this business";
@@ -118,7 +156,56 @@ export function ChatbarPanel() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, sending, introBanner, scrollToBottom]);
+  }, [messages, sending, introBanner, toolActivities, queuedMessages, scrollToBottom]);
+
+  const syncQueuedMessages = useCallback(() => {
+    setQueuedMessages([...messageQueueRef.current]);
+  }, []);
+
+  const clearMessageQueue = useCallback(() => {
+    messageQueueRef.current = [];
+    syncQueuedMessages();
+  }, [syncQueuedMessages]);
+
+  const removeQueuedMessage = useCallback(
+    (id: string) => {
+      messageQueueRef.current = messageQueueRef.current.filter((item) => item.id !== id);
+      syncQueuedMessages();
+    },
+    [syncQueuedMessages],
+  );
+
+  const enqueueDraft = useCallback(
+    (text: string) => {
+      const content = text.trim();
+      if (!content) return false;
+      messageQueueRef.current = [...messageQueueRef.current, createQueuedMessage(content)];
+      syncQueuedMessages();
+      setDraft("");
+      toast.message("Message queued", {
+        description: "Hermes will send it after the current reply finishes or stops.",
+      });
+      return true;
+    },
+    [syncQueuedMessages],
+  );
+
+  const stopCurrentTurn = useCallback(() => {
+    if (!sendingRef.current) return;
+    const runId = activeRunIdRef.current;
+    abortRef.current?.abort();
+    // Best-effort Hermes run interrupt when gateway advertises run ids
+    if (runId && config?.baseUrl) {
+      const base = config.baseUrl.replace(/\/$/, "");
+      void fetch(`${base}/v1/runs/${encodeURIComponent(runId)}/stop`, {
+        method: "POST",
+        headers: config.apiKey
+          ? { Authorization: `Bearer ${config.apiKey}` }
+          : undefined,
+      }).catch(() => {});
+    }
+    toast.message("Stopping Hermes…");
+  }, [config]);
 
   // Fetch shell-level page snapshot when follow-page (or pinned) + business + route change
   useEffect(() => {
@@ -299,231 +386,335 @@ export function ChatbarPanel() {
     }
   }, [selectConversation]);
 
-  const handleSend = useCallback(async () => {
-    const text = draft.trim();
-    if (!text || sending) return;
+  const sendMessageNow = useCallback(
+    async (text: string) => {
+      if (!text.trim()) return;
 
-    if (!isConnected || !config?.baseUrl || !config.apiKey) {
-      openHermesConnection();
-      toast.error("Connect to Hermes first");
-      return;
-    }
+      if (!isConnected || !config?.baseUrl || !config.apiKey) {
+        openHermesConnection();
+        toast.error("Connect to Hermes first");
+        return;
+      }
 
-    if (!activeConversationId) {
-      toast.error("No studio conversation open");
-      return;
-    }
+      if (!activeConversationId) {
+        toast.error("No studio conversation open");
+        return;
+      }
 
-    if (businessId && introBanner) {
-      markIntroSeen(businessId, introBanner.routeKey);
-      setIntroBanner(null);
-    }
+      if (businessId && introBanner) {
+        markIntroSeen(businessId, introBanner.routeKey);
+        setIntroBanner(null);
+      }
 
-    const conversationId = activeConversationId;
-    const firstVisit = businessId ? !hasSeenIntro(businessId, blurb.routeKey) : false;
-    setDraft("");
-    setSending(true);
+      const conversationId = activeConversationId;
+      const firstVisit = businessId ? !hasSeenIntro(businessId, blurb.routeKey) : false;
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setSending(true);
+      setToolActivities([]);
+      setActiveRunId(null);
 
-    const optimisticUser: ChatMessage = {
-      id: `temp-user-${Date.now()}`,
-      processId: null,
-      conversationId,
-      role: "user",
-      content: text,
-      createdAt: new Date().toISOString(),
-    };
-    const tempAssistantId = `temp-assistant-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
-      optimisticUser,
-      {
-        id: tempAssistantId,
+      const optimisticUser: ChatMessage = {
+        id: `temp-user-${Date.now()}`,
         processId: null,
         conversationId,
-        role: "assistant",
-        content: "",
+        role: "user",
+        content: text,
         createdAt: new Date().toISOString(),
-      },
-    ]);
+      };
+      const tempAssistantId = `temp-assistant-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        optimisticUser,
+        {
+          id: tempAssistantId,
+          processId: null,
+          conversationId,
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
 
+      try {
+        const res = await fetch(`/api/studio/conversations/${conversationId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: text,
+            route: pathname,
+            contextMode,
+            firstVisit,
+            registration: pageRegistration,
+            ...hermesApiBody(config),
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Chat failed (${res.status})`);
+        }
+
+        if (!res.body) throw new Error("Empty stream from server");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let streamed = "";
+        let resolvedUserId = optimisticUser.id;
+        let stopped = false;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parsed = parseSseBlocks(buffer);
+          buffer = parsed.rest;
+
+          for (const block of parsed.blocks) {
+            if (block.event === "user") {
+              const user = parseSseJson<ChatMessage>(block.data);
+              if (user?.id) {
+                resolvedUserId = user.id;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === optimisticUser.id ? { ...user, processId: null } : m,
+                  ),
+                );
+              }
+            } else if (block.event === "receipt") {
+              const payload = parseSseJson<{
+                messageId?: string;
+                receipt?: ContextReceiptData;
+              }>(block.data);
+              if (payload?.receipt) {
+                const mid = payload.messageId || resolvedUserId;
+                setReceiptsByMessageId((prev) => ({
+                  ...prev,
+                  [mid]: payload.receipt!,
+                  [optimisticUser.id]: payload.receipt!,
+                }));
+              }
+            } else if (block.event === "run_id") {
+              const payload = parseSseJson<{ runId?: string }>(block.data);
+              if (payload?.runId) setActiveRunId(payload.runId);
+            } else if (block.event === "tool" || block.event === "tool_activity") {
+              const payload = parseSseJson<Record<string, unknown>>(block.data);
+              if (payload) {
+                setToolActivities((prev) =>
+                  pruneToolActivities(reduceToolActivities(prev, payload)),
+                );
+              }
+            } else if (block.event === "delta") {
+              const payload = parseSseJson<{ text?: string }>(block.data);
+              if (payload?.text) {
+                streamed += payload.text;
+                const snapshot = streamed;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempAssistantId ? { ...m, content: snapshot } : m,
+                  ),
+                );
+              }
+            } else if (block.event === "done") {
+              const payload = parseSseJson<{
+                message?: ChatMessage;
+                title?: string;
+                receipt?: ContextReceiptData;
+                stopped?: boolean;
+              }>(block.data);
+              if (payload?.stopped) stopped = true;
+              if (payload?.message) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempAssistantId || m.id === payload.message!.id
+                      ? {
+                          ...payload.message!,
+                          processId: payload.message!.processId ?? null,
+                        }
+                      : m,
+                  ),
+                );
+              }
+              if (payload?.receipt) {
+                setReceiptsByMessageId((prev) => ({
+                  ...prev,
+                  [resolvedUserId]: payload.receipt!,
+                  [optimisticUser.id]: payload.receipt!,
+                }));
+              }
+              if (payload?.title) {
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === conversationId ? { ...c, title: payload.title! } : c,
+                  ),
+                );
+              }
+            } else if (block.event === "error") {
+              const payload = parseSseJson<{ error?: string }>(block.data);
+              throw new Error(payload?.error || "Stream error");
+            }
+          }
+        }
+
+        if (buffer.trim()) {
+          const parsed = parseSseBlocks(buffer, { flush: true });
+          for (const block of parsed.blocks) {
+            if (block.event === "done") {
+              const payload = parseSseJson<{
+                message?: ChatMessage;
+                title?: string;
+                receipt?: ContextReceiptData;
+              }>(block.data);
+              if (payload?.message) {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempAssistantId
+                      ? {
+                          ...payload.message!,
+                          processId: payload.message!.processId ?? null,
+                        }
+                      : m,
+                  ),
+                );
+              }
+              if (payload?.title) {
+                setConversations((prev) =>
+                  prev.map((c) =>
+                    c.id === conversationId ? { ...c, title: payload.title! } : c,
+                  ),
+                );
+              }
+            }
+          }
+        }
+
+        if (businessId) {
+          markIntroSeen(businessId, blurb.routeKey);
+        }
+
+        if (stopped) {
+          toast.message("Stopped", { description: "Hermes reply was interrupted." });
+        }
+
+        void fetch("/api/studio/conversations")
+          .then((r) => r.json())
+          .then((data) => {
+            if (Array.isArray(data.conversations)) setConversations(data.conversations);
+          })
+          .catch(() => {});
+      } catch (error) {
+        const aborted =
+          (error instanceof Error && error.name === "AbortError") || controller.signal.aborted;
+        if (aborted) {
+          // Partial text may already be on screen; keep assistant bubble if it has content
+          setMessages((prev) => {
+            const assistant = prev.find((m) => m.id === tempAssistantId);
+            if (assistant?.content?.trim()) {
+              return prev.map((m) =>
+                m.id === tempAssistantId
+                  ? {
+                      ...m,
+                      content: `${m.content.trim()}\n\n_(stopped)_`,
+                    }
+                  : m,
+              );
+            }
+            return prev.filter(
+              (m) => m.id !== optimisticUser.id && m.id !== tempAssistantId,
+            );
+          });
+          toast.message("Stopped");
+        } else {
+          toast.error(error instanceof Error ? error.message : "Chat failed");
+          setMessages((prev) =>
+            prev.filter((m) => m.id !== optimisticUser.id && m.id !== tempAssistantId),
+          );
+          setDraft((current) => (current.trim() ? current : text));
+          if (activeIdRef.current === conversationId) {
+            void loadConversationMessages(conversationId);
+          }
+        }
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+        setSending(false);
+        setActiveRunId(null);
+        // Keep recent tool strip briefly, then clear on next send
+        textareaRef.current?.focus();
+      }
+    },
+    [
+      isConnected,
+      config,
+      activeConversationId,
+      pathname,
+      openHermesConnection,
+      loadConversationMessages,
+      contextMode,
+      pageRegistration,
+      businessId,
+      blurb.routeKey,
+      introBanner,
+    ],
+  );
+
+  const handleComposerSubmit = useCallback(() => {
+    const text = draft.trim();
+    if (!text) return;
+
+    const action = resolveComposerSubmitAction({
+      sending,
+      draftText: text,
+      canSteer,
+    });
+
+    if (action === "ignore") return;
+    if (action === "queue" || (action === "steer" && !canSteer)) {
+      enqueueDraft(text);
+      return;
+    }
+    if (action === "steer") {
+      // PR-6: steer path
+      enqueueDraft(text);
+      return;
+    }
+
+    // send
+    setDraft("");
+    void sendMessageNow(text);
+  }, [draft, sending, canSteer, enqueueDraft, sendMessageNow]);
+
+  const drainMessageQueue = useCallback(async () => {
+    if (isDrainingQueueRef.current) return;
+    if (sendingRef.current) return;
+    if (messageQueueRef.current.length === 0) return;
+
+    isDrainingQueueRef.current = true;
     try {
-      const res = await fetch(`/api/studio/conversations/${conversationId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: text,
-          route: pathname,
-          contextMode,
-          firstVisit,
-          registration: pageRegistration,
-          ...hermesApiBody(config),
-        }),
-      });
+      while (messageQueueRef.current.length > 0) {
+        await waitUntilAgentsIdle(() => sendingRef.current);
+        if (messageQueueRef.current.length === 0) break;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `Chat failed (${res.status})`);
-      }
+        const [next, ...rest] = messageQueueRef.current;
+        if (!shouldAutoFlushQueuedTurn({ autoSend: true, kind: "queued" })) break;
 
-      if (!res.body) throw new Error("Empty stream from server");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let streamed = "";
-      let resolvedUserId = optimisticUser.id;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parsed = parseSseBlocks(buffer);
-        buffer = parsed.rest;
-
-        for (const block of parsed.blocks) {
-          if (block.event === "user") {
-            const user = parseSseJson<ChatMessage>(block.data);
-            if (user?.id) {
-              resolvedUserId = user.id;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === optimisticUser.id ? { ...user, processId: null } : m,
-                ),
-              );
-            }
-          } else if (block.event === "receipt") {
-            const payload = parseSseJson<{
-              messageId?: string;
-              receipt?: ContextReceiptData;
-            }>(block.data);
-            if (payload?.receipt) {
-              const mid = payload.messageId || resolvedUserId;
-              setReceiptsByMessageId((prev) => ({
-                ...prev,
-                [mid]: payload.receipt!,
-                [optimisticUser.id]: payload.receipt!,
-              }));
-            }
-          } else if (block.event === "delta") {
-            const payload = parseSseJson<{ text?: string }>(block.data);
-            if (payload?.text) {
-              streamed += payload.text;
-              const snapshot = streamed;
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId ? { ...m, content: snapshot } : m,
-                ),
-              );
-            }
-          } else if (block.event === "done") {
-            const payload = parseSseJson<{
-              message?: ChatMessage;
-              title?: string;
-              receipt?: ContextReceiptData;
-            }>(block.data);
-            if (payload?.message) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId || m.id === payload.message!.id
-                    ? {
-                        ...payload.message!,
-                        processId: payload.message!.processId ?? null,
-                      }
-                    : m,
-                ),
-              );
-            }
-            if (payload?.receipt) {
-              setReceiptsByMessageId((prev) => ({
-                ...prev,
-                [resolvedUserId]: payload.receipt!,
-                [optimisticUser.id]: payload.receipt!,
-              }));
-            }
-            if (payload?.title) {
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id === conversationId ? { ...c, title: payload.title! } : c,
-                ),
-              );
-            }
-          } else if (block.event === "error") {
-            const payload = parseSseJson<{ error?: string }>(block.data);
-            throw new Error(payload?.error || "Stream error");
-          }
-        }
-      }
-
-      if (buffer.trim()) {
-        const parsed = parseSseBlocks(buffer, { flush: true });
-        for (const block of parsed.blocks) {
-          if (block.event === "done") {
-            const payload = parseSseJson<{
-              message?: ChatMessage;
-              title?: string;
-              receipt?: ContextReceiptData;
-            }>(block.data);
-            if (payload?.message) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === tempAssistantId
-                    ? {
-                        ...payload.message!,
-                        processId: payload.message!.processId ?? null,
-                      }
-                    : m,
-                ),
-              );
-            }
-            if (payload?.title) {
-              setConversations((prev) =>
-                prev.map((c) =>
-                  c.id === conversationId ? { ...c, title: payload.title! } : c,
-                ),
-              );
-            }
-          }
-        }
-      }
-
-      if (businessId) {
-        markIntroSeen(businessId, blurb.routeKey);
-      }
-
-      void fetch("/api/studio/conversations")
-        .then((r) => r.json())
-        .then((data) => {
-          if (Array.isArray(data.conversations)) setConversations(data.conversations);
-        })
-        .catch(() => {});
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Chat failed");
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== optimisticUser.id && m.id !== tempAssistantId),
-      );
-      setDraft(text);
-      if (activeIdRef.current === conversationId) {
-        void loadConversationMessages(conversationId);
+        messageQueueRef.current = rest;
+        syncQueuedMessages();
+        await sendMessageNow(next.content);
+        await waitUntilAgentsIdle(() => sendingRef.current);
       }
     } finally {
-      setSending(false);
-      textareaRef.current?.focus();
+      isDrainingQueueRef.current = false;
+      if (messageQueueRef.current.length > 0 && !sendingRef.current) {
+        void drainMessageQueue();
+      }
     }
-  }, [
-    draft,
-    sending,
-    isConnected,
-    config,
-    activeConversationId,
-    pathname,
-    openHermesConnection,
-    loadConversationMessages,
-    contextMode,
-    pageRegistration,
-    businessId,
-    blurb.routeKey,
-    introBanner,
-  ]);
+  }, [sendMessageNow, syncQueuedMessages]);
+
+  useEffect(() => {
+    void drainMessageQueue();
+  }, [sending, drainMessageQueue]);
 
   const explainPage = useCallback(() => {
     setDraft("What am I looking at on this page? Summarize what is here and what I can do next.");
@@ -531,11 +722,30 @@ export function ChatbarPanel() {
   }, []);
 
   const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault();
-      void handleSend();
+    const action = composerKeyAction(
+      {
+        key: event.key,
+        shiftKey: event.shiftKey,
+        ctrlKey: event.ctrlKey,
+        metaKey: event.metaKey,
+        isComposing: event.nativeEvent.isComposing,
+      },
+      { sending, draftText: draft, canSteer },
+    );
+    if (action === "none") return;
+    event.preventDefault();
+    if (action === "submit") {
+      handleComposerSubmit();
+      return;
+    }
+    if (action === "queue" || action === "steer") {
+      if (draft.trim()) enqueueDraft(draft);
     }
   };
+
+  const busyLabel = sending
+    ? "Hermes is thinking — new messages will queue"
+    : null;
 
   return (
     <aside
@@ -754,12 +964,23 @@ export function ChatbarPanel() {
               </article>
             );
           })}
+
+          {sending || toolActivities.length > 0 ? (
+            <ToolActivityStrip activities={toolActivities} active={sending} />
+          ) : null}
+
           <div ref={messagesEndRef} />
         </section>
       </div>
 
       <footer className="chatbar-panel__footer">
         <div className="chatbar-panel__composer-shell">
+          <MessageQueue
+            items={queuedMessages}
+            busyLabel={busyLabel}
+            onRemove={removeQueuedMessage}
+            onClear={clearMessageQueue}
+          />
           <div className="chatbar-panel__composer-meta">
             <label className="chatbar-panel__composer-label" htmlFor="chatbar-input">
               Ask Hermes
@@ -768,7 +989,7 @@ export function ChatbarPanel() {
               mode={contextMode}
               onChange={setContextMode}
               pageTitle={blurb.title}
-              disabled={sending}
+              disabled={false}
             />
           </div>
           <div className="chatbar-panel__composer-row">
@@ -778,36 +999,71 @@ export function ChatbarPanel() {
               className="chatbar-panel__composer-input chatbar-panel__composer-input--live"
               rows={3}
               value={draft}
-              disabled={sending || !businessId}
+              disabled={!businessId}
               placeholder={
                 !businessId
                   ? "Select a business to start chatting…"
                   : !isConnected
                     ? "Connect Hermes, then ask about this page…"
-                    : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
-                      ? "Chat only — no page snapshot…"
-                      : "Ask about this page or your business…"
+                    : sending
+                      ? "Type to queue a follow-up while Hermes replies…"
+                      : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
+                        ? "Chat only — no page snapshot…"
+                        : "Ask about this page or your business…"
               }
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onComposerKeyDown}
             />
-            <button
-              type="button"
-              className="chatbar-panel__send"
-              disabled={sending || !draft.trim() || !businessId}
-              onClick={() => void handleSend()}
-              title="Send (Enter)"
-              aria-label="Send message"
-            >
-              {sending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
+            <div className="chatbar-panel__composer-actions">
+              {!composerState.controls.stop.hidden ? (
+                <button
+                  type="button"
+                  className="chatbar-panel__stop"
+                  disabled={composerState.controls.stop.disabled}
+                  onClick={stopCurrentTurn}
+                  title={composerState.controls.stop.label || "Stop"}
+                  aria-label={composerState.controls.stop.label || "Stop Hermes"}
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                </button>
+              ) : null}
+              {!composerState.controls.queue.hidden ? (
+                <button
+                  type="button"
+                  className="chatbar-panel__queue"
+                  disabled={composerState.controls.queue.disabled || !businessId}
+                  onClick={() => {
+                    if (draft.trim()) enqueueDraft(draft);
+                  }}
+                  title={composerState.controls.queue.label || "Queue"}
+                  aria-label={composerState.controls.queue.label || "Queue message"}
+                >
+                  <ListPlus className="w-4 h-4" />
+                </button>
+              ) : null}
+              {!composerState.controls.inlineSend.hidden ? (
+                <button
+                  type="button"
+                  className="chatbar-panel__send"
+                  disabled={
+                    composerState.controls.inlineSend.disabled ||
+                    !draft.trim() ||
+                    !businessId
+                  }
+                  onClick={handleComposerSubmit}
+                  title="Send (Enter)"
+                  aria-label="Send message"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              ) : null}
+            </div>
           </div>
           <p className="chatbar-panel__composer-help">
-            Enter sends · Scope chip controls page context · <kbd>Alt</kbd>+<kbd>H</kbd> toggles
+            {sending
+              ? "Stop ends the run · Enter queues while busy · "
+              : "Enter sends · "}
+            Scope chip controls page context · <kbd>Alt</kbd>+<kbd>H</kbd> toggles
           </p>
         </div>
       </footer>

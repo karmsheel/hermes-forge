@@ -1,6 +1,6 @@
 # Global Chatbar — Spec & Extension Parity Checklist
 
-> **Status:** PR-1–PR-3 shipped (shell dock + studio chat + page context protocol)  
+> **Status:** PR-1–PR-4 shipped (shell dock + studio chat + page context + composer stop/queue/tool strip)  
 > **Inspired by:** [hermes-browser-extension](https://github.com/abundantbeing/hermes-browser-extension) v0.1.10 side panel  
 > **Backlog id:** **4.17 Global chatbar**  
 > **Depends on:** Shell (1.2), Hermes connection, workshop chat/composer (Phase 3), design tokens (1.1 / 4.6)
@@ -521,12 +521,14 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - Studio chat injects full untrusted envelope (rebuilds snapshot server-side)  
 - **Acceptance:** “what is on this page?” uses injected snapshot; receipt visible  
 
-### PR-4 — Composer parity (stop / queue / tool strip)
+### PR-4 — Composer parity (stop / queue / tool strip) — **DONE**
 
-- Port composer FSM  
-- Tool Activity Strip  
-- Stop + queue in global bar  
-- **Acceptance:** busy send queues; tools render as strip during stream  
+- Port composer FSM (`lib/chatbar/composer-state.ts`)
+- Tool Activity Strip + runtime event normalize (`ToolActivityStrip`, `runtime-events.ts`)
+- Stop (AbortController + optional `/v1/runs/{id}/stop`) + queue in global bar
+- Studio SSE: `tool` / `tool_activity` / `run_id`; Hermes stream `tool_calls` parsing
+- **Acceptance:** busy send queues; tools render as strip during stream
+- **Shipped surface:** `components/chatbar/ToolActivityStrip.tsx`, ChatbarPanel stop/queue, `streamHermesEvents`
 
 ### PR-5 — Workshop absorption
 

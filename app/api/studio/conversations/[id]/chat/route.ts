@@ -18,7 +18,8 @@ import {
   autoStudioTitleFromText,
 } from "@/lib/chatbar/studio-prompt";
 import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
-import { streamHermes } from "@/lib/hermes-stream";
+import { streamHermesEvents } from "@/lib/hermes-stream";
+import { normalizeRuntimeEvent } from "@/lib/chatbar/runtime-events";
 import { prisma } from "@/lib/prisma";
 
 const PinnedSchema = z
@@ -67,7 +68,7 @@ function sseEncode(event: string, data: unknown): Uint8Array {
 
 /**
  * Studio chatbar send — streams assistant deltas as SSE.
- * Events: user, receipt, delta, done, error
+ * Events: user, receipt, run_id, tool / tool_activity, delta, done, error
  */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -175,10 +176,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       conversation.messages.length === 0 &&
       isDefaultStudioTitle(conversation.title);
 
+    const clientAbort = request.signal;
+    const hermesAbort = new AbortController();
+    const onClientAbort = () => hermesAbort.abort();
+    if (clientAbort.aborted) {
+      hermesAbort.abort();
+    } else {
+      clientAbort.addEventListener("abort", onClientAbort, { once: true });
+    }
+
     const stream = new ReadableStream({
       async start(controller) {
         const send = (event: string, data: unknown) => {
-          controller.enqueue(sseEncode(event, data));
+          try {
+            controller.enqueue(sseEncode(event, data));
+          } catch {
+            /* controller already closed */
+          }
         };
 
         send("user", {
@@ -196,17 +210,80 @@ export async function POST(request: NextRequest, context: RouteContext) {
         });
 
         let assistantText = "";
+        let runId: string | null = null;
+        let aborted = false;
+
         try {
-          for await (const delta of streamHermes(
+          for await (const event of streamHermesEvents(
             {
               baseUrl: body.baseUrl,
               apiKey: body.apiKey ?? "",
               model: body.model,
             },
             hermesMessages,
+            { signal: hermesAbort.signal },
           )) {
-            assistantText += delta;
-            send("delta", { text: delta });
+            if (hermesAbort.signal.aborted) {
+              aborted = true;
+              break;
+            }
+
+            if (event.type === "run") {
+              runId = event.runId;
+              send("run_id", { runId });
+              continue;
+            }
+
+            if (event.type === "tool") {
+              const normalized = normalizeRuntimeEvent(event.event);
+              send("tool", {
+                ...normalized,
+                event: event.event,
+              });
+              send("tool_activity", {
+                ...normalized,
+                event: event.event,
+              });
+              continue;
+            }
+
+            if (event.type === "delta") {
+              assistantText += event.text;
+              send("delta", { text: event.text });
+            }
+          }
+
+          if (aborted || hermesAbort.signal.aborted) {
+            const partial =
+              assistantText.trim() ||
+              "_(Response stopped before Hermes finished.)_";
+            const assistantMessage = await prisma.chatMessage.create({
+              data: {
+                conversationId: conversation.id,
+                processId: null,
+                role: "assistant",
+                content: partial,
+              },
+            });
+            await prisma.conversation.update({
+              where: { id: conversation.id },
+              data: { updatedAt: new Date() },
+            });
+            send("done", {
+              message: {
+                id: assistantMessage.id,
+                role: "assistant",
+                content: partial,
+                createdAt: assistantMessage.createdAt.toISOString(),
+                conversationId: conversation.id,
+                processId: null,
+              },
+              title: conversation.title,
+              receipt,
+              stopped: true,
+              runId,
+            });
+            return;
           }
 
           const finalText =
@@ -247,13 +324,68 @@ export async function POST(request: NextRequest, context: RouteContext) {
             },
             title,
             receipt,
+            runId,
           });
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Chat failed";
-          send("error", { error: message });
+          const isAbort =
+            (error instanceof Error && error.name === "AbortError") ||
+            hermesAbort.signal.aborted;
+          if (isAbort) {
+            const partial =
+              assistantText.trim() ||
+              "_(Response stopped before Hermes finished.)_";
+            try {
+              const assistantMessage = await prisma.chatMessage.create({
+                data: {
+                  conversationId: conversation.id,
+                  processId: null,
+                  role: "assistant",
+                  content: partial,
+                },
+              });
+              send("done", {
+                message: {
+                  id: assistantMessage.id,
+                  role: "assistant",
+                  content: partial,
+                  createdAt: assistantMessage.createdAt.toISOString(),
+                  conversationId: conversation.id,
+                  processId: null,
+                },
+                title: conversation.title,
+                receipt,
+                stopped: true,
+                runId,
+              });
+            } catch {
+              send("done", {
+                stopped: true,
+                runId,
+                message: {
+                  id: `stopped-${Date.now()}`,
+                  role: "assistant",
+                  content: partial,
+                  createdAt: new Date().toISOString(),
+                  conversationId: conversation.id,
+                  processId: null,
+                },
+              });
+            }
+          } else {
+            const message = error instanceof Error ? error.message : "Chat failed";
+            send("error", { error: message });
+          }
         } finally {
-          controller.close();
+          clientAbort.removeEventListener("abort", onClientAbort);
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
         }
+      },
+      cancel() {
+        hermesAbort.abort();
       },
     });
 
