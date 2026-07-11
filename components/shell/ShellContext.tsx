@@ -82,13 +82,9 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     async function loadUser() {
       try {
-        let res = await fetch("/api/auth/me");
-        let data = await res.json();
-        if (!data?.user) {
-          await fetch("/api/auth/local", { method: "POST" });
-          res = await fetch("/api/auth/me");
-          data = await res.json();
-        }
+        // Do not silently create a local session — identity is chosen on /sign-in.
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
         if (data?.user) setUser(data.user);
         setCurrentBusiness(toActiveBusiness(data?.activeBusiness));
       } catch {

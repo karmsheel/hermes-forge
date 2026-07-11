@@ -1,6 +1,6 @@
 import { createLocalSessionResponse } from '@/lib/local-user';
 
-/** Bootstrap a single local session — no login UI for desktop/local use. */
+/** Start or resume the machine-local session (chosen explicitly on /sign-in or Profile). */
 export async function POST() {
   try {
     return await createLocalSessionResponse();
