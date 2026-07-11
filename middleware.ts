@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth-session';
 
-const PUBLIC_PATHS = ['/', '/login', '/signup'];
+const PUBLIC_PATHS = ['/', '/login', '/signup', '/sign-in'];
 // `/login` and `/signup` redirect to `/` — kept public so old links don't loop.
+// `/sign-in` is the post-Hermes identity choice (local / email / GitHub).
 const AUTH_API_PREFIX = '/api/auth';
+// Hermes connection probes run before the user signs in (local BYOK gateway).
+const HERMES_API_PREFIX = '/api/hermes';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -16,7 +19,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith(AUTH_API_PREFIX)) {
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    pathname.startsWith(AUTH_API_PREFIX) ||
+    pathname.startsWith(HERMES_API_PREFIX)
+  ) {
     return NextResponse.next();
   }
 

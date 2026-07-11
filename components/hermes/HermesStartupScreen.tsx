@@ -27,7 +27,6 @@ export function HermesStartupScreen() {
   const autoConnectStarted = useRef(false);
 
   const [mounted, setMounted] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
   const [phase, setPhase] = useState<StartupPhase>("splash");
   const [splashLeaving, setSplashLeaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -58,43 +57,13 @@ export function HermesStartupScreen() {
   }, [mounted]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrapSession(attempt = 0) {
-      try {
-        const res = await fetch("/api/auth/local", {
-          method: "POST",
-          credentials: "same-origin",
-        });
-        if (cancelled) return;
-        if (res.ok) {
-          setSessionReady(true);
-          return;
-        }
-      } catch {
-        if (cancelled) return;
-      }
-
-      if (attempt < 3) {
-        window.setTimeout(() => void bootstrapSession(attempt + 1), 1000 * (attempt + 1));
-      }
-    }
-
-    void bootstrapSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!sessionReady || phase === "splash" || phase === "leaving") return;
+    if (phase === "splash" || phase === "leaving") return;
 
     if (hadSavedConfig.current && !autoConnectStarted.current) {
       autoConnectStarted.current = true;
       setPhase("connecting");
     }
-  }, [phase, sessionReady]);
+  }, [phase]);
 
   useEffect(() => {
     if (isBusy && (phase === "idle" || phase === "connecting")) {
@@ -103,7 +72,7 @@ export function HermesStartupScreen() {
   }, [isBusy, phase]);
 
   useEffect(() => {
-    if (!splashDone.current || !sessionReady || phase === "splash" || phase === "leaving") return;
+    if (!splashDone.current || phase === "splash" || phase === "leaving") return;
 
     if (isConnected) {
       setErrorModalOpen(false);
@@ -116,7 +85,7 @@ export function HermesStartupScreen() {
     if (!isBusy && !isConnected) {
       setPhase("idle");
     }
-  }, [isBusy, isConnected, phase, sessionReady]);
+  }, [isBusy, isConnected, phase]);
 
   const refreshDiscovery = useCallback(async () => {
     try {
@@ -131,7 +100,23 @@ export function HermesStartupScreen() {
   }, []);
 
   const handleExitComplete = useCallback(() => {
-    router.push(redirectTo);
+    void (async () => {
+      // After Hermes connects: skip sign-in when a session already exists
+      // (returning users / after prior local choice). Otherwise show chooser.
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "same-origin" });
+        const data = await res.json().catch(() => ({}));
+        if (data?.user) {
+          router.push(redirectTo);
+          return;
+        }
+      } catch {
+        /* fall through to sign-in */
+      }
+
+      const dest = `/sign-in?from=${encodeURIComponent(redirectTo)}`;
+      router.push(dest);
+    })();
   }, [redirectTo, router]);
 
   async function handleConnect() {
@@ -247,16 +232,10 @@ export function HermesStartupScreen() {
             </p>
           </div>
 
-          {!sessionReady && (
-            <div className="mb-4 text-xs text-text-muted bg-bg-muted border border-border rounded-lg px-3 py-2">
-              Starting local session…
-            </div>
-          )}
-
           <button
             type="button"
             onClick={() => void handleConnect()}
-            disabled={connecting || isBusy || !sessionReady}
+            disabled={connecting || isBusy}
             className="btn-primary w-full justify-center"
           >
             {connecting || isBusy ? (

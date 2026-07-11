@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, GitBranch, Loader2, Pencil, Trash2, Upload } from "lucide-react";
+import { Download, GitBranch, Loader2, LogOut, Pencil, Trash2, Upload } from "lucide-react";
 import type { BusinessGitStatus } from "@/lib/business-git";
+import { SignInOptions } from "@/components/auth/SignInOptions";
 import { useShell } from "@/components/shell/ShellContext";
+import { isLocalUserEmail } from "@/lib/local-user";
 import type { BusinessSummary, BusinessExportPayload, UserProfile } from "@/lib/types";
 import { buildBusinessExportPayload, createBusinessExportZip, downloadBlob, makeExportFilename } from "@/lib/business-export";
 
@@ -16,6 +18,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [bizLoading, setBizLoading] = useState(true);
@@ -120,6 +123,23 @@ export default function ProfilePage() {
       toast.error("Could not update profile");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      const res = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!res.ok) throw new Error("Logout failed");
+      toast.success("Signed out");
+      router.push("/sign-in");
+      router.refresh();
+    } catch {
+      toast.error("Could not sign out");
+      setLoggingOut(false);
     }
   }
 
@@ -329,6 +349,10 @@ export default function ProfilePage() {
     );
   }
 
+  const authLabel = isLocalUserEmail(user?.email)
+    ? "Local mode (no account)"
+    : user?.email || "Signed in";
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-10 w-full">
         <h1 className="text-2xl font-semibold tracking-tight mb-6">Profile</h1>
@@ -344,14 +368,54 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="text-xs text-text-soft">
-            {user?._count?.businesses ?? 0} business{(user?._count?.businesses ?? 0) !== 1 ? "es" : ""}
+          <div className="text-xs text-text-soft space-y-1">
+            <div>
+              {user?._count?.businesses ?? 0} business
+              {(user?._count?.businesses ?? 0) !== 1 ? "es" : ""}
+            </div>
+            <div>
+              Sign-in: <span className="text-text-muted">{authLabel}</span>
+            </div>
           </div>
 
-          <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              className="btn-secondary"
+            >
+              {loggingOut ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <LogOut className="w-4 h-4" />
+                  Log out
+                </>
+              )}
+            </button>
+          </div>
         </form>
+
+        {/* Sign-in / upgrade options (same choices as first-run sign-in) */}
+        <div className="mb-8">
+          <div className="mb-3">
+            <div className="text-xs uppercase tracking-widest text-text-muted">Sign-in options</div>
+            <div className="text-sm text-text-muted">
+              Stay local, or add email / GitHub later for lock-down and backup once your business is
+              further along.
+            </div>
+          </div>
+          <SignInOptions
+            variant="profile"
+            currentEmail={user?.email}
+            redirectTo="/profile"
+            showBrand={false}
+          />
+        </div>
 
         {/* Businesses management */}
         <div className="mb-3 flex items-center justify-between">
