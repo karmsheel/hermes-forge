@@ -25,7 +25,9 @@ import {
 import { toast } from "sonner";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { ConversationsMenu } from "@/components/workshop/ConversationsMenu";
 import { MessageQueue } from "@/components/workshop/MessageQueue";
+import { ProcessChat } from "@/components/workshop/ProcessChat";
 import {
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
@@ -84,7 +86,7 @@ type IntroBanner = {
 
 /**
  * Shell-level Hermes chat dock.
- * PR-1 residency · PR-2 studio chat · PR-3 context · PR-4 stop/queue/tool strip.
+ * PR-1 residency · PR-2 studio · PR-3 context · PR-4 stop/queue/tools · PR-5 process scope.
  */
 export function ChatbarPanel() {
   const pathname = usePathname() || "/home";
@@ -97,6 +99,9 @@ export function ChatbarPanel() {
     setContextMode,
     pageRegistration,
     introRequestKey,
+    processSession,
+    isProcessScoped,
+    composerFocusRequest,
   } = useChatbar();
   const { isConnected, status, config } = useHermesConnection();
   const { openHermesConnection, currentBusiness } = useShell();
@@ -746,6 +751,108 @@ export function ChatbarPanel() {
   const busyLabel = sending
     ? "Hermes is thinking — new messages will queue"
     : null;
+
+  // Process mode: workshop registers a live process session (PR-5).
+  // Studio history/composer are hidden; ProcessChat (mentions + slash) runs in the dock.
+  if (isProcessScoped && processSession) {
+    return (
+      <aside
+        className={`chatbar-panel chatbar-panel--side-${isLeft ? "left" : "right"} chatbar-panel--process${isOpen ? " is-open" : " is-collapsed"}`}
+        aria-label="Hermes process chat"
+        aria-hidden={!isOpen}
+        inert={!isOpen ? true : undefined}
+      >
+        <header className="chatbar-panel__header">
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+            <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
+            <div className="chatbar-panel__brand-copy min-w-0">
+              <p className="chatbar-panel__eyebrow">Process</p>
+              <span className="chatbar-panel__session-title" title={processSession.processName}>
+                {processSession.processName}
+              </span>
+            </div>
+          </div>
+          <div className="chatbar-panel__header-actions">
+            <span
+              className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
+              title={status.error || conn.text}
+              role="status"
+            >
+              {conn.text}
+            </span>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={processSession.onOpenConnection}
+              title="Hermes connection"
+              aria-label="Hermes connection"
+            >
+              <PlugZap className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        {processSession.conversations.length > 0 ? (
+          <div className="chatbar-panel__process-forks">
+            <ConversationsMenu
+              conversations={processSession.conversations}
+              activeConversationId={processSession.conversationId}
+              processId={processSession.processId}
+              onSelect={processSession.onSelectConversation}
+              onForked={processSession.onForked}
+            />
+          </div>
+        ) : null}
+
+        <div className="chatbar-panel__process-body">
+          <ProcessChat
+            messages={processSession.messages}
+            processName={processSession.processName}
+            isLoading={processSession.isLoading}
+            onSend={processSession.onSend}
+            onOpenConnection={processSession.onOpenConnection}
+            queuedMessages={processSession.queuedMessages ?? []}
+            onRemoveQueued={processSession.onRemoveQueued}
+            onClearQueue={processSession.onClearQueue}
+            agentBusyLabel={processSession.agentBusyLabel}
+            composerFocusKey={
+              (processSession.composerFocusKey ?? 0) +
+              (composerFocusRequest?.key ?? 0)
+            }
+            selectedNode={processSession.selectedNode}
+            onClearNodeContext={processSession.onClearNodeContext}
+            mentionables={
+              processSession.mentionables
+                ? [...processSession.mentionables]
+                : undefined
+            }
+            onSlashCommand={processSession.onSlashCommand}
+            onCommentsChange={processSession.onCommentsChange}
+            scrollToRequest={processSession.scrollToRequest}
+            embedded
+          />
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside

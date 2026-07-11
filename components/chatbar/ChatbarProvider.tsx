@@ -18,6 +18,7 @@ import {
   saveChatbarContextMode,
   type ChatbarContextMode,
 } from "@/lib/chatbar/context-scope";
+import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import {
   CHATBAR_RESIDENCY_MODES,
   CHATBAR_SIDES,
@@ -60,6 +61,18 @@ interface ChatbarContextValue {
   /** Bump when pages request a re-intro (e.g. /intro later) */
   introRequestKey: number;
   requestPageIntro: (routeKey?: string) => void;
+
+  /**
+   * PR-5: when set, chatbar is process-scoped (workshop mapping).
+   * Studio threads are hidden; ProcessChat mounts inside the dock.
+   */
+  processSession: ProcessSessionBinding | null;
+  registerProcessSession: (session: ProcessSessionBinding | null) => void;
+  isProcessScoped: boolean;
+
+  /** Focus process/studio composer; optional prefill */
+  focusComposer: (opts?: { prefill?: string; submit?: boolean }) => void;
+  composerFocusRequest: { key: number; prefill?: string; submit?: boolean } | null;
 }
 
 const ChatbarContext = createContext<ChatbarContextValue | null>(null);
@@ -73,6 +86,14 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const [pageRegistration, setPageRegistration] =
     useState<PageContextRegistration | null>(null);
   const [introRequestKey, setIntroRequestKey] = useState(0);
+  const [processSession, setProcessSession] = useState<ProcessSessionBinding | null>(
+    null,
+  );
+  const [composerFocusRequest, setComposerFocusRequest] = useState<{
+    key: number;
+    prefill?: string;
+    submit?: boolean;
+  } | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -128,9 +149,25 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     setPageRegistration(provider);
   }, []);
 
+  const registerProcessSession = useCallback((session: ProcessSessionBinding | null) => {
+    setProcessSession(session);
+  }, []);
+
   const requestPageIntro = useCallback((_routeKey?: string) => {
     setIntroRequestKey((k) => k + 1);
   }, []);
+
+  const focusComposer = useCallback(
+    (opts?: { prefill?: string; submit?: boolean }) => {
+      setResidencyState(CHATBAR_RESIDENCY_MODES.OPEN);
+      setComposerFocusRequest({
+        key: Date.now(),
+        prefill: opts?.prefill,
+        submit: opts?.submit,
+      });
+    },
+    [],
+  );
 
   const toggle = useCallback(() => {
     setResidencyState((current) => toggleChatbarResidency(current));
@@ -167,6 +204,11 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       registerPageContext,
       introRequestKey,
       requestPageIntro,
+      processSession,
+      registerProcessSession,
+      isProcessScoped: Boolean(processSession),
+      focusComposer,
+      composerFocusRequest,
     }),
     [
       residency,
@@ -183,6 +225,10 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       registerPageContext,
       introRequestKey,
       requestPageIntro,
+      processSession,
+      registerProcessSession,
+      focusComposer,
+      composerFocusRequest,
     ],
   );
 

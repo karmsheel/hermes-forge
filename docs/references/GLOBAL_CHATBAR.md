@@ -1,6 +1,6 @@
 # Global Chatbar — Spec & Extension Parity Checklist
 
-> **Status:** PR-1–PR-4 shipped (shell dock + studio chat + page context + composer stop/queue/tool strip)  
+> **Status:** PR-1–PR-5 shipped (shell dock + studio chat + page context + composer parity + workshop absorption)  
 > **Inspired by:** [hermes-browser-extension](https://github.com/abundantbeing/hermes-browser-extension) v0.1.10 side panel  
 > **Backlog id:** **4.17 Global chatbar**  
 > **Depends on:** Shell (1.2), Hermes connection, workshop chat/composer (Phase 3), design tokens (1.1 / 4.6)
@@ -530,12 +530,14 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - **Acceptance:** busy send queues; tools render as strip during stream
 - **Shipped surface:** `components/chatbar/ToolActivityStrip.tsx`, ChatbarPanel stop/queue, `streamHermesEvents`
 
-### PR-5 — Workshop absorption
+### PR-5 — Workshop absorption — **DONE**
 
-- Process-scoped mode in chatbar  
-- Remove embedded `ProcessChat`  
-- Mentions + process slash commands  
-- **Acceptance:** mapping workflow unchanged or better; one chat surface  
+- Process-scoped mode via `registerProcessSession` (`lib/chatbar/process-session.ts`)
+- Global chatbar embeds `ProcessChat` (mentions, slash commands, queue, forks)
+- Removed workshop right-column chat; diagram uses full content width
+- Auto-open chatbar on process select; node select focuses composer
+- **Acceptance:** one chat surface for process mapping; studio chat on other routes
+- **Shipped surface:** ChatbarProvider processSession, ChatbarPanel process mode, workshop page binding
 
 ### PR-6 — Model dock, context meter, steer, polish
 

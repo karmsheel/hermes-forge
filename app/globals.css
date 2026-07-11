@@ -2314,6 +2314,31 @@ body {
   font-size: 0.8125rem;
 }
 
+/* PR-5: process-scoped chat fills the dock */
+.chatbar-panel--process {
+  display: flex;
+  flex-direction: column;
+}
+
+.chatbar-panel__process-forks {
+  flex-shrink: 0;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.chatbar-panel__process-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.process-chat--embedded {
+  min-height: 0;
+}
+
 .chatbar-panel__composer-row {
   display: flex;
   align-items: flex-end;

@@ -12,15 +12,15 @@ import {
   serializeNodeCommentSummary,
 } from "@/lib/node-comment";
 import { WorkshopPageContext } from "@/components/chatbar/page-providers/WorkshopPageContext";
+import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { ProcessSidebar } from "@/components/workshop/ProcessSidebar";
 import { MermaidDiagram, type MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
-import { ProcessChat } from "@/components/workshop/ProcessChat";
 import { WorkspaceTabs, type WorkspaceTab } from "@/components/workshop/WorkspaceTabs";
 import { DetailsPanel } from "@/components/workshop/DetailsPanel";
 import { SourcePanel } from "@/components/workshop/SourcePanel";
 import { QuestionsPanel } from "@/components/workshop/QuestionsPanel";
-import { ConversationsMenu } from "@/components/workshop/ConversationsMenu";
 import { ExportMenu } from "@/components/export/ExportMenu";
+import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
@@ -91,6 +91,7 @@ export default function WorkshopPage() {
     const activeConversationIdRef = useRef<string | null>(null);
   const { openHermesConnection, currentBusiness, registerWorkshopNewProcess } = useShell();
   const { config: hermesConfig } = useHermesConnection();
+  const { registerProcessSession, open: openChatbar, focusComposer } = useChatbar();
   const pendingReplyProcessIdRef = useRef<string | null>(consumePendingHermesReply());
   const pendingReplySentRef = useRef(false);
   const pendingCreateRef = useRef(consumePendingNewProcess());
@@ -821,6 +822,91 @@ export default function WorkshopPage() {
   const canApprove =
     activeProcess && canApproveForAutomation(activeProcess) && !approving;
 
+  // PR-5: bind process chat into the global chatbar (one surface; no dual column).
+  // Avoid clearing the binding between updates so the dock does not flash studio mode.
+  useEffect(() => {
+    if (!activeProcess) {
+      registerProcessSession(null);
+      return;
+    }
+
+    const processId = activeProcess.id;
+    const session: ProcessSessionBinding = {
+      processId,
+      processName: activeProcess.name,
+      conversationId: activeConversationId,
+      conversations: activeProcess.conversations ?? [],
+      messages: conversationMessages,
+      isLoading: chatLoading,
+      agentBusyLabel,
+      queuedMessages,
+      selectedNode,
+      mentionables: workshopMentionables,
+      composerFocusKey,
+      scrollToRequest: chatScrollRequest,
+      onSend: handleChatSend,
+      onSelectConversation: (convId) => {
+        setActiveConversationId(convId);
+        activeConversationIdRef.current = convId;
+        persistConversationId(processId, convId);
+        messageQueueRef.current = [];
+        setQueuedMessages([]);
+      },
+      onForked: () => {
+        if (activeId && businessId) void loadProcess(activeId, businessId);
+      },
+      onRemoveQueued: removeQueuedMessage,
+      onClearQueue: clearMessageQueue,
+      onClearNodeContext: clearSelectedNode,
+      onSlashCommand: handleSlashCommand,
+      onCommentsChange: handleCommentsChange,
+      onOpenConnection: openHermesConnection,
+    };
+
+    registerProcessSession(session);
+  }, [
+    activeProcess,
+    activeConversationId,
+    conversationMessages,
+    chatLoading,
+    agentBusyLabel,
+    queuedMessages,
+    selectedNode,
+    workshopMentionables,
+    composerFocusKey,
+    chatScrollRequest,
+    handleChatSend,
+    removeQueuedMessage,
+    clearMessageQueue,
+    clearSelectedNode,
+    handleSlashCommand,
+    handleCommentsChange,
+    openHermesConnection,
+    registerProcessSession,
+    activeId,
+    businessId,
+    loadProcess,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      registerProcessSession(null);
+    };
+  }, [registerProcessSession]);
+
+  // Open chatbar when a process is selected so mapping chat is discoverable
+  useEffect(() => {
+    if (activeProcess?.id) {
+      openChatbar();
+    }
+  }, [activeProcess?.id, openChatbar]);
+
+  // Node select → focus process composer in chatbar
+  useEffect(() => {
+    if (!selectedNode) return;
+    focusComposer();
+  }, [selectedNode, focusComposer]);
+
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
         <WorkshopPageContext
@@ -999,54 +1085,6 @@ export default function WorkshopPage() {
             />
           )}
         </main>
-
-        {activeProcess ? (
-          <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex flex-col h-full">
-            {activeProcess.conversations && activeProcess.conversations.length > 0 && (
-              <div className="px-4 py-2 border-b border-border flex items-center justify-between">
-                <ConversationsMenu
-                  conversations={activeProcess.conversations}
-                  activeConversationId={activeConversationId}
-                  processId={activeProcess.id}
-                  onSelect={(convId) => {
-                    setActiveConversationId(convId);
-                    activeConversationIdRef.current = convId;
-                    persistConversationId(activeProcess.id, convId);
-                    messageQueueRef.current = [];
-                    setQueuedMessages([]);
-                  }}
-                  onForked={() => {
-                    if (activeId && businessId) void loadProcess(activeId, businessId);
-                  }}
-                />
-              </div>
-            )}
-            <ProcessChat
-              messages={conversationMessages}
-              processName={activeProcess.name}
-              isLoading={chatLoading}
-              onSend={handleChatSend}
-              onOpenConnection={openHermesConnection}
-              queuedMessages={queuedMessages}
-              onRemoveQueued={removeQueuedMessage}
-              onClearQueue={clearMessageQueue}
-              agentBusyLabel={agentBusyLabel}
-              composerFocusKey={composerFocusKey}
-              selectedNode={selectedNode}
-              onClearNodeContext={clearSelectedNode}
-              mentionables={workshopMentionables}
-              onSlashCommand={handleSlashCommand}
-              onCommentsChange={handleCommentsChange}
-              scrollToRequest={chatScrollRequest}
-            />
-          </div>
-        ) : (
-          <div className="w-[380px] shrink-0 border-l border-border bg-bg-panel flex items-center justify-center p-6">
-            <p className="text-xs text-text-muted text-center">
-              Chat will appear here when you select or create a process.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -72,6 +72,11 @@ interface ProcessChatProps {
   onClearQueue?: () => void;
   /** Shown in the queue panel while chat or background agents are running. */
   agentBusyLabel?: string | null;
+  /**
+   * PR-5: when embedded in the global chatbar, hide the local "Chat" header
+   * (connection + title live in ChatbarPanel).
+   */
+  embedded?: boolean;
 }
 
 export function ProcessChat({
@@ -91,6 +96,7 @@ export function ProcessChat({
   onRemoveQueued,
   onClearQueue,
   agentBusyLabel,
+  embedded = false,
 }: ProcessChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
@@ -180,20 +186,24 @@ export function ProcessChat({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full text-text overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-text-muted">Chat</div>
-          <div className="text-sm font-medium truncate max-w-[240px]">{processName}</div>
+    <div
+      className={`flex-1 flex flex-col h-full min-h-0 text-text overflow-hidden${embedded ? " process-chat--embedded" : ""}`}
+    >
+      {!embedded ? (
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-widest text-text-muted">Chat</div>
+            <div className="text-sm font-medium truncate max-w-[240px]">{processName}</div>
+          </div>
+          <button
+            onClick={onOpenConnection}
+            className="p-1.5 rounded-lg hover:bg-bg-subtle text-text-muted hover:text-text-strong transition-colors"
+            title="Hermes connection"
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
         </div>
-        <button
-          onClick={onOpenConnection}
-          className="p-1.5 rounded-lg hover:bg-bg-subtle text-text-muted hover:text-text-strong transition-colors"
-          title="Hermes connection"
-        >
-          <Settings2 className="w-4 h-4" />
-        </button>
-      </div>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => {

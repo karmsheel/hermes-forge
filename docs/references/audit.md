@@ -47,7 +47,7 @@ flowchart LR
 
 **Solid and shippable:**
 - Home → brief → workshop flow (`app/api/start-from-brief/route.ts`, `components/home/HomeHero.tsx`)
-- 3-column workshop: streaming diagrams, node comments, discovery questions, conversation forks, message queue, rich composer (`app/(shell)/workshop/page.tsx`)
+- 2-column workshop + global chatbar (PR-5 absorption): streaming diagrams, node comments, discovery questions, conversation forks, message queue, rich composer (`app/(shell)/workshop/page.tsx`)
 - Automations pipeline (approval → studio → n8n deploy) — backlog 4.4
 - Business log + append-only events (`lib/business-log.ts`, `app/(shell)/log/page.tsx`)
 - Full theme/skin engine (built-ins, JSON install, VS Code import) — backlog 4.6–4.9

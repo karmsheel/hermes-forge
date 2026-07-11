@@ -15,7 +15,7 @@ type Props = {
 
 /**
  * Registers Workshop live selection (active process / node) for hermes.forge.context.v1.
- * Does not replace workshop ProcessChat — studio bar is co-pilot only until PR-5.
+ * PR-5: process mapping chat lives in the global chatbar via registerProcessSession.
  */
 export function WorkshopPageContext({
   processId,
