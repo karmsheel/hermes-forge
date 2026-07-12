@@ -10,6 +10,7 @@ describe("workflow templates library", () => {
   it("loads curated templates from JSON catalog", () => {
     assert.ok(WORKFLOW_TEMPLATES.length >= 5);
     const ids = WORKFLOW_TEMPLATES.map((t) => t.id);
+    assert.ok(ids.includes("content-ops"));
     assert.ok(ids.includes("sop"));
     assert.ok(ids.includes("onboarding"));
     assert.ok(ids.includes("incident"));

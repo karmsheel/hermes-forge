@@ -50,6 +50,12 @@ export function buildCronPrompt(
     manual,
     diagram,
     '',
+    'Content inventory (Hermes Forge): When this process produces ideas or drafts,',
+    'structure your output as a titled markdown piece the owner can paste into the',
+    'Forge Content inventory (status: idea → draft → review → ready → shipped).',
+    'Prefer clear title + body. Do not claim you published externally unless you',
+    'actually did via available tools.',
+    '',
     'Follow the steps precisely. If nothing needs attention, respond with [SILENT].',
   ]
     .filter((line) => line !== null)

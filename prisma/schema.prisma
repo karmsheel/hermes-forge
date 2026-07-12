@@ -59,11 +59,70 @@ model Business {
   conversations       Conversation[]
   memories            Memory[]
   documents           BusinessDocument[]
+  contentItems        ContentItem[]
+  metrics             BusinessMetric[]
   events              BusinessEvent[]
   decisions           BusinessDecision[]
   humanPersonnel      HumanPersonnel[]
   hermesAgentProfiles HermesAgentProfile[]
   agentTrainingItems  AgentTrainingItem[]
+}
+
+/// Operational content inventory (Phase 5) — pieces you ship, not knowledge docs.
+model ContentItem {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  title         String
+  bodyMarkdown  String   @default("")
+  status        String   @default("idea") // idea | draft | review | ready | shipped
+  channel       String?  // linkedin | x | newsletter | blog | other
+  source        String   @default("manual") // manual | hermes | import
+  processId     String?
+  automationId  String?
+  scheduledFor  DateTime?
+  shippedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([businessId, status, updatedAt(sort: Desc)])
+  @@index([businessId, createdAt(sort: Desc)])
+}
+
+/// Metric definition for Monitor stage (Phase 5).
+model BusinessMetric {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name              String
+  channel           String?  // linkedin | x | newsletter | site | other
+  unit              String   @default("count")
+  collectionMethod  String   @default("manual") // manual | hermes_job | integration
+  cadenceGoal       Float?   // e.g. posts per week target when relevant
+  notes             String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  samples MetricSample[]
+
+  @@index([businessId, name])
+}
+
+model MetricSample {
+  id        String         @id @default(cuid())
+  metricId  String
+  metric    BusinessMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  value     Float
+  recordedAt DateTime @default(now())
+  source    String    @default("manual") // manual | hermes | import
+  notes     String?
+
+  @@index([metricId, recordedAt(sort: Desc)])
 }
 
 /// Durable markdown knowledge for a business (4.18) — not process maps.

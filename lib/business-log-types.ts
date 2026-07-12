@@ -30,6 +30,15 @@ export const BUSINESS_EVENT_TYPES = {
   DOCUMENT_UPDATED: 'document.updated',
   DOCUMENT_DELETED: 'document.deleted',
 
+  CONTENT_CREATED: 'content.created',
+  CONTENT_UPDATED: 'content.updated',
+  CONTENT_DELETED: 'content.deleted',
+  CONTENT_STATUS_CHANGED: 'content.status_changed',
+
+  METRIC_CREATED: 'metric.created',
+  METRIC_SAMPLE_RECORDED: 'metric.sample_recorded',
+  METRIC_DELETED: 'metric.deleted',
+
   PERSONNEL_ADDED: 'personnel.added',
   PERSONNEL_HIRED: 'personnel.hired',
   /** Name / role / roleDescription changes on a human roster member. */
@@ -51,6 +60,8 @@ export type BusinessEntityType =
   | 'automation'
   | 'memory'
   | 'document'
+  | 'content'
+  | 'metric'
   | 'chat'
   | 'personnel'
   | 'decision';
@@ -136,6 +147,8 @@ export type BusinessLogFilter =
   | 'chat'
   | 'memory'
   | 'document'
+  | 'content'
+  | 'metric'
   | 'personnel'
   | 'decision';
 
@@ -148,6 +161,8 @@ export function eventCategory(type: string): BusinessLogFilter {
     prefix === 'chat' ||
     prefix === 'memory' ||
     prefix === 'document' ||
+    prefix === 'content' ||
+    prefix === 'metric' ||
     prefix === 'personnel' ||
     prefix === 'decision'
   ) {

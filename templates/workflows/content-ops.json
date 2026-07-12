@@ -1,0 +1,10 @@
+{
+  "id": "content-ops",
+  "title": "Content Ops",
+  "description": "Ideate → draft → review → ship content loop",
+  "processName": "Content creation cycle",
+  "seedPrompt": "Map our content automation strategy as a solo founder. Cover: (1) where ideas come from and how we store them, (2) research and drafting (Hermes agent), (3) human review gate, (4) ready-to-ship and publishing channels (LinkedIn, X, newsletter, blog), (5) what we measure (followers, engagement, posts shipped). Prefer Hermes cron for recurring agent work. Keep multi-app publish steps as optional later (n8n). Name actors clearly (Owner, Content agent). End with a clear happy path and failure/escalation notes.",
+  "diagramMermaid": "flowchart TD\n  Start([Cadence trigger]) --> Ideate[Ideate topics]\n  Ideate --> Research[Research / outline]\n  Research --> Draft[Agent draft]\n  Draft --> Review{Owner review}\n  Review -->|Needs work| Draft\n  Review -->|Approved| Ready[Ready to ship]\n  Ready --> Publish[Publish / schedule]\n  Publish --> Measure[Record metrics]\n  Measure --> End([Done])",
+  "gradientFrom": "#3b82f6",
+  "gradientTo": "#8b5cf6"
+}

@@ -94,6 +94,34 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p.startsWith("/content"),
+    blurb: {
+      routeKey: "content",
+      title: "Content",
+      purpose:
+        "Operational content inventory — ideas, drafts, review, ready, shipped. Separate from knowledge Documents.",
+      uiHints: [
+        "Create a piece and move it through statuses",
+        "Use Content for what you ship; Documents for brand/strategy knowledge",
+        "In Automate, assign a Hermes agent + cron to draft on a schedule",
+      ],
+    },
+  },
+  {
+    match: (p) => p.startsWith("/metrics"),
+    blurb: {
+      routeKey: "metrics",
+      title: "Metrics",
+      purpose:
+        "Monitor stage: content pipeline health and channel metrics (followers, engagement).",
+      uiHints: [
+        "Define metrics for LinkedIn, X, newsletter, etc.",
+        "Record samples manually until Hermes collection jobs are wired",
+        "Ask which KPIs matter for this business",
+      ],
+    },
+  },
+  {
     match: (p) => p.startsWith("/workshop"),
     blurb: {
       routeKey: "workshop",
@@ -112,10 +140,12 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     blurb: {
       routeKey: "automations",
       title: "Automations",
-      purpose: "Design and deploy automations for approved processes.",
+      purpose:
+        "Automate stage: assign Hermes agents and deploy Hermes cron jobs for approved processes. n8n is optional advanced runtime.",
       uiHints: [
-        "Open an approved process to plan or deploy",
-        "Ask about deploy status or next automation candidate",
+        "Assign a hired Hermes agent before deploying a cron",
+        "Prefer Hermes cron for agent writing/research loops",
+        "Open Content to manage drafts the agent produces",
       ],
     },
   },

@@ -58,9 +58,8 @@ export function DeployPanel({
   const { config: hermesConfig, isConnected: hermesConnected } = useHermesConnection();
   const { config: n8nConfig, isConnected: n8nConnected } = useN8nConnection();
 
-  const [deployType, setDeployType] = useState<DeployType>(
-    plan?.recommendedPath === "n8n_workflow" ? "n8n_workflow" : "hermes_cron"
-  );
+  // M0: Hermes cron is the primary path; n8n remains available as advanced.
+  const [deployType, setDeployType] = useState<DeployType>("hermes_cron");
   const [schedule, setSchedule] = useState(plan?.schedule ?? "every 1d at 09:00");
   const [deliver, setDeliver] = useState(plan?.deliveryChannel ?? "local");
   const [deploying, setDeploying] = useState(false);
@@ -193,13 +192,14 @@ export function DeployPanel({
             <button
               type="button"
               onClick={() => setDeployType("n8n_workflow")}
+              title="Advanced: multi-app workflows (n8n). Prefer Hermes cron for agent content loops."
               className={`flex-1 text-xs py-2 px-2 rounded-lg border transition-colors ${
                 deployType === "n8n_workflow"
                   ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
                   : "border-zinc-800 text-zinc-400 hover:border-zinc-700"
               }`}
             >
-              n8n workflow
+              n8n (advanced)
             </button>
           </div>
 

@@ -4,6 +4,7 @@
  */
 
 import approvalFlow from "@/templates/workflows/approval-flow.json" with { type: "json" };
+import contentOps from "@/templates/workflows/content-ops.json" with { type: "json" };
 import customerJourney from "@/templates/workflows/customer-journey.json" with { type: "json" };
 import incident from "@/templates/workflows/incident.json" with { type: "json" };
 import onboarding from "@/templates/workflows/onboarding.json" with { type: "json" };
@@ -14,7 +15,8 @@ export type WorkflowTemplateId =
   | "customer-journey"
   | "approval-flow"
   | "onboarding"
-  | "incident";
+  | "incident"
+  | "content-ops";
 
 export interface WorkflowTemplate {
   id: WorkflowTemplateId;
@@ -53,6 +55,7 @@ function asTemplate(raw: {
 
 /** Ordered catalog loaded from `templates/workflows/*.json`. */
 export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  asTemplate(contentOps),
   asTemplate(sop),
   asTemplate(customerJourney),
   asTemplate(approvalFlow),

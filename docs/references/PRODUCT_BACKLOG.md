@@ -742,6 +742,68 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+## Phase 5 — Map → Monitor → Automate (M0 operating loop)
+
+Product spine for solo founders: **Map** (understand) → **Monitor** (instrument) → **Automate** (Hermes agents + crons).  
+M0 is **Hermes-only inside Forge** (no Notion required; n8n secondary until M1).
+
+### 5.0 Stage explorer + stage-scoped nav — **DONE** (foundation)
+
+**Goal:** Top-bar stage control (Map | Monitor | Automate) filters the left rail.
+
+**Shipped:**
+- [x] `lib/forge-stage.ts` — stage types, storage, route→stage inference
+- [x] `StageProvider` + `StageExplorer` in app top bar
+- [x] Nav rail filtered by stage; deep links auto-select stage
+- [x] Default landing routes per stage (Functions / Metrics / Automations)
+
+### 5.1 Content inventory — **DONE** (foundation)
+
+**Goal:** Operational content pieces separate from knowledge Documents.
+
+**Shipped:**
+- [x] `ContentItem` Prisma model + migration
+- [x] `/api/content` CRUD + health counts
+- [x] `/content` studio UI (status pipeline, channels)
+- [x] Business log events `content.*`
+- [x] Nav under Monitor + Automate stages
+
+### 5.2 Monitor metrics + content health — **DONE** (foundation)
+
+**Goal:** Instrument what matters before/while automating.
+
+**Shipped:**
+- [x] `BusinessMetric` + `MetricSample` models
+- [x] `/api/metrics` list/create + sample record/delete
+- [x] `/metrics` page: content health board + manual channel metrics
+- [x] Business log events `metric.*`
+
+**Remaining:** Hermes scheduled metric collectors; failure alerts productization.
+
+### 5.3 Automate: agent assign + Hermes cron (content-aware) — **MOSTLY DONE**
+
+**Already shipped (4.10 / 4.4):** hired agent bind on Automation, DeployPanel agent picker, Hermes cron deploy.
+
+**M0 polish:**
+- [x] Default deploy path Hermes cron (n8n labeled advanced)
+- [x] Cron prompts mention Forge Content inventory for drafts
+- [ ] Auto-create Content items from cron output (needs Hermes→Forge callback/tool)
+- [ ] Pause/resume UX + owner-facing run health (beyond Cronalytics)
+
+### 5.4 Content Ops template — **DONE**
+
+- [x] `templates/workflows/content-ops.json` + catalog entry (first card on home)
+
+### 5.5 n8n as Automate expansion — **Pending** (M1)
+
+Productize n8n as optional multi-app runtime under Automate / Integrations. Code exists (4.4); UI prioritizes Hermes first.
+
+### 5.6 External connectors (Notion, etc.) — **Pending** (M2)
+
+Optional systems of record after Hermes-only loop is proven.
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -781,6 +843,13 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
 | 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **Done** (PR-1–6) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
 | 4.18 | Business Documents / knowledge layer | 4 | **Done** (foundation) — see [`BUSINESS_DOCUMENTS.md`](BUSINESS_DOCUMENTS.md) |
+| 5.0 | Stage explorer + stage-scoped nav | 5 | **Done** (foundation) |
+| 5.1 | Content inventory | 5 | **Done** (foundation) |
+| 5.2 | Monitor metrics + content health | 5 | **Done** (foundation) |
+| 5.3 | Automate agent + content-aware cron | 5 | **Mostly done** |
+| 5.4 | Content Ops template | 5 | **Done** |
+| 5.5 | n8n Automate expansion | 5 | Pending (M1) |
+| 5.6 | Notion / external connectors | 5 | Pending (M2) |
 
 ---
 

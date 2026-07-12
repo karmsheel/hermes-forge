@@ -20,7 +20,10 @@ export function ChatbarCollapsedTab() {
       aria-label="Open Hermes chat"
     >
       <MessageSquare className="chatbar-collapsed-tab__icon" aria-hidden />
-      <span className="chatbar-collapsed-tab__label">Ask Hermes</span>
+      <span className="chatbar-collapsed-tab__label">
+        <span>Ask</span>
+        <span>Hermes</span>
+      </span>
     </button>
   );
 }

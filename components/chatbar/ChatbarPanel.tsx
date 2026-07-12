@@ -906,6 +906,15 @@ export function ChatbarPanel() {
       >
         <header className="chatbar-panel__header">
           <div className="chatbar-panel__brand chatbar-panel__brand--session">
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
             <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
             <div className="chatbar-panel__brand-copy min-w-0">
               <p className="chatbar-panel__eyebrow">Process</p>
@@ -939,15 +948,6 @@ export function ChatbarPanel() {
               aria-label={swapLabel}
             >
               <ArrowLeftRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={collapse}
-              title="Hide chat (Alt+H)"
-              aria-label="Hide chat"
-            >
-              <CollapseIcon className="w-4 h-4" />
             </button>
           </div>
         </header>
@@ -1014,6 +1014,15 @@ export function ChatbarPanel() {
           <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <button
               type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
               className="chatbar-panel__session-btn"
               onClick={() => setSessionMenuOpen((v) => !v)}
               aria-haspopup="dialog"
@@ -1062,15 +1071,6 @@ export function ChatbarPanel() {
               aria-label={swapLabel}
             >
               <ArrowLeftRight className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={collapse}
-              title="Hide chat (Alt+H)"
-              aria-label="Hide chat"
-            >
-              <CollapseIcon className="w-4 h-4" />
             </button>
           </div>
         </div>

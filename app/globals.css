@@ -3584,17 +3584,32 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.45rem;
-  width: 2rem;
-  padding: 0.75rem 0.25rem;
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
+  justify-content: center;
+  gap: 0.35rem;
+  width: 3.25rem;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.35rem;
+  /* Raised face: lit top, shaded bottom (classic bevel) */
+  border-style: solid;
+  border-width: 1px;
+  border-top-color: color-mix(in srgb, #fff 28%, var(--border));
+  border-right-color: color-mix(in srgb, #000 22%, var(--border));
+  border-bottom-color: color-mix(in srgb, #000 35%, var(--border));
+  border-left-color: color-mix(in srgb, #000 30%, var(--border));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--bg-panel) 82%, #fff 18%) 0%,
+      var(--bg-panel) 42%,
+      color-mix(in srgb, var(--bg-panel) 88%, #000 12%) 100%
+    );
   color: var(--text-muted);
   cursor: pointer;
   transition:
-    background-color var(--dur-quick, 120ms) var(--ease-out, ease),
     color var(--dur-quick, 120ms) var(--ease-out, ease),
-    border-color var(--dur-quick, 120ms) var(--ease-out, ease);
+    border-color var(--dur-quick, 120ms) var(--ease-out, ease),
+    box-shadow var(--dur-quick, 120ms) var(--ease-out, ease),
+    filter var(--dur-quick, 120ms) var(--ease-out, ease);
 }
 
 .chatbar-collapsed-tab--right {
@@ -3602,7 +3617,22 @@ body {
   left: auto;
   border-right: none;
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  box-shadow: -4px 0 16px color-mix(in srgb, var(--bg) 40%, transparent);
+  /*
+   * Raised 3D (light from top-right):
+   * - Outer drop: casts left + down onto the page
+   * - Inset: dark left/bottom edges, lit top face
+   */
+  box-shadow:
+    /* hard "thickness" ledge left + bottom */
+    -2px 3px 0 color-mix(in srgb, #000 22%, transparent),
+    /* soft cast into the page */
+    -5px 7px 10px color-mix(in srgb, #000 24%, transparent),
+    -10px 12px 22px color-mix(in srgb, #000 20%, transparent),
+    /* face bevel: shade left + bottom */
+    inset 2px 0 3px color-mix(in srgb, #000 18%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, #000 16%, transparent),
+    /* lit top */
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
 }
 
 .chatbar-collapsed-tab--left {
@@ -3611,7 +3641,16 @@ body {
   right: auto;
   border-left: none;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  box-shadow: 4px 0 16px color-mix(in srgb, var(--bg) 40%, transparent);
+  /* Mirror: shade right + bottom (cast into the page) */
+  border-left-color: color-mix(in srgb, #fff 22%, var(--border));
+  border-right-color: color-mix(in srgb, #000 30%, var(--border));
+  box-shadow:
+    2px 3px 0 color-mix(in srgb, #000 22%, transparent),
+    5px 7px 10px color-mix(in srgb, #000 24%, transparent),
+    10px 12px 22px color-mix(in srgb, #000 20%, transparent),
+    inset -2px 0 3px color-mix(in srgb, #000 18%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, #000 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
 }
 
 .app-shell-layout--business-manager .chatbar-collapsed-tab--left {
@@ -3619,9 +3658,39 @@ body {
 }
 
 .chatbar-collapsed-tab:hover {
-  background: var(--accent-tint);
   color: var(--accent);
-  border-color: var(--accent-soft);
+  filter: brightness(1.05);
+  border-top-color: color-mix(in srgb, var(--accent-soft) 50%, #fff 30%);
+  border-bottom-color: color-mix(in srgb, #000 40%, var(--accent-soft));
+  border-left-color: color-mix(in srgb, #000 35%, var(--accent-soft));
+  border-right-color: color-mix(in srgb, #000 25%, var(--accent-soft));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--accent-tint) 70%, #fff 18%) 0%,
+      var(--accent-tint) 48%,
+      color-mix(in srgb, var(--accent-tint) 86%, #000 14%) 100%
+    );
+}
+
+.chatbar-collapsed-tab--right:hover {
+  box-shadow:
+    -2px 3px 0 color-mix(in srgb, #000 26%, transparent),
+    -6px 8px 12px color-mix(in srgb, #000 28%, transparent),
+    -12px 14px 26px color-mix(in srgb, #000 24%, transparent),
+    inset 2px 0 3px color-mix(in srgb, #000 20%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, #000 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+}
+
+.chatbar-collapsed-tab--left:hover {
+  box-shadow:
+    2px 3px 0 color-mix(in srgb, #000 26%, transparent),
+    6px 8px 12px color-mix(in srgb, #000 28%, transparent),
+    12px 14px 26px color-mix(in srgb, #000 24%, transparent),
+    inset -2px 0 3px color-mix(in srgb, #000 20%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, #000 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
 }
 
 .chatbar-collapsed-tab__icon {
@@ -3899,13 +3968,16 @@ body {
 }
 
 .chatbar-collapsed-tab__label {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
   font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  white-space: nowrap;
+  line-height: 1.15;
+  text-align: center;
 }
 
 @media (max-width: 1100px) {
@@ -3981,10 +4053,14 @@ body {
   overflow: auto;
 }
 
-/* Left: business picker (+ new tab). Right: theme / profile / settings. */
+/*
+ * Left: business picker (+ new tab). Center: stage explorer. Right: theme / profile.
+ * Equal 1fr side columns so Map|Monitor|Automate sits on the true horizontal center
+ * of the top bar (aligned with home hero art + title in the content column).
+ */
 .app-topbar__inner {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 0.75rem;
   width: 100%;
@@ -4006,8 +4082,66 @@ body {
   align-items: center;
   gap: 0.35rem;
   width: max-content;
-  max-width: 18rem;
+  max-width: 100%;
   min-width: 0;
+}
+
+/* Map | Monitor | Automate — geometric center of the top bar */
+.app-topbar__stages {
+  grid-column: 2;
+  justify-self: center;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.stage-explorer {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  padding: 2px;
+  border-radius: var(--radius-md, 0.5rem);
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-xs);
+}
+
+.stage-explorer__tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.35rem 0.85rem;
+  border-radius: calc(var(--radius-md, 0.5rem) - 2px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color var(--dur-quick, 120ms) var(--ease-out, ease),
+    background-color var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+.stage-explorer__tab:hover {
+  color: var(--text);
+  background: var(--bg-subtle);
+}
+
+.stage-explorer__tab.is-active {
+  color: var(--text);
+  background: var(--accent-tint, color-mix(in srgb, var(--accent) 18%, transparent));
+  box-shadow: var(--shadow-xs);
+}
+
+@media (max-width: 720px) {
+  .stage-explorer__tab {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.7rem;
+  }
 }
 
 .app-topbar__workspace .business-switcher {
@@ -4068,6 +4202,8 @@ body {
   justify-content: flex-end;
   gap: 0.75rem;
   margin: 0;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .nav-rail {

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  Newspaper,
   Route,
   UserPlus,
   type LucideIcon,
@@ -17,6 +18,7 @@ import type { WorkflowTemplate, WorkflowTemplateId } from "@/lib/workflow-templa
 import { WORKFLOW_TEMPLATES } from "@/lib/workflow-templates";
 
 const TEMPLATE_ICONS: Record<WorkflowTemplateId, LucideIcon> = {
+  "content-ops": Newspaper,
   sop: ClipboardList,
   "customer-journey": Route,
   "approval-flow": CheckCircle2,

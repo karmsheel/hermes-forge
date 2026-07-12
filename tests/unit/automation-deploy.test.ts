@@ -27,6 +27,7 @@ describe('buildCronPrompt agent bind', () => {
     );
     assert.match(prompt, /Sales digest/);
     assert.match(prompt, /Send daily sales digest/);
+    assert.match(prompt, /Content inventory/);
     assert.doesNotMatch(prompt, /hired Hermes agent/);
   });
 

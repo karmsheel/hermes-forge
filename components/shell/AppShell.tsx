@@ -12,6 +12,7 @@ import { ForgeTabOutlet } from "./ForgeTabOutlet";
 import { ForgeTabProvider, useForgeTabs } from "./ForgeTabProvider";
 import { NavRail } from "./NavRail";
 import { ShellProvider } from "./ShellContext";
+import { StageProvider } from "./StageProvider";
 
 function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -74,13 +75,15 @@ function AppShellFrame({ children }: { children: ReactNode }) {
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ShellProvider>
-      <ChatbarProvider>
-        <ForgeTabProvider>
-          {/* WIP: hire gate from personnel work — keep alongside multi-tab provider */}
-          <HireRequiredGate />
-          <AppShellFrame>{children}</AppShellFrame>
-        </ForgeTabProvider>
-      </ChatbarProvider>
+      <StageProvider>
+        <ChatbarProvider>
+          <ForgeTabProvider>
+            {/* WIP: hire gate from personnel work — keep alongside multi-tab provider */}
+            <HireRequiredGate />
+            <AppShellFrame>{children}</AppShellFrame>
+          </ForgeTabProvider>
+        </ChatbarProvider>
+      </StageProvider>
     </ShellProvider>
   );
 }

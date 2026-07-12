@@ -5,12 +5,14 @@ import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
 import {
+  Activity,
   Clock,
   FileText,
   FolderKanban,
   Hammer,
   Home,
   MessageSquare,
+  Newspaper,
   PlugZap,
   Plus,
   Scale,
@@ -22,9 +24,11 @@ import {
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
+import { isNavIdInStage } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
 import { useShell } from "./ShellContext";
+import { useForgeStage } from "./StageProvider";
 
 type NavItem = {
   id: string;
@@ -38,6 +42,7 @@ type NavItem = {
 export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, openHermesConnection } = useShell();
+  const { stage } = useForgeStage();
   const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
   const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
   const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
@@ -60,6 +65,13 @@ export function NavRail() {
       match: (path) => path === "/functions",
     },
     {
+      id: "workshop",
+      href: "/workshop",
+      label: "Workshop",
+      icon: Hammer,
+      match: (path) => path.startsWith("/workshop"),
+    },
+    {
       id: "personnel",
       href: "/personnel",
       label: "Personnel",
@@ -74,11 +86,18 @@ export function NavRail() {
       match: (path) => path.startsWith("/documents"),
     },
     {
-      id: "workshop",
-      href: "/workshop",
-      label: "Workshop",
-      icon: Hammer,
-      match: (path) => path.startsWith("/workshop"),
+      id: "metrics",
+      href: "/metrics",
+      label: "Metrics",
+      icon: Activity,
+      match: (path) => path.startsWith("/metrics"),
+    },
+    {
+      id: "content",
+      href: "/content",
+      label: "Content",
+      icon: Newspaper,
+      match: (path) => path.startsWith("/content"),
     },
     {
       id: "god-mode",
@@ -155,21 +174,11 @@ export function NavRail() {
         >
           <Plus className="w-5 h-5" />
         </button>
-
-        <button
-          type="button"
-          className={`nav-rail__item${chatOpen ? " is-active" : ""}`}
-          onClick={toggleChat}
-          title={chatOpen ? "Hide Hermes chat (Alt+H)" : "Show Hermes chat (Alt+H)"}
-          aria-label={chatOpen ? "Hide Hermes chat" : "Show Hermes chat"}
-          aria-pressed={chatOpen}
-        >
-          <MessageSquare className="w-5 h-5" />
-        </button>
       </div>
 
       <div className="nav-rail__section nav-rail__section--grow">
         {mainItems
+          .filter((item) => isNavIdInStage(item.id, stage))
           .filter((item) => item.id !== "god-mode" || showGodModePage)
           .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
           .filter((item) => item.id !== "decisions" || showDecisionsPage)
@@ -210,6 +219,16 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--footer">
+        <button
+          type="button"
+          className={`nav-rail__item${chatOpen ? " is-active" : ""}`}
+          onClick={toggleChat}
+          title={chatOpen ? "Hide Hermes chat (Alt+H)" : "Show Hermes chat (Alt+H)"}
+          aria-label={chatOpen ? "Hide Hermes chat" : "Show Hermes chat"}
+          aria-pressed={chatOpen}
+        >
+          <MessageSquare className="w-5 h-5" />
+        </button>
         <button
           type="button"
           className="nav-rail__item"

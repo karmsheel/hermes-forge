@@ -10,6 +10,7 @@ import { BusinessSwitcher } from "./BusinessSwitcher";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useShell } from "./ShellContext";
+import { StageExplorer } from "./StageExplorer";
 
 export function AppTopBar() {
   const { user, userLoading, openHermesConnection } = useShell();
@@ -43,8 +44,10 @@ export function AppTopBar() {
           ) : null}
         </div>
 
-        {/* Column 2 — flexible middle */}
-        <div className="app-topbar__spacer" aria-hidden />
+        {/* Column 2 — stage explorer (Map | Monitor | Automate) */}
+        <div className="app-topbar__stages">
+          <StageExplorer />
+        </div>
 
         {/* Column 3 — trailing edge */}
         <div className="app-topbar__actions">
