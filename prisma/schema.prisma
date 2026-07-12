@@ -41,7 +41,7 @@ model Business {
   logHeadSequence  Int       @default(0)
   logInitializedAt DateTime?
 
-  // Local Git mirror (future sync; inert until implemented)
+  // Local Git mirror + optional remote push (4.11)
   gitRepoPath       String?
   gitInitializedAt  DateTime?
   gitHeadCommit     String?

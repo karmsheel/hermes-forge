@@ -1,6 +1,6 @@
 # Business Log + Git Versioning — Design Reference
 
-> **Status:** Architecture reference (not yet implemented).  
+> **Status:** Architecture reference — **local sync + remote push + restore import shipped** (4.11).  
 > Read alongside the immutable business log plan. Agents implementing log or sync features must consult this file.
 
 ---
@@ -342,24 +342,26 @@ Export checksum and Git `HEAD` can both satisfy “you have a durable copy” be
 - `recordBusinessEvent` sets `gitDirty = true` on Business (one extra field in append transaction) — optional cheap hook
 - Canonical event JSON serializer shared by export bundle and future `events.ndjson`
 
-### Shipped (Git sync scaffolding)
+### Shipped (Git backup)
 
 | Item | Location |
 |------|----------|
 | Repo paths | `lib/business-git/paths.ts` — `~/.hermes-forge/businesses/{id}` or `HERMES_FORGE_DATA_DIR` |
-| Materialize | `lib/business-git/materialize.ts` — full repo layout from DB |
+| Materialize | `lib/business-git/materialize.ts` — full repo layout from DB (+ conversation index) |
 | Sync | `lib/business-git/sync.ts` — `git init`, materialize, commit, update pointers |
-| API | `GET/POST/PATCH /api/businesses/[id]/git` |
-| UI | Profile page — per-business Git sync button + status |
+| Push | `lib/business-git/push.ts` — configure `origin`, `git push`, `gitLastPushedAt` / `gitLastPushError` |
+| Restore import | `lib/business-git/import.ts` — new business from local path or remote clone |
+| API | `GET/POST/PATCH /api/businesses/[id]/git` (`action`: `sync` \| `push` \| `sync_and_push`); `POST /api/businesses/import/git` |
+| UI | Profile — Sync, Push, remote settings, Import from Git |
 | Desktop | `electron/main.mjs` sets `HERMES_FORGE_DATA_DIR` |
+| Auth model | System Git credentials / SSH agent (no Forge-stored tokens) |
 
 ### Later phases
 
 | Phase | Work |
 |-------|------|
 | Incremental materialize | Append log tail only; skip full rewrite |
-| GitHub push | OAuth/PAT, `git push`, `gitLastPushedAt` |
-| Restore from repo | Import business from cloned repo |
+| OAuth-managed remotes | Optional PAT/OAuth instead of system credentials only |
 | `BusinessGitCommit` table | Commit history in UI |
 | Decision recording UI | `POST /api/decisions`, list on `/decisions`, `decision.recorded` log append |
 | Decision supersede / revoke | `decision.superseded`, `decision.revoked` events |

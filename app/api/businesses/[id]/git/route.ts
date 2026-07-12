@@ -2,14 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireBusinessAccess } from '@/lib/auth';
-import { getBusinessGitStatus, syncBusinessGitRepo } from '@/lib/business-git';
+import {
+  getBusinessGitStatus,
+  pushBusinessGitRepo,
+  syncBusinessGitRepo,
+} from '@/lib/business-git';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 const PatchGitSchema = z.object({
-  remoteUrl: z.string().url().nullable().optional(),
+  remoteUrl: z
+    .union([z.string().url(), z.literal(''), z.null()])
+    .optional()
+    .transform((v) => (v === '' ? null : v)),
   remoteBranch: z.string().min(1).max(100).optional(),
 });
+
+const PostGitSchema = z
+  .object({
+    action: z.enum(['sync', 'push', 'sync_and_push']).optional().default('sync'),
+  })
+  .optional()
+  .default({ action: 'sync' });
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -31,22 +45,52 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const session = await requireBusinessAccess(request, id);
     if (session instanceof NextResponse) return session;
 
+    let body: z.infer<typeof PostGitSchema> = { action: 'sync' };
+    try {
+      const raw = await request.json();
+      body = PostGitSchema.parse(raw ?? {});
+    } catch {
+      // Empty body → default sync (back-compat with existing Profile "Git" button)
+      body = { action: 'sync' };
+    }
+
+    const action = body.action ?? 'sync';
+
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
       select: { email: true, name: true },
     });
 
-    const result = await syncBusinessGitRepo(id, {
-      userEmail: user?.email,
-      userName: user?.name,
-    });
+    if (action === 'sync' || action === 'sync_and_push') {
+      const syncResult = await syncBusinessGitRepo(id, {
+        userEmail: user?.email,
+        userName: user?.name,
+      });
 
-    return NextResponse.json(result);
+      if (action === 'sync') {
+        return NextResponse.json(syncResult);
+      }
+
+      const pushResult = await pushBusinessGitRepo(id);
+      return NextResponse.json({
+        ...syncResult,
+        push: pushResult,
+        message: `${syncResult.message}; ${pushResult.message}`,
+      });
+    }
+
+    // push only
+    const pushResult = await pushBusinessGitRepo(id);
+    return NextResponse.json(pushResult);
   } catch (error) {
-    console.error('Business git sync error', error);
+    console.error('Business git action error', error);
     const message =
-      error instanceof Error ? error.message : 'Failed to sync business to Git';
-    const status = message.includes('Git is not installed') ? 503 : 500;
+      error instanceof Error ? error.message : 'Failed to run Git action';
+    const status = message.includes('Git is not installed')
+      ? 503
+      : message.includes('No Git remote') || message.includes('not initialized')
+        ? 400
+        : 500;
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -76,7 +120,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       remoteUrl: business.gitRemoteUrl,
       remoteBranch: business.gitRemoteBranch,
-      note: 'Remote saved. GitHub push is not implemented yet.',
+      note: business.gitRemoteUrl
+        ? 'Remote saved. Use Sync then Push (or Sync & push) to publish.'
+        : 'Remote cleared.',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

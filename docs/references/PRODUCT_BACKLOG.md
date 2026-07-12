@@ -76,7 +76,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Automations list | `app/(shell)/automations/page.tsx` | Approved processes → automation studio |
 | Automation studio | `app/(shell)/automations/[processId]/page.tsx` | Design chat, n8n deploy, credentials |
 | Business log | `app/(shell)/log/page.tsx`, `lib/business-log.ts` | Append-only immutable event feed |
-| Git materialize | `lib/business-git/materialize.ts` | Per-business repo snapshot (export; remote sync partial) |
+| Git materialize | `lib/business-git/*` | Per-business repo snapshot; local sync + remote push + restore import |
 | Decisions | `app/(shell)/decisions/page.tsx` | **Scaffold** — dev-gated placeholder; `BusinessDecision` model has no API |
 | God Mode | `app/(shell)/god-mode/page.tsx` | **Dev-gated** — diagram canvas overview by department |
 | Cronalytics | `app/(shell)/cronalytics/page.tsx` | **Dev-gated** — Hermes cron observability; separate SQLite DB |
@@ -575,7 +575,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Remaining:**
 - [ ] `Automation` → `hermesAgentProfileId` (or equivalent) for hired agents
-- [ ] Import `personnel.json` on business git import
+- [x] Import `personnel.json` on business git import (4.11 restore)
 - [ ] Explicit `@system` mentionables (beyond roster roles)
 
 **Do not:** Treat automation assignment as done until agent bind ships.
@@ -593,11 +593,13 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Log feed UI with type filters (`components/log/BusinessLogFeed.tsx`)
 - [x] Events emitted across business/process/automation/personnel actions
 - [x] Git materialize exports log + snapshot files per business
+- [x] Remote Git push (`pushBusinessGitRepo`, Profile Sync/Push + remote settings)
+- [x] Round-trip restore import from repo path or remote clone (`importBusinessFromGitRepo`, `POST /api/businesses/import/git`) — personnel, documents, processes, conversations, automations, memories, decisions, log events
 
 **Remaining:**
-- [ ] Remote Git sync (fields on `Business` are stubbed "inert until implemented")
-- [ ] Round-trip import from git snapshot (personnel, decisions, etc.)
 - [ ] Emit `decision.*` events when Decisions feature ships (4.12)
+- [ ] Optional: incremental materialize (append log tail only)
+- [ ] Optional: OAuth-managed GitHub tokens (today uses system Git credentials / SSH)
 
 **Reference:** `docs/references/BUSINESS_LOG_AND_GIT.md`
 
@@ -771,7 +773,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
 | 4.10 | Personnel roster | 4 | **Mostly done** (workshop wired) |
-| 4.11 | Immutable business log | 4 | Mostly done |
+| 4.11 | Immutable business log | 4 | **Mostly done** (push + import shipped) |
 | 4.12 | Business decisions | 4 | **Scaffold** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
@@ -797,7 +799,7 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Partial** — removed unused `PERSONNEL_REMOVED`; Decisions scaffold honesty; schema still no CRUD |
 | AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
 | AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
-| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; automation bind still open |
+| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; personnel git import done; automation bind still open |
 
 **Session outcomes (code):**
 - `docs/references/audit.md` committed as canonical audit

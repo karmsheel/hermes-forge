@@ -20,10 +20,10 @@ Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_B
 | AUDIT-4 | Merge Dashboard into Functions | **Done** | Org chart + analytics on `/functions`; dashboard page deleted; `/dashboard` → `/functions` |
 | AUDIT-5 | Dev-gate God Mode | **Done** | Nav hidden by default; Settings → Developer toggle; route guard |
 | AUDIT-6 | Dead code cleanup | **Mostly done** | accent.ts removed; next.config.mjs removed; accent-swatch CSS removed; optional theme export prune remains |
-| AUDIT-7 | Schema honesty | **Partial** | Removed unused `PERSONNEL_REMOVED`; Decisions page + types state scaffold clearly; `BusinessDecision` still schema-only (no CRUD); personnel git import still missing |
+| AUDIT-7 | Schema honesty | **Partial** | Removed unused `PERSONNEL_REMOVED`; Decisions page + types state scaffold clearly; `BusinessDecision` still schema-only (no CRUD); personnel git import **done** (4.11) |
 | AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; `npm test` unit smoke suite (17 tests via node:test); HTTP API smoke still optional |
 | AUDIT-9 | Terminology pass | **Done** | `NewBusinessDialog`, shell `openNewBusiness`, auth copy, `process-card` / `recent-processes` CSS |
-| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH shipped; automation bind still open |
+| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH shipped; personnel git import done; automation bind still open |
 
 ---
 
@@ -77,7 +77,7 @@ Features that look finished in navigation but don't participate in the core valu
 | Swimlane standard | Lanes from roster | **Partial** — diagram prompt prefers roster lanes when standard is swimlane/auto |
 | Rich composer `@` mentions | Actor/department/system | **Partial** — actors + roles + diagram nodes; systems still open |
 | BusinessDecision | Governance record | **Open** — schema only |
-| Git `personnel.json` | Round-trip import | **Open** — export only |
+| Git `personnel.json` | Round-trip import | **Done** — import restores personnel + docs + processes (4.11) |
 
 ### 2. Documentation drift — **largely fixed (AUDIT-1)**
 
@@ -143,7 +143,7 @@ SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent modu
 2. Personnel ↔ automation (`hermesAgentProfileId`)
 3. ~~Human edit CRUD + show `roleDescription` on cards~~ **done**
 4. BusinessDecision implementation or schema removal
-5. Git import round-trip (`personnel.json`, etc.)
+5. ~~Git import round-trip (`personnel.json`, etc.)~~ **done** (4.11 push + restore import)
 6. `ARCHITECTURE.md` reference doc (`PROCESS.md` schema ref shipped)
 7. Minimal API smoke tests
 
@@ -192,9 +192,9 @@ flowchart TD
   Core --- C2["4.5 integrations / 4.12 decisions"]
 ```
 
-1. **AUDIT-7 / 4.12** — implement Decisions API or drop schema; personnel git import
-2. **4.10 remainder** — automation ↔ hired agent binding; personnel.json import
-3. **4.15** desktop multi-tab / **4.16** code signing when shipping desktop
+1. **AUDIT-7 / 4.12** — implement Decisions API or drop schema
+2. **4.10 remainder** — automation ↔ hired agent binding
+3. **4.16** code signing when shipping desktop
 4. Optional: HTTP-level API smoke against a running server
 
 ---

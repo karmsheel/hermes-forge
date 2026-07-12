@@ -16,14 +16,35 @@ export async function isGitAvailable(): Promise<boolean> {
   return gitAvailableCache;
 }
 
+export interface GitExecOptions {
+  /** Working directory for git. Defaults to repoPath. */
+  cwd?: string;
+  /**
+   * When true (default for network ops), fail instead of prompting for credentials.
+   * Relies on system credential helper / already-authenticated environment.
+   */
+  noPrompt?: boolean;
+  /** Optional timeout in ms (default: none for local ops; push/clone set their own). */
+  timeoutMs?: number;
+}
+
 export async function git(
   repoPath: string,
-  args: string[]
+  args: string[],
+  options: GitExecOptions = {}
 ): Promise<{ stdout: string; stderr: string }> {
+  const env = { ...process.env } as NodeJS.ProcessEnv;
+  if (options.noPrompt !== false) {
+    // Avoid hanging the Electron/Next server waiting for interactive credentials.
+    env.GIT_TERMINAL_PROMPT = '0';
+  }
+
   const { stdout, stderr } = await execFileAsync('git', args, {
-    cwd: repoPath,
+    cwd: options.cwd ?? repoPath,
     windowsHide: true,
-    maxBuffer: 10 * 1024 * 1024,
+    maxBuffer: 20 * 1024 * 1024,
+    env,
+    timeout: options.timeoutMs,
   });
   return {
     stdout: stdout.toString().trim(),

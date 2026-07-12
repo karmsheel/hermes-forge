@@ -32,3 +32,45 @@ export interface BusinessGitSyncResult {
   message: string;
   repoPath: string;
 }
+
+export interface BusinessGitPushResult {
+  ok: boolean;
+  pushed: boolean;
+  headCommit: string | null;
+  remoteUrl: string;
+  remoteBranch: string;
+  message: string;
+  lastPushedAt: string | null;
+}
+
+export interface BusinessGitImportCounts {
+  processes: number;
+  conversations: number;
+  messages: number;
+  documents: number;
+  humans: number;
+  agents: number;
+  memories: number;
+  decisions: number;
+  automations: number;
+  logEvents: number;
+}
+
+export interface BusinessGitImportResult {
+  ok: boolean;
+  businessId: string;
+  businessName: string;
+  counts: BusinessGitImportCounts;
+  sourcePath: string;
+  message: string;
+}
+
+/** Conversation meta written alongside message ndjson for round-trip import. */
+export interface ConversationExportMetaV1 {
+  id: string;
+  title: string;
+  kind: string;
+  forkedFromId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

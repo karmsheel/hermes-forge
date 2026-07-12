@@ -199,6 +199,7 @@ export async function materializeBusinessRepo(
         recordedAt: d.recordedAt.toISOString(),
         relatedEntityType: d.relatedEntityType,
         relatedEntityId: d.relatedEntityId,
+        supersededByDecisionId: d.supersededByDecisionId,
         logSequence: d.logSequence,
       })
     )
@@ -231,6 +232,19 @@ export async function materializeBusinessRepo(
     await writeText(
       path.join(processDir, 'diagram.mmd'),
       process.diagramMermaid ?? ''
+    );
+
+    // Conversation index enables title/kind/fork restore on import (4.11).
+    await writeJson(
+      path.join(processDir, 'conversations', 'index.json'),
+      process.conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        kind: c.kind,
+        forkedFromId: c.forkedFromId,
+        createdAt: c.createdAt.toISOString(),
+        updatedAt: c.updatedAt.toISOString(),
+      }))
     );
 
     for (const conversation of process.conversations) {

@@ -4,7 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, GitBranch, Loader2, LogOut, Pencil, Trash2, Upload } from "lucide-react";
+import {
+  CloudUpload,
+  Download,
+  GitBranch,
+  Loader2,
+  LogOut,
+  Pencil,
+  Settings2,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type { BusinessGitStatus } from "@/lib/business-git";
 import { SignInOptions } from "@/components/auth/SignInOptions";
 import { useShell } from "@/components/shell/ShellContext";
@@ -24,8 +34,18 @@ export default function ProfilePage() {
   const [bizLoading, setBizLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [syncingGitId, setSyncingGitId] = useState<string | null>(null);
+  const [pushingGitId, setPushingGitId] = useState<string | null>(null);
   const [gitStatusById, setGitStatusById] = useState<Record<string, BusinessGitStatus>>({});
+  const [gitPanelId, setGitPanelId] = useState<string | null>(null);
+  const [remoteDraftById, setRemoteDraftById] = useState<Record<string, { url: string; branch: string }>>({});
+  const [savingRemoteId, setSavingRemoteId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importingGit, setImportingGit] = useState(false);
+  const [gitImportOpen, setGitImportOpen] = useState(false);
+  const [gitImportMode, setGitImportMode] = useState<"path" | "remote">("remote");
+  const [gitImportPath, setGitImportPath] = useState("");
+  const [gitImportRemote, setGitImportRemote] = useState("");
+  const [gitImportBranch, setGitImportBranch] = useState("main");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<{ id: string; name: string } | null>(null);
@@ -86,23 +106,134 @@ export default function ProfilePage() {
     setGitStatusById(next);
   }
 
+  function gitLabel(status: BusinessGitStatus | undefined): string {
+    if (!status) return "";
+    if (!status.gitAvailable) return "Git unavailable";
+    if (!status.initialized) return "Git not initialized";
+    if (status.dirty) return "Git out of date";
+    if (status.lastPushError) return "Push failed";
+    if (status.remoteUrl && status.lastPushedAt) return "Git synced · pushed";
+    if (status.remoteUrl) return "Git synced · not pushed";
+    return "Git synced (local)";
+  }
+
+  async function refreshGitStatus(businessId: string) {
+    const statusRes = await fetch(`/api/businesses/${businessId}/git`);
+    if (!statusRes.ok) return;
+    const status = (await statusRes.json()) as BusinessGitStatus;
+    setGitStatusById((prev) => ({ ...prev, [businessId]: status }));
+    setRemoteDraftById((prev) => ({
+      ...prev,
+      [businessId]: {
+        url: status.remoteUrl ?? prev[businessId]?.url ?? "",
+        branch: status.remoteBranch ?? prev[businessId]?.branch ?? "main",
+      },
+    }));
+  }
+
   async function handleGitSync(business: BusinessSummary) {
     setSyncingGitId(business.id);
     try {
-      const res = await fetch(`/api/businesses/${business.id}/git`, { method: "POST" });
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Git sync failed");
       toast.success(data.committed ? `Synced to Git (${data.message})` : data.message);
-      const statusRes = await fetch(`/api/businesses/${business.id}/git`);
-      if (statusRes.ok) {
-        const status = (await statusRes.json()) as BusinessGitStatus;
-        setGitStatusById((prev) => ({ ...prev, [business.id]: status }));
-      }
+      await refreshGitStatus(business.id);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Git sync failed";
       toast.error(message);
     } finally {
       setSyncingGitId(null);
+    }
+  }
+
+  async function handleGitPush(business: BusinessSummary, syncFirst: boolean) {
+    setPushingGitId(business.id);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: syncFirst ? "sync_and_push" : "push" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Git push failed");
+      toast.success(data.message || "Pushed to remote");
+      await refreshGitStatus(business.id);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Git push failed";
+      toast.error(message);
+      await refreshGitStatus(business.id);
+    } finally {
+      setPushingGitId(null);
+    }
+  }
+
+  function openGitPanel(business: BusinessSummary) {
+    const status = gitStatusById[business.id];
+    setGitPanelId((prev) => (prev === business.id ? null : business.id));
+    setRemoteDraftById((prev) => ({
+      ...prev,
+      [business.id]: {
+        url: prev[business.id]?.url ?? status?.remoteUrl ?? "",
+        branch: prev[business.id]?.branch ?? status?.remoteBranch ?? "main",
+      },
+    }));
+  }
+
+  async function handleSaveRemote(business: BusinessSummary) {
+    const draft = remoteDraftById[business.id] ?? { url: "", branch: "main" };
+    setSavingRemoteId(business.id);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          remoteUrl: draft.url.trim() || null,
+          remoteBranch: draft.branch.trim() || "main",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save remote");
+      toast.success(data.note || "Remote saved");
+      await refreshGitStatus(business.id);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save remote");
+    } finally {
+      setSavingRemoteId(null);
+    }
+  }
+
+  async function handleGitImport(e: React.FormEvent) {
+    e.preventDefault();
+    setImportingGit(true);
+    try {
+      const body =
+        gitImportMode === "path"
+          ? { repoPath: gitImportPath.trim() }
+          : {
+              remoteUrl: gitImportRemote.trim(),
+              branch: gitImportBranch.trim() || "main",
+            };
+      const res = await fetch("/api/businesses/import/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Git import failed");
+      toast.success(data.message || `Imported ${data.business?.name || "business"}`);
+      setGitImportOpen(false);
+      setGitImportPath("");
+      setGitImportRemote("");
+      await loadBusinesses();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Git import failed");
+    } finally {
+      setImportingGit(false);
     }
   }
 
@@ -423,25 +554,120 @@ export default function ProfilePage() {
             <div className="text-xs uppercase tracking-widest text-text-muted">Your Businesses</div>
             <div className="text-sm text-text-muted">Each business contains its workflows and diagrams.</div>
           </div>
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
               accept=".zip,application/zip"
               className="hidden"
               onChange={onFileChange}
-              disabled={importing}
+              disabled={importing || importingGit}
             />
             <button
               onClick={triggerImport}
-              disabled={importing}
+              disabled={importing || importingGit}
               className="btn-secondary text-sm flex items-center gap-2"
             >
               <Upload className="w-4 h-4" />
-              {importing ? "Importing..." : "Import business (ZIP)"}
+              {importing ? "Importing..." : "Import ZIP"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setGitImportOpen((v) => !v)}
+              disabled={importing || importingGit}
+              className="btn-secondary text-sm flex items-center gap-2"
+            >
+              <GitBranch className="w-4 h-4" />
+              Import from Git
             </button>
           </div>
         </div>
+
+        {gitImportOpen && (
+          <form onSubmit={handleGitImport} className="card p-4 mb-4 space-y-3">
+            <div className="text-sm font-medium">Restore business from Git</div>
+            <p className="text-xs text-text-muted">
+              Creates a <span className="text-text">new</span> business from a Hermes Forge repo snapshot
+              (local path or remote clone). Uses system Git credentials for remotes.
+            </p>
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                className={`px-2.5 py-1 rounded border ${
+                  gitImportMode === "remote"
+                    ? "border-accent text-accent"
+                    : "border-stroke text-text-muted"
+                }`}
+                onClick={() => setGitImportMode("remote")}
+              >
+                Remote URL
+              </button>
+              <button
+                type="button"
+                className={`px-2.5 py-1 rounded border ${
+                  gitImportMode === "path"
+                    ? "border-accent text-accent"
+                    : "border-stroke text-text-muted"
+                }`}
+                onClick={() => setGitImportMode("path")}
+              >
+                Local path
+              </button>
+            </div>
+            {gitImportMode === "remote" ? (
+              <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                <input
+                  className="input text-sm"
+                  placeholder="https://github.com/you/business-repo.git"
+                  value={gitImportRemote}
+                  onChange={(e) => setGitImportRemote(e.target.value)}
+                  disabled={importingGit}
+                />
+                <input
+                  className="input text-sm"
+                  placeholder="main"
+                  value={gitImportBranch}
+                  onChange={(e) => setGitImportBranch(e.target.value)}
+                  disabled={importingGit}
+                />
+              </div>
+            ) : (
+              <input
+                className="input text-sm w-full"
+                placeholder="C:\Users\you\.hermes-forge\businesses\biz_abc"
+                value={gitImportPath}
+                onChange={(e) => setGitImportPath(e.target.value)}
+                disabled={importingGit}
+              />
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => setGitImportOpen(false)}
+                disabled={importingGit}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-primary text-sm disabled:opacity-50"
+                disabled={
+                  importingGit ||
+                  (gitImportMode === "remote"
+                    ? !gitImportRemote.trim()
+                    : !gitImportPath.trim())
+                }
+              >
+                {importingGit ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Import business"
+                )}
+              </button>
+            </div>
+          </form>
+        )}
 
         {bizLoading ? (
           <div className="text-center py-8 text-text-muted">
@@ -451,82 +677,196 @@ export default function ProfilePage() {
           <div className="card p-6 text-sm text-text-muted">No businesses yet. Create one from the header or + button.</div>
         ) : (
           <ul className="space-y-3 mb-8">
-            {businesses.map((b) => (
-              <li key={b.id} className="card p-4 flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{b.name}</div>
-                  {b.description && (
-                    <div className="text-sm text-text-muted line-clamp-1 mt-0.5">{b.description}</div>
-                  )}
-                  <div className="text-xs text-text-soft mt-1">
-                    {b._count?.processes ?? 0} workflow{(b._count?.processes ?? 0) !== 1 ? "s" : ""}
-                    {gitStatusById[b.id] && (
-                      <>
-                        {" · "}
-                        {gitStatusById[b.id].gitAvailable
-                          ? gitStatusById[b.id].initialized
-                            ? gitStatusById[b.id].dirty
-                              ? "Git out of date"
-                              : "Git synced"
-                            : "Git not initialized"
-                          : "Git unavailable"}
-                      </>
-                    )}
+            {businesses.map((b) => {
+              const gitStatus = gitStatusById[b.id];
+              const gitBusy =
+                syncingGitId === b.id ||
+                pushingGitId === b.id ||
+                savingRemoteId === b.id;
+              const draft = remoteDraftById[b.id] ?? {
+                url: gitStatus?.remoteUrl ?? "",
+                branch: gitStatus?.remoteBranch ?? "main",
+              };
+              return (
+                <li key={b.id} className="card p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{b.name}</div>
+                      {b.description && (
+                        <div className="text-sm text-text-muted line-clamp-1 mt-0.5">
+                          {b.description}
+                        </div>
+                      )}
+                      <div className="text-xs text-text-soft mt-1">
+                        {b._count?.processes ?? 0} workflow
+                        {(b._count?.processes ?? 0) !== 1 ? "s" : ""}
+                        {gitStatus && (
+                          <>
+                            {" · "}
+                            {gitLabel(gitStatus)}
+                          </>
+                        )}
+                      </div>
+                      {gitStatus?.lastPushError && (
+                        <div className="text-xs text-red-400 mt-1 line-clamp-2">
+                          {gitStatus.lastPushError}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                      <button
+                        onClick={() => void handleGitSync(b)}
+                        disabled={gitBusy || gitStatus?.gitAvailable === false}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                        title="Materialize and commit to local Git repo"
+                      >
+                        {syncingGitId === b.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <GitBranch className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden sm:inline">Sync</span>
+                      </button>
+                      <button
+                        onClick={() => void handleGitPush(b, true)}
+                        disabled={
+                          gitBusy ||
+                          gitStatus?.gitAvailable === false ||
+                          !gitStatus?.remoteUrl
+                        }
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                        title={
+                          gitStatus?.remoteUrl
+                            ? "Sync local repo then push to remote"
+                            : "Configure a remote first"
+                        }
+                      >
+                        {pushingGitId === b.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CloudUpload className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden sm:inline">Push</span>
+                      </button>
+                      <button
+                        onClick={() => openGitPanel(b)}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                        title="Git remote settings"
+                      >
+                        <Settings2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => openEdit(b)}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                        title="Edit name"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Edit</span>
+                      </button>
+                      <Link href="/functions" className="btn-secondary text-xs px-3 py-1.5">
+                        Open
+                      </Link>
+                      <button
+                        onClick={() => handleDownload(b)}
+                        disabled={downloadingId === b.id}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
+                        title="Download as ZIP"
+                      >
+                        {downloadingId === b.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span className="hidden sm:inline">ZIP</span>
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm({ id: b.id, name: b.name })}
+                        disabled={deletingId === b.id}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 text-red-400 hover:text-red-300"
+                        title="Delete business"
+                      >
+                        {deletingId === b.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => void handleGitSync(b)}
-                    disabled={
-                      syncingGitId === b.id || gitStatusById[b.id]?.gitAvailable === false
-                    }
-                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
-                    title="Sync business to local Git repo"
-                  >
-                    {syncingGitId === b.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <GitBranch className="w-3.5 h-3.5" />
-                    )}
-                    <span className="hidden sm:inline">Git</span>
-                  </button>
-                  <button
-                    onClick={() => openEdit(b)}
-                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
-                    title="Edit name"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Edit</span>
-                  </button>
-                  <Link href="/functions" className="btn-secondary text-xs px-3 py-1.5">Open</Link>
-                  <button
-                    onClick={() => handleDownload(b)}
-                    disabled={downloadingId === b.id}
-                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1"
-                    title="Download as ZIP"
-                  >
-                    {downloadingId === b.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Download className="w-3.5 h-3.5" />
-                    )}
-                    <span className="hidden sm:inline">ZIP</span>
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm({ id: b.id, name: b.name })}
-                    disabled={deletingId === b.id}
-                    className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1 text-red-400 hover:text-red-300"
-                    title="Delete business"
-                  >
-                    {deletingId === b.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </li>
-            ))}
+
+                  {gitPanelId === b.id && (
+                    <div className="rounded-lg border border-stroke bg-bg/40 p-3 space-y-2">
+                      <div className="text-xs uppercase tracking-widest text-text-muted">
+                        Git backup
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        Local path:{" "}
+                        <span className="text-text-soft break-all">
+                          {gitStatus?.repoPath || "—"}
+                        </span>
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                        <input
+                          className="input text-sm"
+                          placeholder="https://github.com/you/my-business.git"
+                          value={draft.url}
+                          onChange={(e) =>
+                            setRemoteDraftById((prev) => ({
+                              ...prev,
+                              [b.id]: { ...draft, url: e.target.value },
+                            }))
+                          }
+                          disabled={gitBusy}
+                        />
+                        <input
+                          className="input text-sm"
+                          placeholder="main"
+                          value={draft.branch}
+                          onChange={(e) =>
+                            setRemoteDraftById((prev) => ({
+                              ...prev,
+                              [b.id]: { ...draft, branch: e.target.value },
+                            }))
+                          }
+                          disabled={gitBusy}
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs px-3 py-1.5"
+                          disabled={gitBusy}
+                          onClick={() => void handleSaveRemote(b)}
+                        >
+                          {savingRemoteId === b.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            "Save remote"
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary text-xs px-3 py-1.5"
+                          disabled={
+                            gitBusy ||
+                            !gitStatus?.remoteUrl ||
+                            !gitStatus.initialized
+                          }
+                          onClick={() => void handleGitPush(b, false)}
+                          title="Push current HEAD without re-syncing"
+                        >
+                          Push only
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-text-soft">
+                        Auth uses your system Git credentials (Credential Manager / SSH agent).
+                        Forge does not store tokens.
+                      </p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
 
