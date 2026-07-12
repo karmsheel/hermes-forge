@@ -73,6 +73,22 @@ interface ChatbarContextValue {
   /** Focus process/studio composer; optional prefill */
   focusComposer: (opts?: { prefill?: string; submit?: boolean }) => void;
   composerFocusRequest: { key: number; prefill?: string; submit?: boolean } | null;
+
+  /**
+   * Open chatbar on a specific agent + studio conversation (decision redirect).
+   * ChatbarPanel consumes decisionSessionRequest.
+   */
+  openDecisionSession: (opts: {
+    hermesAgentProfileId?: string | null;
+    conversationId?: string | null;
+    prefill?: string;
+  }) => void;
+  decisionSessionRequest: {
+    key: number;
+    hermesAgentProfileId?: string | null;
+    conversationId?: string | null;
+    prefill?: string;
+  } | null;
 }
 
 const ChatbarContext = createContext<ChatbarContextValue | null>(null);
@@ -93,6 +109,12 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     key: number;
     prefill?: string;
     submit?: boolean;
+  } | null>(null);
+  const [decisionSessionRequest, setDecisionSessionRequest] = useState<{
+    key: number;
+    hermesAgentProfileId?: string | null;
+    conversationId?: string | null;
+    prefill?: string;
   } | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
@@ -169,6 +191,29 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const openDecisionSession = useCallback(
+    (opts: {
+      hermesAgentProfileId?: string | null;
+      conversationId?: string | null;
+      prefill?: string;
+    }) => {
+      setResidencyState(CHATBAR_RESIDENCY_MODES.OPEN);
+      setDecisionSessionRequest({
+        key: Date.now(),
+        hermesAgentProfileId: opts.hermesAgentProfileId,
+        conversationId: opts.conversationId,
+        prefill: opts.prefill,
+      });
+      if (opts.prefill) {
+        setComposerFocusRequest({
+          key: Date.now(),
+          prefill: opts.prefill,
+        });
+      }
+    },
+    [],
+  );
+
   const toggle = useCallback(() => {
     setResidencyState((current) => toggleChatbarResidency(current));
   }, []);
@@ -209,6 +254,8 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       isProcessScoped: Boolean(processSession),
       focusComposer,
       composerFocusRequest,
+      openDecisionSession,
+      decisionSessionRequest,
     }),
     [
       residency,
@@ -229,6 +276,8 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       registerProcessSession,
       focusComposer,
       composerFocusRequest,
+      openDecisionSession,
+      decisionSessionRequest,
     ],
   );
 

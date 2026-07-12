@@ -114,6 +114,7 @@ export function ChatbarPanel() {
     processSession,
     isProcessScoped,
     composerFocusRequest,
+    decisionSessionRequest,
   } = useChatbar();
   const { isConnected, status, config } = useHermesConnection();
   const { openHermesConnection, currentBusiness } = useShell();
@@ -459,6 +460,26 @@ export function ChatbarPanel() {
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  // Decision redirect: switch agent + conversation when requested
+  useEffect(() => {
+    if (!decisionSessionRequest) return;
+    const { hermesAgentProfileId, conversationId, prefill } = decisionSessionRequest;
+    void (async () => {
+      if (hermesAgentProfileId) {
+        setActiveAgentId(hermesAgentProfileId);
+        if (businessId) saveActiveChatbarAgentId(businessId, hermesAgentProfileId);
+        await loadConversations(hermesAgentProfileId);
+      }
+      if (conversationId) {
+        setActiveConversationId(conversationId);
+        if (businessId) saveActiveStudioConversationId(businessId, conversationId);
+        await loadConversationMessages(conversationId);
+      }
+      if (prefill) setDraft(prefill);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to request key
+  }, [decisionSessionRequest?.key]);
 
   const selectAgent = useCallback(
     async (agentId: string) => {

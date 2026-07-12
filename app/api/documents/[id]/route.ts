@@ -21,6 +21,8 @@ const UpdateDocumentSchema = z.object({
   renameSlug: z.boolean().optional(),
   actor: z.enum(["human", "agent"]).optional(),
   confirmLiveEdit: z.boolean().optional(),
+  conversationId: z.string().min(1).nullable().optional(),
+  hermesAgentProfileId: z.string().min(1).nullable().optional(),
 });
 
 async function getOwnedDocument(documentId: string, businessId: string) {
@@ -78,11 +80,30 @@ export async function PATCH(
     const actor = body.actor ?? "human";
 
     if (actor === "agent" && existing.lifecycleStatus === "forged") {
+      const { proposeForgedDocumentPatch } = await import("@/lib/decisions/propose");
+      const decision = await proposeForgedDocumentPatch({
+        businessId: business.id,
+        userId: session.userId,
+        documentId: existing.id,
+        documentTitle: existing.title,
+        lifecycleStatus: existing.lifecycleStatus,
+        patch: {
+          title: body.title,
+          bodyMarkdown: body.bodyMarkdown,
+          kind: body.kind,
+          pinnedForContext: body.pinnedForContext,
+        },
+        conversationId: body.conversationId ?? null,
+        hermesAgentProfileId: body.hermesAgentProfileId ?? null,
+      });
       return NextResponse.json(
         {
           error:
-            "This document is forged. Create a decision request for the owner to approve changes.",
+            "This document is forged. A decision was created for the owner to approve the change.",
           code: "FORGED_REQUIRES_DECISION",
+          decisionPending: true,
+          decisionId: decision?.id ?? null,
+          decision,
         },
         { status: 403 },
       );

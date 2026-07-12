@@ -3,6 +3,11 @@ import type { DiagramStreamEvent } from './diagram-stream';
 export type DiagramStreamHandlers = {
   onPreview?: (mermaid: string) => void;
   onDone?: (mermaid: string) => void;
+  onDecisionPending?: (info: {
+    decisionId: string | null;
+    message: string;
+    mermaid?: string;
+  }) => void;
   onError?: (error: string) => void;
 };
 
@@ -26,7 +31,12 @@ function parseSseBlock(block: string): { event: string; data: string } | null {
 export async function consumeDiagramStream(
   response: Response,
   handlers: DiagramStreamHandlers
-): Promise<{ ok: boolean; mermaid?: string; error?: string }> {
+): Promise<{
+  ok: boolean;
+  mermaid?: string;
+  error?: string;
+  decisionPending?: boolean;
+}> {
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     const message =
@@ -46,6 +56,7 @@ export async function consumeDiagramStream(
   let buffer = '';
   let finalMermaid: string | undefined;
   let streamError: string | undefined;
+  let decisionPending = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -67,6 +78,15 @@ export async function consumeDiagramStream(
           } else if (payload.type === 'done') {
             finalMermaid = payload.mermaid;
             handlers.onDone?.(payload.mermaid);
+          } else if (payload.type === 'decision_pending') {
+            decisionPending = true;
+            handlers.onDecisionPending?.({
+              decisionId: payload.decisionId,
+              message: payload.message,
+              mermaid: payload.mermaid,
+            });
+            // Not applied — do not treat as final mermaid success for persistence
+            finalMermaid = undefined;
           } else if (payload.type === 'error') {
             streamError = payload.error;
             handlers.onError?.(payload.error);
@@ -82,6 +102,10 @@ export async function consumeDiagramStream(
 
   if (streamError) {
     return { ok: false, error: streamError };
+  }
+
+  if (decisionPending) {
+    return { ok: true, decisionPending: true };
   }
 
   if (!finalMermaid) {

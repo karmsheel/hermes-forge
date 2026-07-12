@@ -27,7 +27,7 @@ type Notif = {
 
 export function NotificationBell() {
   const { currentBusiness } = useShell();
-  const { open, focusComposer } = useChatbar();
+  const { openDecisionSession } = useChatbar();
   const [openPanel, setOpenPanel] = useState(false);
   const [items, setItems] = useState<Notif[]>([]);
   const [unread, setUnread] = useState(0);
@@ -82,8 +82,11 @@ export function NotificationBell() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
       if (data.openChatbar) {
-        open();
-        focusComposer({ prefill: data.openChatbar.prefill });
+        openDecisionSession({
+          hermesAgentProfileId: data.openChatbar.hermesAgentProfileId,
+          conversationId: data.openChatbar.conversationId,
+          prefill: data.openChatbar.prefill,
+        });
       } else {
         toast.success("Decision recorded");
       }

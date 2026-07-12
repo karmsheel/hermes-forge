@@ -7,6 +7,8 @@ import { encodeDiagramSse, streamDiagramMermaid } from '@/lib/diagram-stream';
 import { requireProcessAccess } from '@/lib/auth';
 import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { proposeForgedDiagramChange } from '@/lib/decisions/propose';
+import { isProcessForged } from '@/lib/process-status';
 import { loadPersonnelRoster } from '@/lib/personnel/load-roster';
 
 const AgentSchema = z.object({
@@ -74,23 +76,46 @@ export async function POST(request: NextRequest, context: RouteContext) {
               controller.enqueue(encoder.encode(encodeDiagramSse(event)));
 
               if (event.type === 'done') {
-                await prisma.process.update({
-                  where: { id },
-                  data: {
-                    diagramMermaid: event.mermaid,
-                    diagramUpdatedAt: new Date(),
-                  },
-                });
-                await recordBusinessEvent({
-                  businessId: process.businessId,
-                  userId: result.session.userId,
-                  type: BUSINESS_EVENT_TYPES.PROCESS_DIAGRAM_UPDATED,
-                  entityType: 'process',
-                  entityId: id,
-                  entityName: process.name,
-                  summary: `Updated diagram for "${process.name}"`,
-                  ...liveOccurredNow(),
-                });
+                if (isProcessForged(process.status)) {
+                  const decision = await proposeForgedDiagramChange({
+                    businessId: process.businessId,
+                    userId: result.session.userId,
+                    processId: id,
+                    processName: process.name,
+                    processStatus: process.status,
+                    proposedDiagram: event.mermaid,
+                    conversationId,
+                  });
+                  controller.enqueue(
+                    encoder.encode(
+                      encodeDiagramSse({
+                        type: 'decision_pending',
+                        decisionId: decision?.id ?? null,
+                        message:
+                          'Process is forged — diagram change sent for your approval in Decisions.',
+                        mermaid: event.mermaid,
+                      })
+                    )
+                  );
+                } else {
+                  await prisma.process.update({
+                    where: { id },
+                    data: {
+                      diagramMermaid: event.mermaid,
+                      diagramUpdatedAt: new Date(),
+                    },
+                  });
+                  await recordBusinessEvent({
+                    businessId: process.businessId,
+                    userId: result.session.userId,
+                    type: BUSINESS_EVENT_TYPES.PROCESS_DIAGRAM_UPDATED,
+                    entityType: 'process',
+                    entityId: id,
+                    entityName: process.name,
+                    summary: `Updated diagram for "${process.name}"`,
+                    ...liveOccurredNow(),
+                  });
+                }
               }
 
               if (event.type === 'error') {
@@ -122,6 +147,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const updatedDiagram = await generateDiagramMermaid(hermesConfig, diagramInput);
 
+    if (updatedDiagram && isProcessForged(process.status)) {
+      const decision = await proposeForgedDiagramChange({
+        businessId: process.businessId,
+        userId: result.session.userId,
+        processId: id,
+        processName: process.name,
+        processStatus: process.status,
+        proposedDiagram: updatedDiagram,
+        conversationId,
+      });
+      return NextResponse.json({
+        success: true,
+        applied: false,
+        decisionPending: true,
+        decisionId: decision?.id ?? null,
+        message:
+          'Process is forged — diagram change sent for your approval in Decisions.',
+        diagramMermaid: process.diagramMermaid,
+        proposedDiagramMermaid: updatedDiagram,
+      });
+    }
+
     if (updatedDiagram) {
       await prisma.process.update({
         where: { id },
@@ -144,6 +191,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({
       success: true,
+      applied: true,
       diagramMermaid: updatedDiagram,
     });
   } catch (error) {

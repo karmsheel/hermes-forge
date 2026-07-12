@@ -485,11 +485,6 @@ export function WorkshopSession({
             {
               onPreview: (mermaid) => {
                 setStreamingDiagram(mermaid);
-                setActiveProcess((prev) =>
-                  prev && prev.id === processId
-                    ? { ...prev, diagramMermaid: mermaid }
-                    : prev
-                );
               },
               onDone: (mermaid) => {
                 setStreamingDiagram(mermaid);
@@ -502,6 +497,10 @@ export function WorkshopSession({
                       }
                     : prev
                 );
+              },
+              onDecisionPending: ({ message }) => {
+                setStreamingDiagram(null);
+                toast.info(message || "Diagram change needs your approval — check Decisions or the bell");
               },
             }
           ),
@@ -516,6 +515,8 @@ export function WorkshopSession({
           toast.warning("Diagram subagent failed");
         } else if (!diagramResult.value.ok) {
           toast.warning(diagramResult.value.error || "Diagram could not be updated");
+        } else if (diagramResult.value.decisionPending) {
+          // Toast already shown in onDecisionPending
         }
 
         if (nameResult.status === "fulfilled" && nameResult.value.ok) {

@@ -40,13 +40,41 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const actor: string = typeof body.actor === 'string' ? body.actor : 'human';
     const confirmLiveEdit = body.confirmLiveEdit === true;
 
-    // Agent cannot mutate forged processes without a decision
+    // Agent cannot mutate forged processes — auto-create a decision request
     if (actor === 'agent' && isProcessForged(result.process.status)) {
+      const { proposeForgedProcessPatch } = await import('@/lib/decisions/propose');
+      const patch = {
+        name: body.name as string | undefined,
+        description: body.description as string | undefined,
+        department: body.department as string | undefined,
+        trigger: body.trigger as string | null | undefined,
+        inputs: body.inputs as string | null | undefined,
+        outputs: body.outputs as string | null | undefined,
+        manualSteps: body.manualSteps as string | null | undefined,
+        diagramMermaid: body.diagramMermaid as string | null | undefined,
+      };
+      const decision = await proposeForgedProcessPatch({
+        businessId: result.process.businessId,
+        userId: result.session.userId,
+        processId: id,
+        processName: result.process.name,
+        processStatus: result.process.status,
+        patch,
+        conversationId:
+          typeof body.conversationId === 'string' ? body.conversationId : null,
+        hermesAgentProfileId:
+          typeof body.hermesAgentProfileId === 'string'
+            ? body.hermesAgentProfileId
+            : null,
+      });
       return NextResponse.json(
         {
           error:
-            'This process is forged. Create a decision request for the owner to approve changes.',
+            'This process is forged. A decision was created for the owner to approve the change.',
           code: 'FORGED_REQUIRES_DECISION',
+          decisionPending: true,
+          decisionId: decision?.id ?? null,
+          decision,
         },
         { status: 403 }
       );

@@ -30,7 +30,7 @@ type DecisionRecordRow = {
 export default function DecisionsPage() {
   const router = useRouter();
   const { currentBusiness } = useShell();
-  const { open, focusComposer } = useChatbar();
+  const { openDecisionSession } = useChatbar();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<DecisionRequestRecord[]>([]);
   const [records, setRecords] = useState<DecisionRecordRow[]>([]);
@@ -75,11 +75,12 @@ export default function DecisionsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to resolve");
 
       if (data.openChatbar) {
-        open();
-        focusComposer({
+        openDecisionSession({
+          hermesAgentProfileId: data.openChatbar.hermesAgentProfileId,
+          conversationId: data.openChatbar.conversationId,
           prefill: data.openChatbar.prefill ?? comment ?? undefined,
         });
-        toast.message("Continue with the agent in chat");
+        toast.info("Continue with the agent in chat");
       } else {
         toast.success("Decision recorded");
       }

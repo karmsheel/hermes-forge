@@ -10,6 +10,13 @@ import {
 export type DiagramStreamEvent =
   | { type: 'preview'; mermaid: string }
   | { type: 'done'; mermaid: string }
+  | {
+      type: 'decision_pending';
+      decisionId: string | null;
+      message: string;
+      /** Preview of proposed mermaid (not applied until approved). */
+      mermaid?: string;
+    }
   | { type: 'error'; error: string };
 
 export async function* streamDiagramMermaid(
@@ -47,6 +54,12 @@ export async function* streamDiagramMermaid(
 
 export function encodeDiagramSse(event: DiagramStreamEvent): string {
   const name =
-    event.type === 'preview' ? 'preview' : event.type === 'done' ? 'done' : 'error';
+    event.type === 'preview'
+      ? 'preview'
+      : event.type === 'done'
+        ? 'done'
+        : event.type === 'decision_pending'
+          ? 'decision_pending'
+          : 'error';
   return `event: ${name}\ndata: ${JSON.stringify(event)}\n\n`;
 }
