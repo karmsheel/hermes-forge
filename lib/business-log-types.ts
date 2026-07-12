@@ -49,6 +49,7 @@ export const BUSINESS_EVENT_TYPES = {
   DECISION_RECORDED: 'decision.recorded',
   DECISION_SUPERSEDED: 'decision.superseded',
   DECISION_REVOKED: 'decision.revoked',
+  DECISION_REDIRECTED: 'decision.redirected',
 } as const;
 
 export type BusinessEventType =
@@ -106,6 +107,9 @@ export interface BusinessEventMetadata {
   agentId?: string;
   agentName?: string;
   previousAgentId?: string;
+  /** Decision record / request kind (4.12 HITL). */
+  decisionKind?: string;
+  requestId?: string;
 }
 
 export interface RecordBusinessEventInput {

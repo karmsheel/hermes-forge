@@ -282,9 +282,9 @@ export function ProcessSidebar({
                               <span className="text-[10px] px-1.5 py-px rounded bg-bg-muted text-text-muted">
                                 {proc.department}
                               </span>
-                              {proc.status === "approved" && (
+                              {(proc.status === "approved" || proc.status === "forged") && (
                                 <span className="pill pill-green text-[10px]">
-                                  {PROCESS_STATUS_LABELS.approved}
+                                  {PROCESS_STATUS_LABELS.forged}
                                 </span>
                               )}
                               <span className="text-[10px] text-text-soft">

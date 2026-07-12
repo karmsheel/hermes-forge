@@ -1,10 +1,14 @@
-import type { ProcessStatus } from './process-status';
+import {
+  normalizeProcessStatus,
+  type ProcessStatus,
+} from './process-status';
 
 export function buildApprovalUpdate(
-  status: ProcessStatus
+  status: string
 ): { status: ProcessStatus; approvedAt: Date | null } {
-  if (status === 'approved') {
-    return { status: 'approved', approvedAt: new Date() };
+  const normalized = normalizeProcessStatus(status);
+  if (normalized === 'forged') {
+    return { status: 'forged', approvedAt: new Date() };
   }
-  return { status, approvedAt: null };
+  return { status: normalized, approvedAt: null };
 }

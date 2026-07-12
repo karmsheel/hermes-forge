@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const processes = await prisma.process.findMany({
       where: {
         businessId: business.id,
-        status: 'approved',
+        status: { in: ['forged', 'approved'] },
       },
       orderBy: [{ approvedAt: 'desc' }, { updatedAt: 'desc' }],
       select: {

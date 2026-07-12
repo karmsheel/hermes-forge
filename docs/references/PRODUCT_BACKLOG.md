@@ -605,19 +605,19 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.12 Business decisions — **SCAFFOLD** (shipped outside backlog)
+### 4.12 Business decisions / HITL — **DONE** (foundation)
 
-**Goal:** Record owner decisions linked to business log and related entities (process, personnel, automation).
+**Goal:** Human-in-the-loop: forge processes/docs; agents propose changes; owner approves/rejects/redirects; notifications.
 
-**Files:** `prisma/schema.prisma` (`BusinessDecision`), `lib/decision-types.ts`, `app/(shell)/decisions/page.tsx`
-
-**Status:** Prisma model + event type constants exist. Page is developer-gated placeholder. **No CRUD API, no queries, no log emission.**
-
-**Remaining:**
-- [ ] Decisions API (create, list, supersede, revoke)
-- [ ] UI: decision list, create form, link to related entity
-- [ ] Emit `decision.recorded` / `decision.superseded` / `decision.revoked` on business log
-- [ ] Or: remove schema until ready (avoid middle state)
+**Shipped:**
+- [x] Lifecycle `draft | refined | forged` for processes (legacy mapping/reviewed/approved normalized)
+- [x] Document `lifecycleStatus` + forge button
+- [x] `DecisionRequest` + resolve with custom options + auto-execute
+- [x] `BusinessDecision` records + business log
+- [x] Notifications + shell bell
+- [x] Decisions nav un-gated; `/decisions` inbox + history
+- [x] Gate: agent writes to forged assets blocked; owner live edit with confirm + decision log
+- [x] Git materialize decision records + requests
 
 ---
 
@@ -836,7 +836,7 @@ Optional systems of record after Hermes-only loop is proven.
 | 4.9 | UI primitive convergence | 4 | Done |
 | 4.10 | Personnel roster | 4 | **Mostly done** (workshop + automation bind) |
 | 4.11 | Immutable business log | 4 | **Mostly done** (push + import shipped) |
-| 4.12 | Business decisions | 4 | **Scaffold** |
+| 4.12 | Business decisions / HITL | 4 | **Done** (foundation) |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Done** (Phase 1–3) — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |

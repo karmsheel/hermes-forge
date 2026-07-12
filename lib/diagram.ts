@@ -136,7 +136,7 @@ export function buildChatSystemPrompt(context: {
       : '';
 
   const approvedNote =
-    context.status === 'approved'
+    context.status === 'approved' || context.status === 'forged'
       ? `\nThis process map is APPROVED for automation. Do not ask mapping questions — if the user wants changes, help them refine the map and remind them they can re-approve when ready. You may mention they can open Automations to design the automation.`
       : '';
 

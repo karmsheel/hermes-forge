@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const result = await requireProcessAccess(request, id);
     if ('error' in result) return result.error;
 
-    if (result.process.status === 'approved') {
+    if (result.process.status === 'approved' || result.process.status === 'forged') {
       return NextResponse.json(
         { error: 'Approved workflows cannot be split' },
         { status: 400 }

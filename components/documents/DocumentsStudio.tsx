@@ -24,6 +24,8 @@ export type DocumentListItem = {
   pinnedForContext: boolean;
   sortOrder: number;
   source: string;
+  lifecycleStatus?: string;
+  forgedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 };
@@ -116,6 +118,13 @@ export function DocumentsStudio({
 
   const saveDocument = async () => {
     if (!selected) return;
+    const isForged = selected.lifecycleStatus === "forged";
+    if (isForged) {
+      const ok = window.confirm(
+        "This document is forged live business knowledge. Saving will update live documentation and record a decision. Continue?"
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/documents/${selected.id}`, {
@@ -124,17 +133,49 @@ export function DocumentsStudio({
         body: JSON.stringify({
           title: draftTitle.trim() || selected.title,
           bodyMarkdown: draftBody,
+          actor: "human",
+          confirmLiveEdit: isForged,
         }),
       });
-      if (!res.ok) throw new Error("save failed");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "save failed");
+      }
       const updated = await res.json();
       setDocuments((prev) =>
         prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)),
       );
       setEditing(false);
       toast.success("Document saved");
-    } catch {
-      toast.error("Could not save document");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save document");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const forgeDocument = async () => {
+    if (!selected || selected.lifecycleStatus === "forged") return;
+    const ok = window.confirm(
+      `Forge “${selected.title}” as live business knowledge? Future agent edits will require your approval.`
+    );
+    if (!ok) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/documents/${selected.id}/forge`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "forge failed");
+      }
+      const updated = await res.json();
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)),
+      );
+      toast.success("Document forged");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not forge document");
     } finally {
       setSaving(false);
     }
@@ -411,13 +452,31 @@ export function DocumentsStudio({
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => setEditing(true)}
-                    className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:bg-accent-hover"
-                  >
-                    Edit
-                  </button>
+                  <>
+                    {selected.lifecycleStatus !== "forged" && (
+                      <button
+                        type="button"
+                        onClick={() => void forgeDocument()}
+                        disabled={saving}
+                        className="rounded-lg border border-accent/40 px-2.5 py-1.5 text-xs text-accent hover:bg-accent/10"
+                        title="Lock as live business knowledge"
+                      >
+                        Forge
+                      </button>
+                    )}
+                    {selected.lifecycleStatus === "forged" && (
+                      <span className="text-[10px] uppercase tracking-widest text-green px-2 py-1.5">
+                        Forged
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:bg-accent-hover"
+                    >
+                      Edit
+                    </button>
+                  </>
                 )}
                 {selected.slug !== "basics" && (
                   <button

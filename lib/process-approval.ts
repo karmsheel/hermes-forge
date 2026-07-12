@@ -24,7 +24,7 @@ export function shouldPromptForAccuracy(context: {
   diagramMermaid: string | null;
   messageCount: number;
 }): boolean {
-  if (context.status === 'approved') return false;
+  if (context.status === 'approved' || context.status === 'forged') return false;
   if (!context.diagramMermaid?.trim()) return false;
   // Enough conversation to have a meaningful diagram (user + assistant turns)
   return context.messageCount >= 4;

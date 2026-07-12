@@ -16,8 +16,11 @@ const UpdateDocumentSchema = z.object({
   bodyMarkdown: z.string().max(200_000).optional(),
   pinnedForContext: z.boolean().optional(),
   sortOrder: z.number().int().min(0).max(10_000).optional(),
+  lifecycleStatus: z.enum(["draft", "refined", "forged"]).optional(),
   /** When true, re-slug from new title (seed slugs like basics stay fixed). */
   renameSlug: z.boolean().optional(),
+  actor: z.enum(["human", "agent"]).optional(),
+  confirmLiveEdit: z.boolean().optional(),
 });
 
 async function getOwnedDocument(documentId: string, businessId: string) {
@@ -72,6 +75,53 @@ export async function PATCH(
     }
 
     const body = UpdateDocumentSchema.parse(await request.json());
+    const actor = body.actor ?? "human";
+
+    if (actor === "agent" && existing.lifecycleStatus === "forged") {
+      return NextResponse.json(
+        {
+          error:
+            "This document is forged. Create a decision request for the owner to approve changes.",
+          code: "FORGED_REQUIRES_DECISION",
+        },
+        { status: 403 },
+      );
+    }
+
+    if (body.lifecycleStatus === "forged" && existing.lifecycleStatus !== "forged") {
+      const { forgeDocumentDirect } = await import("@/lib/decisions/service");
+      await forgeDocumentDirect({
+        businessId: business.id,
+        userId: session.userId,
+        documentId: existing.id,
+      });
+      const forged = await prisma.businessDocument.findUniqueOrThrow({
+        where: { id: existing.id },
+      });
+      return NextResponse.json(forged);
+    }
+
+    const contentTouch =
+      body.title !== undefined ||
+      body.bodyMarkdown !== undefined ||
+      body.kind !== undefined;
+
+    if (
+      actor === "human" &&
+      existing.lifecycleStatus === "forged" &&
+      contentTouch &&
+      !body.confirmLiveEdit
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This document is live forged knowledge. Confirm live edit to continue.",
+          code: "CONFIRM_LIVE_EDIT",
+        },
+        { status: 409 },
+      );
+    }
+
     const data: {
       title?: string;
       kind?: string;
@@ -80,6 +130,8 @@ export async function PATCH(
       sortOrder?: number;
       slug?: string;
       source?: string;
+      lifecycleStatus?: string;
+      forgedAt?: Date | null;
     } = {};
 
     if (body.title !== undefined) data.title = body.title;
@@ -87,6 +139,10 @@ export async function PATCH(
     if (body.bodyMarkdown !== undefined) data.bodyMarkdown = body.bodyMarkdown;
     if (body.pinnedForContext !== undefined) data.pinnedForContext = body.pinnedForContext;
     if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder;
+    if (body.lifecycleStatus !== undefined && body.lifecycleStatus !== "forged") {
+      data.lifecycleStatus = body.lifecycleStatus;
+      data.forgedAt = null;
+    }
 
     const seededSlugs = new Set(["basics", "customers", "market", "strategy"]);
     if (
@@ -146,6 +202,23 @@ export async function PATCH(
       },
       ...liveOccurredNow(),
     });
+
+    if (
+      actor === "human" &&
+      existing.lifecycleStatus === "forged" &&
+      contentTouch &&
+      body.confirmLiveEdit
+    ) {
+      const { recordLiveOwnerEdit } = await import("@/lib/decisions/service");
+      await recordLiveOwnerEdit({
+        businessId: business.id,
+        userId: session.userId,
+        entityType: "document",
+        entityId: doc.id,
+        entityName: doc.title,
+        summary: `Owner edited live forged document "${doc.title}"`,
+      });
+    }
 
     return NextResponse.json(doc);
   } catch (error) {

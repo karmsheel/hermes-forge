@@ -190,7 +190,10 @@ export async function buildServerPageSnapshot(options: {
     }
     case "automations": {
       const approved = processes.filter(
-        (p) => p.status === "approved" || p.status === "ready_for_automation",
+        (p) =>
+          p.status === "approved" ||
+          p.status === "forged" ||
+          p.status === "ready_for_automation",
       );
       lines.push(`Candidates (approved-ish): ${approved.length}`);
       for (const p of approved.slice(0, 8)) {

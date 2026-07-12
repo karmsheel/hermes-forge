@@ -63,6 +63,8 @@ model Business {
   metrics             BusinessMetric[]
   events              BusinessEvent[]
   decisions           BusinessDecision[]
+  decisionRequests    DecisionRequest[]
+  notifications       Notification[]
   humanPersonnel      HumanPersonnel[]
   hermesAgentProfiles HermesAgentProfile[]
   agentTrainingItems  AgentTrainingItem[]
@@ -138,6 +140,9 @@ model BusinessDocument {
   pinnedForContext Boolean  @default(false)
   sortOrder        Int      @default(0)
   source           String   @default("manual") // seed | import | manual | hermes
+  // HITL lifecycle (4.12): draft → refined → forged
+  lifecycleStatus  String   @default("draft") // draft | refined | forged
+  forgedAt         DateTime?
 
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -145,6 +150,7 @@ model BusinessDocument {
   @@unique([businessId, slug])
   @@index([businessId, sortOrder])
   @@index([businessId, pinnedForContext])
+  @@index([businessId, lifecycleStatus])
 }
 
 model BusinessEvent {
@@ -186,12 +192,15 @@ model BusinessDecision {
   rationale       String?
   context         String?
 
+  // forge | change | policy | redirect | reject
+  kind                   String    @default("policy")
   status                 String    @default("active") // active | superseded | revoked
   decidedAt              DateTime?
   recordedAt             DateTime  @default(now())
   relatedEntityType      String?
   relatedEntityId        String?
   supersededByDecisionId String?
+  sourceRequestId        String?
   logSequence            Int?
 
   createdAt DateTime @default(now())
@@ -200,6 +209,71 @@ model BusinessDecision {
   @@index([businessId, recordedAt(sort: Desc)])
   @@index([businessId, status])
   @@index([businessId, decidedAt(sort: Desc)])
+  @@index([businessId, kind, recordedAt(sort: Desc)])
+  @@index([sourceRequestId])
+}
+
+/// Pending HITL ticket: agent/forge proposes options; human resolves (4.12).
+model DecisionRequest {
+  id                   String   @id @default(cuid())
+  businessId           String
+  business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  title                String
+  summary              String
+  contextMarkdown      String   @default("")
+
+  status               String   @default("pending") // pending | resolved | redirected | cancelled
+  urgency              String   @default("normal") // normal | high
+
+  proposerKind         String   // agent | forge | system
+  hermesAgentProfileId String?
+  hermesAgentProfile   HermesAgentProfile? @relation(fields: [hermesAgentProfileId], references: [id], onDelete: SetNull)
+  conversationId       String?
+
+  relatedEntityType    String? // process | document | automation | business
+  relatedEntityId      String?
+  relatedEntityName    String?
+
+  /// JSON: DecisionOption[]
+  optionsJson          String
+  /// JSON: Record<optionId, ProposedAction | ProposedAction[]>
+  proposedActionsJson  String   @default("{}")
+
+  selectedOptionId     String?
+  redirectMessage      String?
+  resolvedAt           DateTime?
+  resolvedByUserId     String?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  notifications        Notification[]
+
+  @@index([businessId, status, createdAt(sort: Desc)])
+  @@index([businessId, createdAt(sort: Desc)])
+  @@index([hermesAgentProfileId])
+}
+
+/// In-app notifications (user attention); forever retention (4.12).
+model Notification {
+  id                String   @id @default(cuid())
+  businessId        String
+  business          Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId            String
+
+  type              String   // info | decision_pending | decision_resolved | system
+  title             String
+  body              String   @default("")
+  decisionRequestId String?
+  decisionRequest   DecisionRequest? @relation(fields: [decisionRequestId], references: [id], onDelete: SetNull)
+  readAt            DateTime?
+
+  createdAt         DateTime @default(now())
+
+  @@index([businessId, userId, createdAt(sort: Desc)])
+  @@index([businessId, userId, readAt])
+  @@index([decisionRequestId])
 }
 
 // kind: process (workshop mapping) | studio (global chatbar co-pilot)
@@ -247,8 +321,9 @@ model Process {
   businessValue      Int?     // 1-10
   complexity         Int?     // 1-10
 
-  status             String   @default("mapping") // mapping | reviewed | approved
-  approvedAt         DateTime?
+  // HITL lifecycle (4.12): draft → refined → forged (legacy: mapping|reviewed|approved)
+  status             String   @default("draft") // draft | refined | forged
+  approvedAt         DateTime? // set when forged (compat name)
   nameStatus         String   @default("pending")    // pending | confirmed — auto-name awaiting user OK
 
   // Live process diagram (Mermaid source) — updated as the user chats
@@ -360,9 +435,10 @@ model HermesAgentProfile {
   discoveredAt DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  conversations  Conversation[]
-  trainingItems  AgentTrainingItem[]
-  automations    Automation[]
+  conversations     Conversation[]
+  trainingItems     AgentTrainingItem[]
+  automations       Automation[]
+  decisionRequests  DecisionRequest[]
 
   @@unique([businessId, profileKey])
   @@index([businessId, discoveredAt(sort: Desc)])

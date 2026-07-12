@@ -59,10 +59,11 @@ export async function requireApprovedProcessAccess(request: NextRequest, process
   const result = await requireProcessAccess(request, processId);
   if ('error' in result) return result;
 
-  if (result.process.status !== 'approved') {
+  const { isProcessForged } = await import('@/lib/process-status');
+  if (!isProcessForged(result.process.status)) {
     return {
       error: NextResponse.json(
-        { error: 'Process must be approved for automation before opening the studio' },
+        { error: 'Process must be forged (approved) for automation before opening the studio' },
         { status: 403 }
       ),
     };

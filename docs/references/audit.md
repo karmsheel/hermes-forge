@@ -20,7 +20,7 @@ Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_B
 | AUDIT-4 | Merge Dashboard into Functions | **Done** | Org chart + analytics on `/functions`; dashboard page deleted; `/dashboard` → `/functions` |
 | AUDIT-5 | Dev-gate God Mode | **Done** | Nav hidden by default; Settings → Developer toggle; route guard |
 | AUDIT-6 | Dead code cleanup | **Mostly done** | accent.ts removed; next.config.mjs removed; accent-swatch CSS removed; optional theme export prune remains |
-| AUDIT-7 | Schema honesty | **Partial** | Removed unused `PERSONNEL_REMOVED`; Decisions page + types state scaffold clearly; `BusinessDecision` still schema-only (no CRUD); personnel git import **done** (4.11) |
+| AUDIT-7 | Schema honesty | **Mostly done** | Decisions HITL API + UI shipped (4.12); personnel git import done |
 | AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; `npm test` unit smoke suite (17 tests via node:test); HTTP API smoke still optional |
 | AUDIT-9 | Terminology pass | **Done** | `NewBusinessDialog`, shell `openNewBusiness`, auth copy, `process-card` / `recent-processes` CSS |
 | AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH; personnel git import; automation agent bind shipped; `@system` mentions still open |

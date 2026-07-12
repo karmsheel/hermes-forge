@@ -545,21 +545,20 @@ export function WorkshopSession({
     if (!activeId || !activeProcess) return;
     setApproving(true);
     try {
-      const res = await apiFetch(`/api/processes/${activeId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
+      const res = await apiFetch(`/api/processes/${activeId}/forge`, {
+        method: "POST",
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Approval failed");
+        throw new Error(err.error || "Forge failed");
       }
-      const updated = await res.json();
+      const data = await res.json();
+      const updated = data.process ?? data;
       setActiveProcess((prev) => (prev ? { ...prev, ...updated } : prev));
       await loadProcessList();
-      toast.success("Process approved for automation");
+      toast.success("Process forged — locked as live business documentation");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not approve process");
+      toast.error(error instanceof Error ? error.message : "Could not forge process");
     } finally {
       setApproving(false);
     }
@@ -934,7 +933,8 @@ export function WorkshopSession({
 
   const diagramChart = streamingDiagram ?? activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
-  const isApproved = activeProcess?.status === "approved";
+  const isApproved =
+    activeProcess?.status === "approved" || activeProcess?.status === "forged";
   const canApprove =
     activeProcess && canApproveForAutomation(activeProcess) && !approving;
 
@@ -1099,8 +1099,8 @@ export function WorkshopSession({
                   }`}
                 >
                   {isApproved
-                    ? PROCESS_STATUS_LABELS.approved
-                    : PROCESS_STATUS_LABELS.mapping}
+                    ? PROCESS_STATUS_LABELS.forged
+                    : PROCESS_STATUS_LABELS.draft}
                 </span>
               )}
               {canApprove && (

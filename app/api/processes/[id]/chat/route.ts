@@ -66,24 +66,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (
       !replyOnly &&
       process.status !== 'approved' &&
+      process.status !== 'forged' &&
       lastAssistant &&
       assistantAskedAccuracyQuestion(lastAssistant.content) &&
       userConfirmsAccuracy(body.content!)
     ) {
       approvedFromChat = true;
-      await prisma.process.update({
-        where: { id },
-        data: buildApprovalUpdate('approved'),
-      });
-      await recordBusinessEvent({
+      const { forgeProcessDirect } = await import('@/lib/decisions/service');
+      await forgeProcessDirect({
         businessId: process.businessId,
         userId: result.session.userId,
-        type: BUSINESS_EVENT_TYPES.PROCESS_APPROVED,
-        entityType: 'process',
-        entityId: id,
-        entityName: process.name,
-        summary: `Approved process "${process.name}"`,
-        ...liveOccurredNow(),
+        processId: id,
       });
     }
 
@@ -132,7 +125,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       shouldExecuteSplit({
         userContent: lastUserContent,
         lastAssistantContent: lastAssistant?.content,
-        status: approvedFromChat ? 'approved' : process.status,
+        status: approvedFromChat ? 'forged' : process.status,
       })
     ) {
       const splitResult = await executeProcessSplit(
@@ -241,7 +234,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             processName: process.name,
             description: process.description,
             nameStatus: process.nameStatus,
-            status: approvedFromChat ? 'approved' : process.status,
+            status: approvedFromChat ? 'forged' : process.status,
             hasDiagram,
             discovery,
             processMd,
@@ -250,6 +243,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             shouldAskAccuracy:
               !approvedFromChat &&
               process.status !== 'approved' &&
+              process.status !== 'forged' &&
               !recentAccuracyAsk &&
               shouldPromptForAccuracy({
                 status: process.status,

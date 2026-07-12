@@ -8,6 +8,7 @@ import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessSwitcher } from "./BusinessSwitcher";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
+import { NotificationBell } from "./NotificationBell";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useShell } from "./ShellContext";
 import { StageExplorer } from "./StageExplorer";
@@ -54,6 +55,7 @@ export function AppTopBar() {
           {showHermesModelSwitcher && (
             <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           )}
+          <NotificationBell />
           {showAccountChrome && (
             <NavThemeModeToggle className="app-topbar__theme-toggle" />
           )}

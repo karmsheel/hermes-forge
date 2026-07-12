@@ -59,6 +59,7 @@ export async function materializeBusinessRepo(
       humanPersonnel: { orderBy: { createdAt: 'asc' } },
       hermesAgentProfiles: { orderBy: { discoveredAt: 'asc' } },
       decisions: { orderBy: { recordedAt: 'asc' } },
+      decisionRequests: { orderBy: { createdAt: 'asc' } },
       events: { orderBy: { sequence: 'asc' } },
     },
   });
@@ -151,6 +152,8 @@ export async function materializeBusinessRepo(
       pinnedForContext: d.pinnedForContext,
       sortOrder: d.sortOrder,
       source: d.source,
+      lifecycleStatus: d.lifecycleStatus,
+      forgedAt: d.forgedAt?.toISOString() ?? null,
       updatedAt: d.updatedAt.toISOString(),
     }))
   );
@@ -198,16 +201,71 @@ export async function materializeBusinessRepo(
         statement: d.statement,
         rationale: d.rationale,
         context: d.context,
+        kind: d.kind,
         status: d.status,
         decidedAt: d.decidedAt?.toISOString() ?? null,
         recordedAt: d.recordedAt.toISOString(),
         relatedEntityType: d.relatedEntityType,
         relatedEntityId: d.relatedEntityId,
         supersededByDecisionId: d.supersededByDecisionId,
+        sourceRequestId: d.sourceRequestId,
         logSequence: d.logSequence,
       })
     )
   );
+
+  // Pending + recent decision requests (4.12 HITL)
+  if ('decisionRequests' in business && Array.isArray((business as { decisionRequests?: unknown[] }).decisionRequests)) {
+    const requests = (business as {
+      decisionRequests: Array<{
+        id: string;
+        title: string;
+        summary: string;
+        contextMarkdown: string;
+        status: string;
+        urgency: string;
+        proposerKind: string;
+        hermesAgentProfileId: string | null;
+        conversationId: string | null;
+        relatedEntityType: string | null;
+        relatedEntityId: string | null;
+        relatedEntityName: string | null;
+        optionsJson: string;
+        proposedActionsJson: string;
+        selectedOptionId: string | null;
+        redirectMessage: string | null;
+        resolvedAt: Date | null;
+        createdAt: Date;
+        updatedAt: Date;
+      }>;
+    }).decisionRequests;
+    await writeNdjson(
+      path.join(repoPath, 'decision-requests.ndjson'),
+      requests.map((r) =>
+        JSON.stringify({
+          id: r.id,
+          title: r.title,
+          summary: r.summary,
+          contextMarkdown: r.contextMarkdown,
+          status: r.status,
+          urgency: r.urgency,
+          proposerKind: r.proposerKind,
+          hermesAgentProfileId: r.hermesAgentProfileId,
+          conversationId: r.conversationId,
+          relatedEntityType: r.relatedEntityType,
+          relatedEntityId: r.relatedEntityId,
+          relatedEntityName: r.relatedEntityName,
+          optionsJson: r.optionsJson,
+          proposedActionsJson: r.proposedActionsJson,
+          selectedOptionId: r.selectedOptionId,
+          redirectMessage: r.redirectMessage,
+          resolvedAt: r.resolvedAt?.toISOString() ?? null,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        })
+      )
+    );
+  }
 
   for (const process of business.processes) {
     const processDir = path.join(repoPath, 'processes', process.id);

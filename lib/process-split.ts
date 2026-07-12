@@ -37,7 +37,7 @@ export function shouldExecuteSplit(input: {
   lastAssistantContent?: string;
   status: string;
 }): boolean {
-  if (input.status === 'approved') return false;
+  if (input.status === 'approved' || input.status === 'forged') return false;
 
   if (userRequestsSplit(input.userContent)) return true;
 
@@ -201,7 +201,7 @@ export async function executeProcessSplit(
     throw new Error('Process not found');
   }
 
-  if (process.status === 'approved') {
+  if (process.status === 'approved' || process.status === 'forged') {
     throw new Error('Approved workflows cannot be split. Re-open mapping first.');
   }
 

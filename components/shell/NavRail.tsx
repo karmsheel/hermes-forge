@@ -44,7 +44,7 @@ export function NavRail() {
   const { requestNewProcess, openHermesConnection } = useShell();
   const { stage } = useForgeStage();
   const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
-  const { showCronalyticsPage, showDecisionsPage, showGodModePage } = useDeveloperSettings();
+  const { showCronalyticsPage, showGodModePage } = useDeveloperSettings();
   const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
   /** Prefer active tab route for highlight so desktop tabs stay consistent */
   const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
@@ -181,7 +181,6 @@ export function NavRail() {
           .filter((item) => isNavIdInStage(item.id, stage))
           .filter((item) => item.id !== "god-mode" || showGodModePage)
           .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
-          .filter((item) => item.id !== "decisions" || showDecisionsPage)
           .map((item) => {
           const Icon = item.icon;
           const active = isActive(item);

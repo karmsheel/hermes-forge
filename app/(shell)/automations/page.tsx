@@ -171,7 +171,7 @@ export default function AutomationsPage() {
                       )}
                     </div>
                     <span className="pill pill-green text-[10px] shrink-0">
-                      {PROCESS_STATUS_LABELS.approved}
+                      {PROCESS_STATUS_LABELS.forged}
                     </span>
                   </div>
 
