@@ -129,6 +129,11 @@ export interface ProcessSummary {
 
 export interface ApprovedProcessSummary extends ProcessSummary {
   automationStatus: AutomationDeployStatus;
+  assignedAgent?: {
+    id: string;
+    displayName: string;
+    profileKey: string;
+  } | null;
 }
 
 export interface ProcessWithMessages extends Process {

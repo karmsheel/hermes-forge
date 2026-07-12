@@ -553,11 +553,11 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.10 Personnel roster — **MOSTLY DONE** (workshop wired)
+### 4.10 Personnel roster — **MOSTLY DONE** (workshop + automation bind)
 
 **Goal:** Org roster for humans and hired Hermes agents; feed swimlanes, `@actor` mentions, and automation assignment.
 
-**Status:** UI, API, DB, and **workshop integration** (mentions + chat/diagram prompts + swimlane lane hints). Automation binding still open.
+**Status:** UI, API, DB, workshop integration, and **automation agent bind** shipped. Explicit `@system` mentionables still open.
 
 **Files:** `app/(shell)/personnel/page.tsx`, `app/api/personnel/**`, `components/personnel/*`, `lib/personnel/*`, `prisma/schema.prisma` (`HumanPersonnel`, `HermesAgentProfile`)
 
@@ -574,11 +574,11 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Human edit PATCH (name, role, `roleDescription`); display description on cards
 
 **Remaining:**
-- [ ] `Automation` → `hermesAgentProfileId` (or equivalent) for hired agents
+- [x] `Automation` → `hermesAgentProfileId` for hired agents (studio picker + cron prompt + deploy gate)
 - [x] Import `personnel.json` on business git import (4.11 restore)
 - [ ] Explicit `@system` mentionables (beyond roster roles)
 
-**Do not:** Treat automation assignment as done until agent bind ships.
+**Shipped (agent bind):** Deploy panel agent picker; `PATCH /api/processes/[id]/automation`; Hermes cron deploy requires hired agent; cron prompt injects agent identity; list shows assigned agent; git meta includes agent profile key.
 
 ---
 
@@ -772,7 +772,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | 4.7 | User theme install (JSON) | 4 | Done |
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
-| 4.10 | Personnel roster | 4 | **Mostly done** (workshop wired) |
+| 4.10 | Personnel roster | 4 | **Mostly done** (workshop + automation bind) |
 | 4.11 | Immutable business log | 4 | **Mostly done** (push + import shipped) |
 | 4.12 | Business decisions | 4 | **Scaffold** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
@@ -799,7 +799,7 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Partial** — removed unused `PERSONNEL_REMOVED`; Decisions scaffold honesty; schema still no CRUD |
 | AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
 | AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
-| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; personnel git import done; automation bind still open |
+| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; personnel git import + automation agent bind done; `@system` mentions still open |
 
 **Session outcomes (code):**
 - `docs/references/audit.md` committed as canonical audit

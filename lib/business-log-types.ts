@@ -21,6 +21,8 @@ export const BUSINESS_EVENT_TYPES = {
   AUTOMATION_SYNCED: 'automation.synced',
   AUTOMATION_CREDENTIALS_MAPPED: 'automation.credentials_mapped',
   AUTOMATION_STATUS_CHANGED: 'automation.status_changed',
+  /** Hired Hermes agent assigned (or cleared) as owner of an automation. */
+  AUTOMATION_AGENT_ASSIGNED: 'automation.agent_assigned',
 
   MEMORY_FACT_ADDED: 'memory.fact_added',
 
@@ -89,6 +91,10 @@ export interface BusinessEventMetadata {
   documentKind?: string;
   documentSlug?: string;
   pinnedForContext?: boolean;
+  /** Hired agent assigned to an automation (4.10). */
+  agentId?: string;
+  agentName?: string;
+  previousAgentId?: string;
 }
 
 export interface RecordBusinessEventInput {

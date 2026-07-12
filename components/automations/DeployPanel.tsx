@@ -7,12 +7,14 @@ import { CredentialChecklist } from "./CredentialChecklist";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { useN8nConnection } from "@/components/n8n/N8nConnectionProvider";
 import type {
+  AutomationAgentSummary,
   AutomationPlan,
   AutomationStudioData,
   CredentialMap,
   IntegrationRequirement,
 } from "@/lib/automation-types";
 import type { AutomationDeployStatus } from "@/lib/process-status";
+import Link from "next/link";
 
 type DeployType = "hermes_cron" | "n8n_workflow";
 
@@ -22,8 +24,11 @@ interface DeployPanelProps {
   integrations: IntegrationRequirement[];
   credentialMap: CredentialMap;
   automation: AutomationStudioData["automation"];
+  hiredAgents: AutomationAgentSummary[];
+  assignedAgent: AutomationAgentSummary | null;
   deployStatus: AutomationDeployStatus;
   onCredentialMapChange: (map: CredentialMap) => void;
+  onAgentChange: (agentId: string | null) => void | Promise<void>;
   onDeployed: (studio: AutomationStudioData) => void;
   onOpenN8nConnection: () => void;
 }
@@ -42,8 +47,11 @@ export function DeployPanel({
   integrations,
   credentialMap,
   automation,
+  hiredAgents,
+  assignedAgent,
   deployStatus,
   onCredentialMapChange,
+  onAgentChange,
   onDeployed,
   onOpenN8nConnection,
 }: DeployPanelProps) {
@@ -56,9 +64,12 @@ export function DeployPanel({
   const [schedule, setSchedule] = useState(plan?.schedule ?? "every 1d at 09:00");
   const [deliver, setDeliver] = useState(plan?.deliveryChannel ?? "local");
   const [deploying, setDeploying] = useState(false);
+  const [assigningAgent, setAssigningAgent] = useState(false);
 
   const alreadyDeployed = Boolean(automation.externalId);
   const canDeploy = Boolean(plan?.summary) && !alreadyDeployed && !deploying;
+  const selectedAgentId = assignedAgent?.id ?? automation.hermesAgentProfileId ?? "";
+  const needsAgentForCron = deployType === "hermes_cron" && !selectedAgentId;
 
   const allCredentialsMapped =
     integrations.length === 0 ||
@@ -76,6 +87,7 @@ export function DeployPanel({
         schedule,
         deliver,
         credentialMap,
+        hermesAgentProfileId: selectedAgentId || null,
       };
 
       if (deployType === "n8n_workflow") {
@@ -108,6 +120,15 @@ export function DeployPanel({
     }
   }
 
+  async function handleAgentSelect(agentId: string) {
+    setAssigningAgent(true);
+    try {
+      await onAgentChange(agentId || null);
+    } finally {
+      setAssigningAgent(false);
+    }
+  }
+
   if (alreadyDeployed) {
     return (
       <div className="p-4 border-t border-zinc-800 space-y-3">
@@ -116,6 +137,11 @@ export function DeployPanel({
           {automation.type === "n8n_workflow" ? "n8n workflow" : "Hermes cron"} ·{" "}
           {automation.status}
         </p>
+        {assignedAgent && (
+          <p className="text-xs text-zinc-400">
+            Agent: <span className="text-zinc-200">{assignedAgent.displayName}</span>
+          </p>
+        )}
         {automation.externalUrl && (
           <a
             href={automation.externalUrl}
@@ -177,10 +203,44 @@ export function DeployPanel({
             </button>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-[10px] text-zinc-500">Hired agent owner</label>
+            {hiredAgents.length === 0 ? (
+              <p className="text-xs text-amber-400">
+                No hired agents.{" "}
+                <Link href="/personnel/hire" className="underline hover:text-amber-300">
+                  Hire from Personnel
+                </Link>{" "}
+                before deploying a Hermes cron job.
+              </p>
+            ) : (
+              <select
+                className="input w-full text-xs"
+                value={selectedAgentId}
+                disabled={assigningAgent || deploying}
+                onChange={(e) => void handleAgentSelect(e.target.value)}
+              >
+                <option value="">Select agent…</option>
+                {hiredAgents.map((agent) => (
+                  <option key={agent.id} value={agent.id}>
+                    {agent.displayName}
+                    {agent.isDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-[10px] text-zinc-600">
+              The agent owns this automation and is injected into Hermes cron prompts.
+            </p>
+          </div>
+
           {deployType === "hermes_cron" && (
             <div className="space-y-2">
               {!hermesConnected && (
                 <p className="text-xs text-amber-400">Connect Hermes to deploy cron jobs.</p>
+              )}
+              {needsAgentForCron && hiredAgents.length > 0 && (
+                <p className="text-xs text-amber-400">Select a hired agent to deploy a cron job.</p>
               )}
               <div>
                 <label className="text-[10px] text-zinc-500">Schedule</label>
@@ -240,6 +300,7 @@ export function DeployPanel({
             disabled={
               !canDeploy ||
               !hermesConnected ||
+              needsAgentForCron ||
               (deployType === "n8n_workflow" && (!n8nConnected || !allCredentialsMapped))
             }
             onClick={() => void handleDeploy()}

@@ -416,6 +416,17 @@ export async function importBusinessFromGitRepo(
 
           if (snap.automation) {
             const a = snap.automation;
+            // Prefer remapped profile id; fall back to profileKey match among imported agents.
+            let agentId: string | null = null;
+            if (typeof a.hermesAgentProfileId === 'string' && personnelIdMap.has(a.hermesAgentProfileId)) {
+              agentId = personnelIdMap.get(a.hermesAgentProfileId)!;
+            } else if (typeof a.hermesAgentProfileKey === 'string') {
+              const byKey = await tx.hermesAgentProfile.findFirst({
+                where: { businessId: business.id, profileKey: a.hermesAgentProfileKey },
+                select: { id: true },
+              });
+              agentId = byKey?.id ?? null;
+            }
             await tx.automation.create({
               data: {
                 processId: proc.id,
@@ -429,6 +440,7 @@ export async function importBusinessFromGitRepo(
                 externalId: typeof a.externalId === 'string' ? a.externalId : null,
                 externalUrl: typeof a.externalUrl === 'string' ? a.externalUrl : null,
                 deployedAt: parseDate(typeof a.deployedAt === 'string' ? a.deployedAt : null),
+                hermesAgentProfileId: agentId,
               },
             });
             counts.automations += 1;

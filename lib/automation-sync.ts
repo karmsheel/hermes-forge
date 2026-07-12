@@ -1,7 +1,24 @@
 import { prisma } from '@/lib/prisma';
+import { serializeAutomation } from '@/lib/automation-access';
 import { slugifyJobName } from '@/lib/automation-deploy';
 import { listHermesJobs, type HermesJobSummary } from '@/lib/hermes-jobs';
 import type { AutomationWithMessages } from '@/lib/automation-types';
+
+const automationInclude = {
+  messages: { orderBy: { createdAt: 'asc' as const } },
+  hermesAgentProfile: {
+    select: {
+      id: true,
+      displayName: true,
+      profileKey: true,
+      description: true,
+      model: true,
+      isHired: true,
+      isDefault: true,
+      iconKey: true,
+    },
+  },
+};
 
 export function forgeJobNameForProcess(processName: string): string {
   return `forge-${slugifyJobName(processName)}`;
@@ -78,14 +95,16 @@ export async function syncAutomationCronLink(
 ): Promise<SyncCronLinkResult> {
   const automation = await prisma.automation.findUnique({
     where: { id: input.automationId },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    include: automationInclude,
   });
 
   if (!automation) return { linked: false };
-  if (automation.externalId) return { linked: false, automation };
+  if (automation.externalId) {
+    return { linked: false, automation: serializeAutomation(automation) };
+  }
 
   const match = matchHermesJobToProcess(input.jobs, input.processName, input.claimedJobIds);
-  if (!match) return { linked: false, automation };
+  if (!match) return { linked: false, automation: serializeAutomation(automation) };
 
   const updated = await prisma.automation.update({
     where: { id: automation.id },
@@ -96,10 +115,10 @@ export async function syncAutomationCronLink(
       externalUrl: null,
       deployedAt: new Date(),
     },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    include: automationInclude,
   });
 
-  return { linked: true, jobId: match.job.id, automation: updated };
+  return { linked: true, jobId: match.job.id, automation: serializeAutomation(updated) };
 }
 
 export async function listHermesJobsSafe(
@@ -137,11 +156,13 @@ export async function syncProcessCronLink(
 ): Promise<SyncCronLinkResult> {
   const automation = await prisma.automation.findUnique({
     where: { processId },
-    include: { messages: { orderBy: { createdAt: 'asc' } } },
+    include: automationInclude,
   });
 
   if (!automation) return { linked: false };
-  if (automation.externalId) return { linked: false, automation };
+  if (automation.externalId) {
+    return { linked: false, automation: serializeAutomation(automation) };
+  }
 
   const [jobs, claimedJobIds] = await Promise.all([
     listHermesJobsSafe(baseUrl, apiKey),

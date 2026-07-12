@@ -23,7 +23,7 @@ Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_B
 | AUDIT-7 | Schema honesty | **Partial** | Removed unused `PERSONNEL_REMOVED`; Decisions page + types state scaffold clearly; `BusinessDecision` still schema-only (no CRUD); personnel git import **done** (4.11) |
 | AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; `npm test` unit smoke suite (17 tests via node:test); HTTP API smoke still optional |
 | AUDIT-9 | Terminology pass | **Done** | `NewBusinessDialog`, shell `openNewBusiness`, auth copy, `process-card` / `recent-processes` CSS |
-| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH shipped; personnel git import done; automation bind still open |
+| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH; personnel git import; automation agent bind shipped; `@system` mentions still open |
 
 ---
 
@@ -193,9 +193,9 @@ flowchart TD
 ```
 
 1. **AUDIT-7 / 4.12** — implement Decisions API or drop schema
-2. **4.10 remainder** — automation ↔ hired agent binding
-3. **4.16** code signing when shipping desktop
-4. Optional: HTTP-level API smoke against a running server
+2. **4.16** code signing when shipping desktop
+3. Optional: HTTP-level API smoke against a running server
+4. Workshop polish: fork-from-message (3.4), `@system` mentions (3.5)
 
 ---
 

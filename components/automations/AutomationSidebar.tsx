@@ -7,6 +7,7 @@ import {
   type AutomationDeployStatus,
 } from "@/lib/process-status";
 import type {
+  AutomationAgentSummary,
   AutomationPlan,
   AutomationStudioData,
   CredentialMap,
@@ -27,8 +28,11 @@ interface AutomationSidebarProps {
   automationStatus: AutomationDeployStatus;
   processId: string;
   automation: AutomationStudioData["automation"];
+  hiredAgents: AutomationAgentSummary[];
+  assignedAgent: AutomationAgentSummary | null;
   credentialMap: CredentialMap;
   onCredentialMapChange: (map: CredentialMap) => void;
+  onAgentChange: (agentId: string | null) => void | Promise<void>;
   onDeployed: (studio: AutomationStudioData) => void;
   onOpenN8nConnection: () => void;
 }
@@ -70,8 +74,11 @@ export function AutomationSidebar({
   automationStatus,
   processId,
   automation,
+  hiredAgents,
+  assignedAgent,
   credentialMap,
   onCredentialMapChange,
+  onAgentChange,
   onDeployed,
   onOpenN8nConnection,
 }: AutomationSidebarProps) {
@@ -232,8 +239,11 @@ export function AutomationSidebar({
         integrations={integrations}
         credentialMap={credentialMap}
         automation={automation}
+        hiredAgents={hiredAgents}
+        assignedAgent={assignedAgent}
         deployStatus={automationStatus}
         onCredentialMapChange={onCredentialMapChange}
+        onAgentChange={onAgentChange}
         onDeployed={onDeployed}
         onOpenN8nConnection={onOpenN8nConnection}
       />

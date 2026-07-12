@@ -217,9 +217,15 @@ model Automation {
   externalUrl       String?
   deployedAt        DateTime?
 
+  // Hired Hermes agent that owns this automation (4.10)
+  hermesAgentProfileId String?
+  hermesAgentProfile   HermesAgentProfile? @relation(fields: [hermesAgentProfileId], references: [id], onDelete: SetNull)
+
   messages          AutomationMessage[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([hermesAgentProfileId])
 }
 
 model AutomationMessage {
@@ -297,6 +303,7 @@ model HermesAgentProfile {
 
   conversations  Conversation[]
   trainingItems  AgentTrainingItem[]
+  automations    Automation[]
 
   @@unique([businessId, profileKey])
   @@index([businessId, discoveredAt(sort: Desc)])

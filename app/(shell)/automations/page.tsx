@@ -182,6 +182,11 @@ export default function AutomationsPage() {
                     <span className={`pill text-[10px] ${deployBadgeClass(proc.automationStatus)}`}>
                       {AUTOMATION_DEPLOY_LABELS[proc.automationStatus]}
                     </span>
+                    {proc.assignedAgent && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-bg-muted text-text-muted">
+                        Agent: {proc.assignedAgent.displayName}
+                      </span>
+                    )}
                     {proc.approvedAt && (
                       <span className="text-[10px] text-text-soft">
                         Approved {new Date(proc.approvedAt).toLocaleDateString()}

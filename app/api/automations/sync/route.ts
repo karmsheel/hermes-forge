@@ -54,6 +54,10 @@ export async function POST(request: NextRequest) {
             status: true,
             type: true,
             externalId: true,
+            hermesAgentProfileId: true,
+            hermesAgentProfile: {
+              select: { id: true, displayName: true, profileKey: true },
+            },
           },
         },
       },
@@ -103,6 +107,13 @@ export async function POST(request: NextRequest) {
         automationStatus: automationStatusToDeployStatus(
           automation as { status: string; type: string | null; externalId?: string | null } | null
         ),
+        assignedAgent: automation?.hermesAgentProfile
+          ? {
+              id: automation.hermesAgentProfile.id,
+              displayName: automation.hermesAgentProfile.displayName,
+              profileKey: automation.hermesAgentProfile.profileKey,
+            }
+          : null,
       };
     });
 

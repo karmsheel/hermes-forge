@@ -55,7 +55,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({
       linked: syncResult.linked,
       jobId: syncResult.jobId ?? null,
-      studio: buildAutomationStudioData(process, syncResult.automation),
+      studio: await buildAutomationStudioData(process, syncResult.automation),
     });
   } catch (error) {
     console.error('Automation sync error', error);

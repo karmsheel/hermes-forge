@@ -6,6 +6,7 @@ import type { AutomationWithMessages } from '@/lib/automation-types';
 import {
   buildAutomationStudioData,
   getOrCreateAutomation,
+  loadAutomationWithRelations,
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
 import { syncProcessCronLink } from '@/lib/automation-sync';
@@ -60,11 +61,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       updateData.status = extraction.planReady ? 'ready_to_deploy' : 'designing';
     }
 
-    let updatedAutomation: AutomationWithMessages = await prisma.automation.update({
+    await prisma.automation.update({
       where: { id: automation.id },
       data: updateData,
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+
+    let updatedAutomation: AutomationWithMessages = await loadAutomationWithRelations(
+      automation.id
+    );
 
     const syncResult = await syncProcessCronLink(
       id,
@@ -109,7 +113,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       updated: true,
       planReady: extraction.planReady,
       cronLinked: syncResult.linked,
-      studio: buildAutomationStudioData(process, updatedAutomation),
+      studio: await buildAutomationStudioData(process, updatedAutomation),
     });
   } catch (error) {
     console.error('Automation extract error', error);

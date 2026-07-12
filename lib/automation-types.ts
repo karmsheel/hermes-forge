@@ -52,6 +52,18 @@ export interface AutomationMessage {
   createdAt: string | Date;
 }
 
+/** Hired agent summary attached to an automation (4.10 bind). */
+export interface AutomationAgentSummary {
+  id: string;
+  displayName: string;
+  profileKey: string;
+  description: string | null;
+  model: string | null;
+  isHired: boolean;
+  isDefault: boolean;
+  iconKey: string | null;
+}
+
 export interface Automation {
   id: string;
   processId: string;
@@ -63,8 +75,11 @@ export interface Automation {
   externalId: string | null;
   externalUrl: string | null;
   deployedAt: string | Date | null;
+  hermesAgentProfileId: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
+  /** Present when loaded with agent relation. */
+  hermesAgentProfile?: AutomationAgentSummary | null;
 }
 
 export interface AutomationWithMessages extends Automation {
@@ -89,6 +104,10 @@ export interface AutomationStudioData {
   plan: AutomationPlan | null;
   integrations: IntegrationRequirement[];
   credentialMap: CredentialMap;
+  /** Hired agents available for assignment in this business. */
+  hiredAgents: AutomationAgentSummary[];
+  /** Currently assigned agent (resolved from automation.hermesAgentProfileId). */
+  assignedAgent: AutomationAgentSummary | null;
 }
 
 export function parseAutomationPlan(planJson: string | null): AutomationPlan | null {

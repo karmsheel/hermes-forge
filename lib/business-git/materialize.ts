@@ -46,7 +46,11 @@ export async function materializeBusinessRepo(
             },
             orderBy: { createdAt: 'asc' },
           },
-          automation: true,
+          automation: {
+            include: {
+              hermesAgentProfile: { select: { id: true, profileKey: true } },
+            },
+          },
         },
         orderBy: { createdAt: 'asc' },
       },
@@ -276,6 +280,8 @@ export async function materializeBusinessRepo(
         planJson: automation.planJson,
         integrationsJson: automation.integrationsJson,
         credentialMapJson: automation.credentialMapJson,
+        hermesAgentProfileId: automation.hermesAgentProfileId,
+        hermesAgentProfileKey: automation.hermesAgentProfile?.profileKey ?? null,
       });
     }
   }

@@ -5,6 +5,7 @@ import { callHermes } from '@/lib/hermes';
 import { buildAutomationChatSystemPrompt } from '@/lib/automation-chat';
 import {
   getOrCreateAutomation,
+  loadAutomationWithRelations,
   requireApprovedProcessAccess,
   buildAutomationStudioData,
 } from '@/lib/automation-access';
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             diagramMermaid: process.diagramMermaid,
             existingPlan: parseAutomationPlan(automation.planJson),
             existingIntegrations: parseIntegrations(automation.integrationsJson),
+            assignedAgentName: automation.hermesAgentProfile?.displayName ?? null,
           }),
         },
         {
@@ -91,10 +93,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: { automationId: automation.id, role: 'assistant', content: assistantMessage },
     });
 
-    let updatedAutomation: AutomationWithMessages = await prisma.automation.findUniqueOrThrow({
-      where: { id: automation.id },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
-    });
+    let updatedAutomation: AutomationWithMessages = await loadAutomationWithRelations(
+      automation.id
+    );
 
     const syncResult = await syncProcessCronLink(
       id,
@@ -107,8 +108,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       updatedAutomation = syncResult.automation;
     }
 
+    const studio = await buildAutomationStudioData(process, updatedAutomation);
     return NextResponse.json({
-      ...buildAutomationStudioData(process, updatedAutomation),
+      ...studio,
       runExtraction: true,
       cronLinked: syncResult.linked,
     });

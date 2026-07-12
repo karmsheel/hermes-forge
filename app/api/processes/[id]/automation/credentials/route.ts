@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import {
   buildAutomationStudioData,
   getOrCreateAutomation,
+  loadAutomationWithRelations,
   requireApprovedProcessAccess,
 } from '@/lib/automation-access';
 import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
@@ -31,11 +32,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
 
     const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
-    const updated = await prisma.automation.update({
+    await prisma.automation.update({
       where: { id: automation.id },
       data: { credentialMapJson: JSON.stringify(body.credentialMap) },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+
+    const updated = await loadAutomationWithRelations(automation.id);
 
     await recordBusinessEvent({
       businessId: result.process.businessId,
@@ -49,7 +51,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       ...liveOccurredNow(),
     });
 
-    return NextResponse.json(buildAutomationStudioData(result.process, updated));
+    return NextResponse.json(await buildAutomationStudioData(result.process, updated));
   } catch (error) {
     console.error('Save credential map error', error);
     if (error instanceof z.ZodError) {

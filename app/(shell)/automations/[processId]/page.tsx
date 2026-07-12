@@ -162,6 +162,26 @@ export default function AutomationStudioPage({ params }: PageProps) {
     }
   }
 
+  async function handleAgentChange(agentId: string | null) {
+    try {
+      const res = await fetch(`/api/processes/${processId}/automation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hermesAgentProfileId: agentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to assign agent");
+      setStudio(data);
+      toast.success(
+        agentId
+          ? `Assigned ${data.assignedAgent?.displayName ?? "agent"}`
+          : "Cleared agent assignment"
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign agent");
+    }
+  }
+
   async function handleSendMessage(content: string) {
     if (!hermesConfig || !studio) return;
 
@@ -269,8 +289,11 @@ export default function AutomationStudioPage({ params }: PageProps) {
           automationStatus={deployStatus}
           processId={processId}
           automation={studio.automation}
+          hiredAgents={studio.hiredAgents ?? []}
+          assignedAgent={studio.assignedAgent ?? null}
           credentialMap={credentialMap}
           onCredentialMapChange={handleCredentialMapChange}
+          onAgentChange={handleAgentChange}
           onDeployed={(next) => {
             setStudio(next);
             setCredentialMap(next.credentialMap ?? {});

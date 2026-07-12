@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma';
 import {
   buildAutomationStudioData,
   getOrCreateAutomation,
+  loadAutomationWithRelations,
   requireApprovedProcessAccess,
+  toAgentSummary,
 } from '@/lib/automation-access';
 import {
   buildCronPrompt,
@@ -32,6 +34,8 @@ const DeploySchema = z.object({
   n8nApiKey: z.string().optional(),
   schedule: z.string().optional(),
   deliver: z.string().optional(),
+  /** Optional override; defaults to automation.hermesAgentProfileId. */
+  hermesAgentProfileId: z.string().min(1).optional().nullable(),
   credentialMap: z.record(z.string(), z.object({ id: z.string(), name: z.string(), type: z.string().optional() })).optional(),
 });
 
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if ('error' in result) return result.error;
     const process = result.process;
 
-    const automation = await getOrCreateAutomation(id, { userId: result.session.userId });
+    let automation = await getOrCreateAutomation(id, { userId: result.session.userId });
     const plan = parseAutomationPlan(automation.planJson);
     if (!plan?.summary) {
       return NextResponse.json(
@@ -60,6 +64,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { error: 'Automation already deployed. Open the external link to manage it.' },
         { status: 409 }
       );
+    }
+
+    // Persist agent override from deploy payload when provided
+    if (body.hermesAgentProfileId !== undefined) {
+      if (body.hermesAgentProfileId) {
+        const agent = await prisma.hermesAgentProfile.findFirst({
+          where: {
+            id: body.hermesAgentProfileId,
+            businessId: process.businessId,
+            isHired: true,
+          },
+        });
+        if (!agent) {
+          return NextResponse.json(
+            { error: 'Select a hired Hermes agent before deploying' },
+            { status: 400 }
+          );
+        }
+      }
+      await prisma.automation.update({
+        where: { id: automation.id },
+        data: { hermesAgentProfileId: body.hermesAgentProfileId },
+      });
+      automation = await loadAutomationWithRelations(automation.id);
     }
 
     const integrations = parseIntegrations(automation.integrationsJson);
@@ -101,7 +129,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         active: false,
       });
 
-      const updated = await prisma.automation.update({
+      await prisma.automation.update({
         where: { id: automation.id },
         data: {
           type: 'n8n_workflow',
@@ -111,8 +139,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
           externalUrl: editorUrl,
           deployedAt: new Date(),
         },
-        include: { messages: { orderBy: { createdAt: 'asc' } } },
       });
+      const updated = await loadAutomationWithRelations(automation.id);
 
       await recordBusinessEvent({
         businessId: process.businessId,
@@ -122,19 +150,48 @@ export async function POST(request: NextRequest, context: RouteContext) {
         entityId: id,
         entityName: process.name,
         summary: `Deployed n8n automation for "${process.name}"`,
-        metadata: { type: 'n8n_workflow', status: 'needs_credentials' },
+        metadata: {
+          type: 'n8n_workflow',
+          status: 'needs_credentials',
+          agentId: updated.hermesAgentProfileId ?? undefined,
+        },
         ...liveOccurredNow(),
       });
 
       return NextResponse.json({
-        studio: buildAutomationStudioData(process, updated),
+        studio: await buildAutomationStudioData(process, updated),
         deploy: { type: 'n8n_workflow', workflowId, editorUrl },
       });
     }
 
+    // Hermes cron — prefer a hired agent so the job has an identity
+    const assignedAgent =
+      toAgentSummary(automation.hermesAgentProfile) ??
+      (automation.hermesAgentProfileId
+        ? toAgentSummary(
+            await prisma.hermesAgentProfile.findFirst({
+              where: {
+                id: automation.hermesAgentProfileId,
+                businessId: process.businessId,
+                isHired: true,
+              },
+            })
+          )
+        : null);
+
+    if (!assignedAgent) {
+      return NextResponse.json(
+        {
+          error:
+            'Assign a hired Hermes agent before deploying a cron job. Hire agents from Personnel, then select one in Deploy.',
+        },
+        { status: 400 }
+      );
+    }
+
     const schedule = body.schedule ?? defaultCronSchedule(plan);
     const deliver = body.deliver ?? defaultCronDeliver(plan);
-    const prompt = buildCronPrompt(process, plan);
+    const prompt = buildCronPrompt(process, plan, assignedAgent);
     const jobName = forgeJobNameForProcess(process.name);
 
     const [jobs, claimedJobIds] = await Promise.all([
@@ -157,7 +214,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       jobId = created.jobId;
     }
 
-    const updated = await prisma.automation.update({
+    await prisma.automation.update({
       where: { id: automation.id },
       data: {
         type: 'hermes_cron',
@@ -165,9 +222,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         externalId: jobId,
         externalUrl: null,
         deployedAt: new Date(),
+        hermesAgentProfileId: assignedAgent.id,
       },
-      include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+    const updated = await loadAutomationWithRelations(automation.id);
 
     await recordBusinessEvent({
       businessId: process.businessId,
@@ -176,19 +234,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
       entityType: 'automation',
       entityId: id,
       entityName: process.name,
-      summary: `Deployed Hermes cron for "${process.name}"`,
-      metadata: { type: 'hermes_cron', status: 'active' },
+      summary: `Deployed Hermes cron for "${process.name}" (agent: ${assignedAgent.displayName})`,
+      metadata: {
+        type: 'hermes_cron',
+        status: 'active',
+        agentId: assignedAgent.id,
+        agentName: assignedAgent.displayName,
+      },
       ...liveOccurredNow(),
     });
 
     return NextResponse.json({
-      studio: buildAutomationStudioData(process, updated),
+      studio: await buildAutomationStudioData(process, updated),
       deploy: {
         type: 'hermes_cron',
         jobId,
         schedule,
         deliver,
         linkedExisting: Boolean(existingJob),
+        agentId: assignedAgent.id,
+        agentName: assignedAgent.displayName,
       },
     });
   } catch (error) {

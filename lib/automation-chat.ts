@@ -14,6 +14,8 @@ export function buildAutomationChatSystemPrompt(context: {
   diagramMermaid: string | null;
   existingPlan: AutomationPlan | null;
   existingIntegrations: IntegrationRequirement[];
+  assignedAgentName?: string | null;
+  hiredAgentNames?: string[];
 }): string {
   const planNote = context.existingPlan
     ? `\nCurrent automation plan draft:\n${JSON.stringify(context.existingPlan, null, 2)}`
@@ -28,6 +30,12 @@ export function buildAutomationChatSystemPrompt(context: {
     ? `\nApproved process diagram (Mermaid):\n${context.diagramMermaid}`
     : '\nNo diagram source available.';
 
+  const agentNote = context.assignedAgentName
+    ? `\nAssigned Hermes agent (will own the deployed automation): ${context.assignedAgentName}`
+    : context.hiredAgentNames && context.hiredAgentNames.length > 0
+      ? `\nHired agents available for assignment: ${context.hiredAgentNames.join(', ')}. Recommend assigning one before Hermes cron deploy.`
+      : '\nNo hired Hermes agents yet — user should hire from Personnel before Hermes cron deploy.';
+
   return `You are Hermes, an Automation Architect for Hermes Forge.
 
 The user has finished mapping a business process and wants to design executable automation. The approved process map is your source of truth — do not re-interview them on basic process steps unless something is unclear.
@@ -40,7 +48,7 @@ Process context:
 - Inputs: ${context.inputs || 'Not specified'}
 - Outputs: ${context.outputs || 'Not specified'}
 - Manual steps: ${context.manualSteps || 'Not specified'}
-${diagramNote}${planNote}${integrationsNote}
+${diagramNote}${agentNote}${planNote}${integrationsNote}
 
 Your goals:
 1. Recommend Hermes cron vs n8n workflow with clear reasoning

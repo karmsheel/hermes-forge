@@ -1,4 +1,4 @@
-import type { AutomationPlan } from './automation-types';
+import type { AutomationAgentSummary, AutomationPlan } from './automation-types';
 
 export function buildCronPrompt(
   process: {
@@ -8,7 +8,8 @@ export function buildCronPrompt(
     manualSteps: string | null;
     diagramMermaid: string | null;
   },
-  plan: AutomationPlan
+  plan: AutomationPlan,
+  agent?: AutomationAgentSummary | null
 ): string {
   const steps =
     plan.automatableSteps.length > 0
@@ -24,8 +25,20 @@ export function buildCronPrompt(
     ? `\n\nProcess diagram (Mermaid):\n${process.diagramMermaid}`
     : '';
 
+  const agentBlock = agent
+    ? [
+        '',
+        `You are operating as hired Hermes agent "${agent.displayName}" (profile: ${agent.profileKey}).`,
+        agent.description ? `Agent role: ${agent.description}` : null,
+        agent.model ? `Preferred model: ${agent.model}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
   return [
     `You are executing a scheduled automation for the business process "${process.name}".`,
+    agentBlock,
     '',
     `Process description: ${process.description || 'N/A'}`,
     `Trigger context: ${process.trigger || plan.triggerType}`,
@@ -38,7 +51,9 @@ export function buildCronPrompt(
     diagram,
     '',
     'Follow the steps precisely. If nothing needs attention, respond with [SILENT].',
-  ].join('\n');
+  ]
+    .filter((line) => line !== null)
+    .join('\n');
 }
 
 export function defaultCronSchedule(plan: AutomationPlan): string {
