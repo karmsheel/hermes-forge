@@ -46,9 +46,13 @@ export const BUSINESS_EVENT_TYPES = {
   /** Human delete + agent fire both emit this (no separate personnel.removed). */
   PERSONNEL_FIRED: 'personnel.fired',
 
+  /** Agent/forge opened a HITL request awaiting owner action. */
+  DECISION_REQUESTED: 'decision.requested',
+  /** Owner recorded a durable BusinessDecision (forge, approve, reject, live edit). */
   DECISION_RECORDED: 'decision.recorded',
   DECISION_SUPERSEDED: 'decision.superseded',
   DECISION_REVOKED: 'decision.revoked',
+  /** Owner redirected a pending request back to chat with instructions. */
   DECISION_REDIRECTED: 'decision.redirected',
 } as const;
 

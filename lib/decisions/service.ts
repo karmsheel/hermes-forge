@@ -150,7 +150,7 @@ export async function createDecisionRequest(input: {
   await recordBusinessEvent({
     businessId: input.businessId,
     userId: input.userId,
-    type: BUSINESS_EVENT_TYPES.DECISION_RECORDED,
+    type: BUSINESS_EVENT_TYPES.DECISION_REQUESTED,
     entityType: 'decision',
     entityId: row.id,
     entityName: row.title,
@@ -160,6 +160,8 @@ export async function createDecisionRequest(input: {
       title: row.title,
       decisionKind: 'change',
       status: 'pending',
+      relatedEntityType: row.relatedEntityType,
+      relatedEntityId: row.relatedEntityId,
     },
     ...liveOccurredNow(),
   });
@@ -178,6 +180,12 @@ async function createDecisionRecord(input: {
   relatedEntityType?: string | null;
   relatedEntityId?: string | null;
   sourceRequestId?: string | null;
+  /** Defaults to decision.recorded; redirect uses decision.redirected. */
+  logEventType?:
+    | typeof BUSINESS_EVENT_TYPES.DECISION_RECORDED
+    | typeof BUSINESS_EVENT_TYPES.DECISION_REDIRECTED
+    | typeof BUSINESS_EVENT_TYPES.DECISION_SUPERSEDED
+    | typeof BUSINESS_EVENT_TYPES.DECISION_REVOKED;
 }) {
   const decision = await prisma.businessDecision.create({
     data: {
@@ -196,10 +204,12 @@ async function createDecisionRecord(input: {
     },
   });
 
+  const logType = input.logEventType ?? BUSINESS_EVENT_TYPES.DECISION_RECORDED;
+
   await recordBusinessEvent({
     businessId: input.businessId,
     userId: input.userId,
-    type: BUSINESS_EVENT_TYPES.DECISION_RECORDED,
+    type: logType,
     entityType: 'decision',
     entityId: decision.id,
     entityName: decision.title,
@@ -300,6 +310,7 @@ export async function resolveDecisionRequest(input: {
       relatedEntityId: row.relatedEntityId,
       sourceRequestId: row.id,
       context: row.contextMarkdown,
+      logEventType: BUSINESS_EVENT_TYPES.DECISION_REDIRECTED,
     });
 
     await prisma.notification.create({

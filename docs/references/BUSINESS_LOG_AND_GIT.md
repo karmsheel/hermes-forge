@@ -260,17 +260,19 @@ Add `decisions BusinessDecision[]` to `Business`.
 
 | Event | When |
 |-------|------|
-| `decision.recorded` | Owner records a new decision |
-| `decision.superseded` | Owner replaces a prior decision with a new one |
-| `decision.revoked` | Owner explicitly withdraws a decision |
+| `decision.requested` | Agent/forge opens a HITL request (pending owner action) |
+| `decision.recorded` | Owner records a durable decision (forge, approve, reject, live edit) |
+| `decision.redirected` | Owner redirects a pending request back to chat with instructions |
+| `decision.superseded` | Owner replaces a prior decision with a new one (API reserved) |
+| `decision.revoked` | Owner explicitly withdraws a decision (API reserved) |
 
 - `entityType`: `decision`
-- `entityId`: `BusinessDecision.id`
-- `entityName`: decision `title`
+- `entityId`: `DecisionRequest.id` for `decision.requested`; `BusinessDecision.id` otherwise
+- `entityName`: decision / request `title`
 - `summary`: human-readable, e.g. `Decided to outsource payroll processing`
-- `metadata`: full `DecisionEventMetadata` — see [`lib/decision-types.ts`](../../lib/decision-types.ts)
-- `occurredAt`: `decidedAt` when known; else null
-- `occurredAtPrecision`: `exact` if owner supplied date, else `unknown`
+- `metadata`: `requestId`, `decisionId`, `decisionKind`, status, related entity — see [`lib/decision-types.ts`](../../lib/decision-types.ts)
+- `occurredAt`: `decidedAt` when known; else live wall clock for requests
+- `occurredAtPrecision`: `exact` for live owner actions
 
 #### Dual timestamps for decisions
 
@@ -287,10 +289,10 @@ Past decisions ingested without a known date: `decidedAt = null`, `occurredAtPre
 
 | Route | Purpose | Status |
 |-------|---------|--------|
-| `/decisions` | Decision register — list, detail, record (future) | **Placeholder** (blank page shipped) |
-| `/log` filter `decision` | Condensed timeline of `decision.*` events | Filter wired; no events yet |
+| `/decisions` | HITL inbox (pending requests) + recent decision register | **Shipped** (4.12) — always in nav footer |
+| `/log` filter `decision` | Condensed timeline of `decision.*` events | **Shipped** — filter + live `decision.*` events |
 
-Decisions page is the **curated register** (active decisions, detail, rationale). Business log is the **chronological proof** that a decision was recorded at a point in time.
+Decisions page is the **action inbox + register** (pending HITL, history, rationale). Business log is the **chronological proof** that a decision was requested or recorded.
 
 ```mermaid
 flowchart LR
@@ -363,8 +365,7 @@ Export checksum and Git `HEAD` can both satisfy “you have a durable copy” be
 | Incremental materialize | Append log tail only; skip full rewrite |
 | OAuth-managed remotes | Optional PAT/OAuth instead of system credentials only |
 | `BusinessGitCommit` table | Commit history in UI |
-| Decision recording UI | `POST /api/decisions`, list on `/decisions`, `decision.recorded` log append |
-| Decision supersede / revoke | `decision.superseded`, `decision.revoked` events |
+| Decision supersede / revoke UI | Wire `decision.superseded` / `decision.revoked` (constants reserved; no owner UI yet) |
 
 ---
 

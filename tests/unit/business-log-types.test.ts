@@ -10,7 +10,17 @@ describe("business log event types", () => {
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.PROCESS_CREATED), "process");
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.PERSONNEL_HIRED), "personnel");
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.DECISION_RECORDED), "decision");
+    assert.equal(eventCategory(BUSINESS_EVENT_TYPES.DECISION_REQUESTED), "decision");
+    assert.equal(eventCategory(BUSINESS_EVENT_TYPES.DECISION_REDIRECTED), "decision");
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.CHAT_USER_MESSAGE), "chat");
+  });
+
+  it("defines HITL decision event types", () => {
+    assert.equal(BUSINESS_EVENT_TYPES.DECISION_REQUESTED, "decision.requested");
+    assert.equal(BUSINESS_EVENT_TYPES.DECISION_RECORDED, "decision.recorded");
+    assert.equal(BUSINESS_EVENT_TYPES.DECISION_REDIRECTED, "decision.redirected");
+    assert.equal(BUSINESS_EVENT_TYPES.DECISION_SUPERSEDED, "decision.superseded");
+    assert.equal(BUSINESS_EVENT_TYPES.DECISION_REVOKED, "decision.revoked");
   });
 
   it("returns all for unknown types", () => {

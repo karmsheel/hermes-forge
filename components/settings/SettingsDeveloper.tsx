@@ -10,8 +10,6 @@ export function SettingsDeveloper() {
     setPreviewUpdateIcon,
     showCronalyticsPage,
     setShowCronalyticsPage,
-    showDecisionsPage,
-    setShowDecisionsPage,
     showGodModePage,
     setShowGodModePage,
     showHomeProcessStandardPicker,
@@ -61,22 +59,6 @@ export function SettingsDeveloper() {
                     type="checkbox"
                     checked={showHermesModelSwitcher}
                     onChange={(event) => setShowHermesModelSwitcher(event.target.checked)}
-                    className="h-4 w-4 rounded border-border accent-accent"
-                  />
-                </label>
-              }
-            />
-          </div>
-          <div className="py-1">
-            <ListRow
-              label="Show Decisions page"
-              description="Reveal the Decisions nav item and page. Hidden by default."
-              action={
-                <label className="inline-flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showDecisionsPage}
-                    onChange={(event) => setShowDecisionsPage(event.target.checked)}
                     className="h-4 w-4 rounded border-border accent-accent"
                   />
                 </label>

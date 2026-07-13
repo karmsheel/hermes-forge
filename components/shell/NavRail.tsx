@@ -13,7 +13,6 @@ import {
   Home,
   MessageSquare,
   Newspaper,
-  PlugZap,
   Plus,
   Scale,
   ScanEye,
@@ -41,7 +40,7 @@ type NavItem = {
 
 export function NavRail() {
   const pathname = usePathname();
-  const { requestNewProcess, openHermesConnection } = useShell();
+  const { requestNewProcess } = useShell();
   const { stage } = useForgeStage();
   const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
   const { showCronalyticsPage, showGodModePage } = useDeveloperSettings();
@@ -114,6 +113,17 @@ export function NavRail() {
       match: (path) => path.startsWith("/automations"),
     },
     {
+      id: "cronalytics",
+      href: "/cronalytics",
+      label: "Cronalytics",
+      icon: Clock,
+      match: (path) => path.startsWith("/cronalytics"),
+    },
+  ];
+
+  /** Holistic: always visible across Map / Monitor / Automate (footer, above chat). */
+  const holisticItems: NavItem[] = [
+    {
       id: "log",
       href: "/log",
       label: "Business log",
@@ -126,13 +136,6 @@ export function NavRail() {
       label: "Decisions",
       icon: Scale,
       match: (path) => path.startsWith("/decisions"),
-    },
-    {
-      id: "cronalytics",
-      href: "/cronalytics",
-      label: "Cronalytics",
-      icon: Clock,
-      match: (path) => path.startsWith("/cronalytics"),
     },
   ];
 
@@ -218,6 +221,23 @@ export function NavRail() {
       </div>
 
       <div className="nav-rail__section nav-rail__section--footer">
+        {holisticItems.map((item) => {
+          const Icon = item.icon;
+          const active = isActive(item);
+          return (
+            <Link
+              key={item.id}
+              href={item.href!}
+              className={`nav-rail__item${active ? " is-active" : ""}`}
+              title={item.label}
+              aria-label={item.label}
+              aria-current={active ? "page" : undefined}
+              onClick={(e) => handleShellNav(item.href!, e)}
+            >
+              <Icon className="w-5 h-5" />
+            </Link>
+          );
+        })}
         <button
           type="button"
           className={`nav-rail__item${chatOpen ? " is-active" : ""}`}
@@ -227,15 +247,6 @@ export function NavRail() {
           aria-pressed={chatOpen}
         >
           <MessageSquare className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          className="nav-rail__item"
-          onClick={openHermesConnection}
-          title="Hermes connection"
-          aria-label="Hermes connection"
-        >
-          <PlugZap className="w-5 h-5" />
         </button>
         <div className="nav-rail__footer-meta">
           <DesktopUpdateIndicator />

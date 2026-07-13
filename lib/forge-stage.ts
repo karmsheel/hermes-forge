@@ -19,12 +19,18 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
   automate: "Assign agents and run jobs",
 };
 
-/** Nav item ids visible in each stage (see NavRail). */
+/**
+ * Stage-scoped nav item ids (see NavRail main section).
+ * Holistic items (log, decisions) live in the rail footer and are always shown.
+ */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
-  map: ["home", "functions", "workshop", "personnel", "documents", "log", "god-mode"],
-  monitor: ["home", "metrics", "content", "log", "cronalytics"],
-  automate: ["home", "automations", "personnel", "content", "log", "decisions"],
+  map: ["home", "functions", "workshop", "personnel", "documents", "god-mode"],
+  monitor: ["home", "metrics", "content", "cronalytics"],
+  automate: ["home", "automations", "personnel", "content"],
 };
+
+/** Nav ids always available regardless of stage (footer of NavRail). */
+export const HOLISTIC_NAV_IDS = ["log", "decisions"] as const;
 
 const STORAGE_PREFIX = "forge:stage:";
 
@@ -84,11 +90,12 @@ export function stageFromPath(pathname: string): ForgeStage | null {
     return null;
   }
 
-  if (path.startsWith("/automations") || path.startsWith("/decisions")) {
+  if (path.startsWith("/automations")) {
     return "automate";
   }
 
-  if (path === "/home" || path === "/log") {
+  // Stage-neutral: available in Map, Monitor, and Automate
+  if (path === "/home" || path === "/log" || path.startsWith("/decisions")) {
     return null;
   }
 
@@ -115,8 +122,8 @@ export function pathBelongsToStage(pathname: string, stage: ForgeStage): boolean
   const path = pathname.split("?")[0] || "/";
   const inferred = stageFromPath(path);
   if (inferred) return inferred === stage;
-  // Neutral routes (home, log, content) are valid in multiple stages
-  if (path === "/home" || path === "/log") return true;
+  // Neutral routes (home, log, decisions) are valid in every stage
+  if (path === "/home" || path === "/log" || path.startsWith("/decisions")) return true;
   if (path.startsWith("/content")) return stage === "monitor" || stage === "automate";
   return true;
 }

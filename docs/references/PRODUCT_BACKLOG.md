@@ -48,7 +48,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Area | Path | Notes |
 |------|------|-------|
 | App shell | `app/(shell)/layout.tsx`, `components/shell/AppShell.tsx` | Left nav rail + content area |
-| Nav rail | `components/shell/NavRail.tsx` | Home, Functions, Personnel, Documents, Workshop, Automations, Business log (+ dev-gated God Mode, Decisions, Cronalytics) |
+| Nav rail | `components/shell/NavRail.tsx` | Stage-scoped main items + footer holistic Log/Decisions (+ dev-gated God Mode, Cronalytics) |
 | Business manager | `app/(shell)/business-manager/page.tsx` | Multi-business switcher; logo links here |
 | Settings | `app/(shell)/settings/page.tsx`, `components/settings/*` | Appearance, About, Developer panels |
 | Theme engine | `lib/themes/*`, `components/theme/ThemeProvider.tsx` | Built-in skins, JSON/VS Code install, boot script (4.6–4.8) |
@@ -77,7 +77,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Automation studio | `app/(shell)/automations/[processId]/page.tsx` | Design chat, n8n deploy, credentials |
 | Business log | `app/(shell)/log/page.tsx`, `lib/business-log.ts` | Append-only immutable event feed |
 | Git materialize | `lib/business-git/*` | Per-business repo snapshot; local sync + remote push + restore import |
-| Decisions | `app/(shell)/decisions/page.tsx` | **Scaffold** — dev-gated placeholder; `BusinessDecision` model has no API |
+| Decisions | `app/(shell)/decisions/page.tsx` | **Shipped** (4.12 HITL) — inbox + history; always in nav footer |
 | God Mode | `app/(shell)/god-mode/page.tsx` | **Dev-gated** — diagram canvas overview by department |
 | Cronalytics | `app/(shell)/cronalytics/page.tsx` | **Dev-gated** — Hermes cron observability; separate SQLite DB |
 
@@ -173,11 +173,11 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - Documents → `/documents` (4.18 knowledge docs)
 - Workshop → `/workshop`
 - Automations → `/automations`
-- Business log → `/log`
+- Business log → `/log` (holistic footer — all stages)
+- Decisions → `/decisions` (holistic footer — all stages; 4.12 HITL)
 - God Mode → `/god-mode` (developer setting)
-- Decisions → `/decisions` (developer setting)
 - Cronalytics → `/cronalytics` (developer setting)
-- Footer: Theme mode toggle, Hermes connection, Profile
+- Footer: Hermes chat toggle, version / update meta
 
 **Acceptance criteria:**
 - [x] Rail visible on shell routes (home, functions, workshop, etc.)
@@ -597,7 +597,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Round-trip restore import from repo path or remote clone (`importBusinessFromGitRepo`, `POST /api/businesses/import/git`) — personnel, documents, processes, conversations, automations, memories, decisions, log events
 
 **Remaining:**
-- [ ] Emit `decision.*` events when Decisions feature ships (4.12)
+- [x] Emit `decision.*` events when Decisions feature ships (4.12) — `decision.requested` / `recorded` / `redirected`
 - [ ] Optional: incremental materialize (append log tail only)
 - [ ] Optional: OAuth-managed GitHub tokens (today uses system Git credentials / SSH)
 
@@ -605,7 +605,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.12 Business decisions / HITL — **DONE** (foundation)
+### 4.12 Business decisions / HITL — **DONE**
 
 **Goal:** Human-in-the-loop: forge processes/docs; agents propose changes; owner approves/rejects/redirects; notifications.
 
@@ -615,9 +615,13 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] `DecisionRequest` + resolve with custom options + auto-execute
 - [x] `BusinessDecision` records + business log
 - [x] Notifications + shell bell
-- [x] Decisions nav un-gated; `/decisions` inbox + history
+- [x] Decisions always in nav footer (Map / Monitor / Automate); `/decisions` inbox + history
 - [x] Gate: agent writes to forged assets blocked; owner live edit with confirm + decision log
+- [x] Auto-propose when agents change forged content; redirect opens chat session
 - [x] Git materialize decision records + requests
+- [x] `decision.requested` / `decision.recorded` / `decision.redirected` log events
+
+**Optional later:** supersede/revoke UI; freeform “record a policy decision” without a HITL request.
 
 ---
 
@@ -835,8 +839,8 @@ Optional systems of record after Hermes-only loop is proven.
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
 | 4.10 | Personnel roster | 4 | **Mostly done** (workshop + automation bind) |
-| 4.11 | Immutable business log | 4 | **Mostly done** (push + import shipped) |
-| 4.12 | Business decisions / HITL | 4 | **Done** (foundation) |
+| 4.11 | Immutable business log | 4 | **Mostly done** (push + import; decision.* events shipped) |
+| 4.12 | Business decisions / HITL | 4 | **Done** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Done** (Phase 1–3) — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
@@ -865,7 +869,7 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-4 | Merge Dashboard into Functions (org chart + analytics) | **Done** |
 | AUDIT-5 | Dev-gate God Mode in nav + route guard | **Done** |
 | AUDIT-6 | Dead code cleanup (accent, duplicate next.config, theme exports, dead CSS) | **Mostly done** — accent.ts removed, next.config.mjs removed, accent-swatch CSS removed; residual theme export pruning optional |
-| AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Partial** — removed unused `PERSONNEL_REMOVED`; Decisions scaffold honesty; schema still no CRUD |
+| AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Done** — Decisions HITL API + UI + `decision.*` events; unused `PERSONNEL_REMOVED` removed; personnel git import |
 | AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
 | AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
 | AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; personnel git import + automation agent bind done; `@system` mentions still open |
@@ -896,8 +900,8 @@ When picking up a backlog item:
 - Business isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
 - Settings: System / Light / Dark mode + skin picker (`components/settings/SettingsMenu.tsx`, `SkinPicker.tsx`, `lib/themes/`)
 - Process approval + automation studio + n8n integration (4.4)
-- Personnel roster + workshop wiring (4.10) — mentions/prompts; automation bind still open
-- Business log + git materialize (4.11)
+- Personnel roster + workshop wiring + automation agent bind (4.10); `@system` mentions still open
+- Business log + git materialize (4.11); decision.* events via 4.12
 - God Mode canvas (4.13)
 - Cronalytics dev tooling (4.14)
 
@@ -906,7 +910,7 @@ When picking up a backlog item:
 - `/dashboard` — merged into `/functions` (analytics section below org chart)
 
 **Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-6 … AUDIT-10** above. Highlights:
-- `BusinessDecision` schema without CRUD runtime (4.12 / AUDIT-7)
-- Personnel automation agent bind still open (4.10 remainder)
+- Explicit `@system` mentionables still open (3.5 / AUDIT-10)
 - No HTTP/SSE integration tests yet (unit smoke via `npm test` only)
 - Optional theme export pruning (AUDIT-6 residual)
+- Optional 4.12: supersede/revoke UI; freeform policy decisions
