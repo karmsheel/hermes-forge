@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { requireProcessAccess } from '@/lib/auth';
+import { defaultForkTitle, messagesToCopyForFork } from '@/lib/conversation-fork';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -58,17 +59,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Determine which messages to copy
-    let messagesToCopy = sourceConversation.messages;
-    if (body.forkAtMessageId) {
-      const forkIndex = messagesToCopy.findIndex((m) => m.id === body.forkAtMessageId);
-      if (forkIndex >= 0) {
-        messagesToCopy = messagesToCopy.slice(0, forkIndex + 1);
-      }
-    }
+    const messagesToCopy = messagesToCopyForFork(
+      sourceConversation.messages,
+      body.forkAtMessageId,
+    );
 
     // Create new conversation + copy messages in a transaction
-    const title = body.title?.trim() || `Fork of "${sourceConversation.title}"`;
+    const title =
+      body.title?.trim() ||
+      defaultForkTitle(sourceConversation.title, Boolean(body.forkAtMessageId));
 
     const businessId = result.process.businessId;
 

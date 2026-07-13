@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
-import { Loader2, Settings2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { GitBranch, Loader2, Settings2 } from "lucide-react";
+import { toast } from "sonner";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import type { ChatMessage } from "@/lib/types";
 import {
@@ -77,6 +78,11 @@ interface ProcessChatProps {
    * (connection + title live in ChatbarPanel).
    */
   embedded?: boolean;
+  /** 3.4: process + conversation for fork-from-message. */
+  processId?: string;
+  conversationId?: string | null;
+  onSelectConversation?: (conversationId: string) => void;
+  onConversationChanged?: () => void;
 }
 
 export function ProcessChat({
@@ -97,12 +103,20 @@ export function ProcessChat({
   onClearQueue,
   agentBusyLabel,
   embedded = false,
+  processId,
+  conversationId,
+  onSelectConversation,
+  onConversationChanged,
 }: ProcessChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
   const highlightTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const lastScrollKey = useRef<number>(0);
+  const [forkingMessageId, setForkingMessageId] = useState<string | null>(null);
   const { isConnected } = useHermesConnection();
+  const canForkFromMessage = Boolean(
+    processId && conversationId && onSelectConversation,
+  );
 
   // 3.2: derive per-node comment summary from the message list.
   const commentsByLabel = useMemo(() => {
@@ -185,6 +199,39 @@ export function ProcessChat({
     else messageRefs.current.delete(id);
   }
 
+  async function handleForkFromMessage(messageId: string) {
+    if (!processId || !conversationId) return;
+    if (messageId.startsWith("temp-")) {
+      toast.error("Wait for the message to save before forking");
+      return;
+    }
+    setForkingMessageId(messageId);
+    try {
+      const res = await fetch(`/api/processes/${processId}/conversations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          forkFromConversationId: conversationId,
+          forkAtMessageId: messageId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Fork failed");
+      }
+      const newConv = await res.json();
+      toast.success(`Forked from this message · "${newConv.title}"`);
+      if (newConv.id) onSelectConversation?.(newConv.id);
+      onConversationChanged?.();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to fork from message",
+      );
+    } finally {
+      setForkingMessageId(null);
+    }
+  }
+
   return (
     <div
       className={`flex-1 flex flex-col h-full min-h-0 text-text overflow-hidden${embedded ? " process-chat--embedded" : ""}`}
@@ -211,6 +258,8 @@ export function ProcessChat({
           // we can render a clean badge instead of the raw text.
           const isUser = msg.role === "user";
           const nodeComment = isUser ? parseNodeComment(msg.content) : null;
+          const isTemp = msg.id.startsWith("temp-");
+          const showFork = canForkFromMessage && !isTemp;
           return (
             <div
               key={msg.id}
@@ -219,7 +268,7 @@ export function ProcessChat({
               <div
                 ref={(el) => setMessageRef(msg.id, el)}
                 data-message-id={msg.id}
-                className={`chat-message text-sm transition-shadow ${
+                className={`chat-message text-sm transition-shadow group relative ${
                   isUser
                     ? "chat-message--user"
                     : "bg-bg-elevated border border-border text-text"
@@ -229,6 +278,22 @@ export function ProcessChat({
                 <div className="whitespace-pre-wrap leading-relaxed">
                   {nodeComment ? nodeComment.content : msg.content}
                 </div>
+                {showFork ? (
+                  <button
+                    type="button"
+                    className="chat-message__fork"
+                    title="Fork conversation from this message"
+                    aria-label="Fork conversation from this message"
+                    disabled={forkingMessageId === msg.id}
+                    onClick={() => void handleForkFromMessage(msg.id)}
+                  >
+                    {forkingMessageId === msg.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <GitBranch className="w-3 h-3" />
+                    )}
+                  </button>
+                ) : null}
               </div>
             </div>
           );

@@ -383,18 +383,19 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 3.4 Conversation fork / multiple threads — **MOSTLY DONE**
+### 3.4 Conversation fork / multiple threads — **DONE**
 
-**Goal:** Fork process mapping from any chat turn; multiple conversations per project.
+**Goal:** Fork process mapping from any chat turn; multiple conversations per process.
 
-**Files:** `prisma/schema.prisma` (`Conversation`), `app/api/processes/[id]/conversations/route.ts`, `components/workshop/ConversationsMenu.tsx`, `lib/workshop-storage.ts`
+**Files:** `prisma/schema.prisma` (`Conversation`), `app/api/processes/[id]/conversations/**`, `components/workshop/ConversationsMenu.tsx`, `components/workshop/ProcessChat.tsx`, `lib/conversation-fork.ts`, `lib/workshop-storage.ts`
 
-**Shipped:** Conversation model; fork API; conversation switcher in chat header; per-process active conversation persistence; chat/diagram filtered by `conversationId`.
-
-**Remaining:**
-- [ ] Fork-from-specific-message UI (`forkAtMessageId` exists in API, not wired in chat)
-- [ ] Delete / rename conversation
+**Shipped:**
+- [x] Conversation model; fork API; conversation switcher in chat header
+- [x] Per-process active conversation persistence; chat/diagram filtered by `conversationId`
 - [x] Export tab uses active conversation messages when forks exist
+- [x] Fork-from-specific-message UI on chat bubbles (`forkAtMessageId`)
+- [x] Rename conversation (PATCH)
+- [x] Delete conversation (cannot delete the last thread)
 
 ---
 
@@ -824,7 +825,7 @@ Optional systems of record after Hermes-only loop is proven.
 | 3.1 | Streaming diagram | 3 | Done |
 | 3.2 | Node comments | 3 | Done |
 | 3.3 | Questions panel | 3 | Done |
-| 3.4 | Conversation fork | 3 | Mostly done |
+| 3.4 | Conversation fork | 3 | **Done** |
 | 3.5 | Rich composer | 3 | Mostly done |
 | 3.6 | Workspace tabs | 3 | Done |
 | 3.7 | Queued messages | 3 | Done |

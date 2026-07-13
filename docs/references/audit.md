@@ -129,7 +129,7 @@ SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent modu
 | ID | Item | Status |
 |----|------|--------|
 | 2.4 | Function status lifecycle badges | Deferred |
-| 3.4 | Fork-from-message UI; delete/rename conversation | Partial |
+| 3.4 | Fork-from-message UI; delete/rename conversation | **Done** |
 | 3.5 | `@department` / `@system` / actor mentionables | Partial |
 | 3.8 | PNG/PDF export; server export API | **Done** (client PNG/PDF; server route deferred) |
 | 4.1 | Workflow template library as repo files | **Done** |
@@ -187,26 +187,24 @@ Cronalytics (dev-gated), VS Code theme import, optional theme export pruning.
 
 ```mermaid
 flowchart TD
-  P34["3.4 conversation fork finish"] --> Core["Core polish"]
-  P35["3.5 @system mentions"] --> Core
+  P35["3.5 @system mentions"] --> Core["Core polish"]
   P53["5.3 content-from-cron"] --> Core
   P8["API smoke tests AUDIT-8"] --> Core
   Core --- C1["4.16 code signing"]
   Core --- C2["4.5 integrations / 5.5 n8n"]
 ```
 
-1. **3.4** — fork-from-message UI; delete/rename conversation
-2. **3.5** — `@system` / department mentionables
-3. **5.3** — content auto-create from cron; pause/resume run health
-4. **4.16** code signing when shipping desktop
-5. Optional: HTTP-level API smoke against a running server
+1. **3.5** — `@system` / department mentionables
+2. **5.3** — content auto-create from cron; pause/resume run health
+3. **4.16** code signing when shipping desktop
+4. Optional: HTTP-level API smoke against a running server
 
 ---
 
 ## Bottom line
 
-The **workshop core is strong**. 2026-07-07 fixed documentation truthfulness, personnel honesty, nav thinning, and overview consolidation. **2026-07-09** shipped PNG/PDF export, PROCESS.md foundation, template JSON library, terminology pass, and most dead-code cleanup. **HITL wave closed (4.12):** forge lifecycle, decision inbox, notifications, auto-propose, holistic nav, and `decision.*` log events. Remaining work is **workshop polish (3.4/3.5)**, **Automate M0 polish (5.3)**, and **missing integration tests**.
+The **workshop core is strong**. 2026-07-07 fixed documentation truthfulness, personnel honesty, nav thinning, and overview consolidation. **2026-07-09** shipped PNG/PDF export, PROCESS.md foundation, template JSON library, terminology pass, and most dead-code cleanup. **HITL wave closed (4.12):** forge lifecycle, decision inbox, notifications, auto-propose, holistic nav, and `decision.*` log events. **Conversation forks complete (3.4).** Remaining work is **composer mentions (3.5)**, **Automate M0 polish (5.3)**, and **missing integration tests**.
 
 ---
 
-*Original audit produced in agent session 2026-07-07. Previously stored only in an ephemeral Grok plan file; committed here as the canonical reference. Updated 2026-07-09 for Tier A implementation; 2026-07-13 for HITL wave close (4.12).*
+*Original audit produced in agent session 2026-07-07. Previously stored only in an ephemeral Grok plan file; committed here as the canonical reference. Updated 2026-07-09 for Tier A implementation; 2026-07-13 for HITL wave close (4.12) and conversation fork completion (3.4).*

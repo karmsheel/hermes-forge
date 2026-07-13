@@ -980,6 +980,7 @@ export function ChatbarPanel() {
               activeConversationId={processSession.conversationId}
               processId={processSession.processId}
               onSelect={processSession.onSelectConversation}
+              onChanged={processSession.onForked}
               onForked={processSession.onForked}
             />
           </div>
@@ -1010,6 +1011,10 @@ export function ChatbarPanel() {
             onSlashCommand={processSession.onSlashCommand}
             onCommentsChange={processSession.onCommentsChange}
             scrollToRequest={processSession.scrollToRequest}
+            processId={processSession.processId}
+            conversationId={processSession.conversationId}
+            onSelectConversation={processSession.onSelectConversation}
+            onConversationChanged={processSession.onForked}
             embedded
           />
         </div>
