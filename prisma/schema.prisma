@@ -56,6 +56,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   processes           Process[]
+  processLinks        ProcessLink[]
   functions           BusinessFunction[]
   conversations       Conversation[]
   memories            Memory[]
@@ -354,8 +355,35 @@ model Process {
   messages           ChatMessage[]
   conversations      Conversation[]
   automation         Automation?
+  linksFrom          ProcessLink[] @relation("ProcessLinksFrom")
+  linksTo            ProcessLink[] @relation("ProcessLinksTo")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+/// Directed edge between processes on the business plant (Phase 6.5).
+/// Whole-box edges in v1; fromPort/toPort reserved for named I/O later.
+model ProcessLink {
+  id            String   @id @default(cuid())
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  fromProcessId String
+  fromProcess   Process  @relation("ProcessLinksFrom", fields: [fromProcessId], references: [id], onDelete: Cascade)
+  toProcessId   String
+  toProcess     Process  @relation("ProcessLinksTo", fields: [toProcessId], references: [id], onDelete: Cascade)
+
+  label         String?
+  fromPort      String?
+  toPort        String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([businessId, fromProcessId, toProcessId])
+  @@index([businessId])
+  @@index([fromProcessId])
+  @@index([toProcessId])
 }
 
 model Automation {

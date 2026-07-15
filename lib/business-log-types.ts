@@ -11,6 +11,10 @@ export const BUSINESS_EVENT_TYPES = {
   PROCESS_APPROVED: 'process.approved',
   PROCESS_DIAGRAM_UPDATED: 'process.diagram_updated',
   PROCESS_NAME_CONFIRMED: 'process.name_confirmed',
+  /** Plant edge between processes (6.5) */
+  PROCESS_LINK_CREATED: 'process_link.created',
+  PROCESS_LINK_UPDATED: 'process_link.updated',
+  PROCESS_LINK_DELETED: 'process_link.deleted',
 
   CHAT_USER_MESSAGE: 'chat.user_message',
   CHAT_ASSISTANT_ACTION: 'chat.assistant_action',
@@ -62,6 +66,7 @@ export type BusinessEventType =
 export type BusinessEntityType =
   | 'business'
   | 'process'
+  | 'process_link'
   | 'automation'
   | 'memory'
   | 'document'

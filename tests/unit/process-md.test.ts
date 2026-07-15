@@ -35,6 +35,7 @@ describe("buildProcessMd", () => {
     assert.match(md, /## Processes/);
     assert.match(md, /Order fulfillment/);
     assert.match(md, /I\/O shape/);
+    assert.match(md, /## Plant links/);
     assert.match(md, /## Anti-patterns/);
     assert.match(md, /## Export format/);
   });

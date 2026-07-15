@@ -22,6 +22,7 @@ It is **generated** from live SQLite state (`lib/process-md.ts`). Users shape it
 | **Actors** | Human personnel + hired Hermes agent profiles |
 | **Systems** | Discovery fields + known tool names inferred from process text |
 | **Processes** | List of mapped processes with function, status, I/O shape, trigger, I/O |
+| **Plant links** | Directed process-to-process edges (Phase 6.5) |
 | **Anti-patterns** | Built-in defaults (split independent triggers, no invented systems, etc.) |
 | **Export format** | Markdown SOP, Mermaid, PNG, PDF, Cursor bundle |
 
@@ -65,6 +66,10 @@ Wholesale ops for regional distribution.
 - **Status:** mapping
 - **I/O shape:** `siso` (→ □ →) — Single in, single out
 - **Trigger:** New paid order
+
+## Plant links
+- **Order intake** → **Order fulfillment**
+- **Order fulfillment** → **Invoicing**
 
 ## Anti-patterns
 - Do not map multiple independent triggers into a single workflow — split them.

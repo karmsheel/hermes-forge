@@ -114,8 +114,27 @@ export async function buildServerPageSnapshot(options: {
       for (const d of docs.slice(0, 8)) {
         lines.push(`- ${d.title} (${d.kind}/${d.slug})`);
       }
+      const plantLinks = await prisma.processLink.findMany({
+        where: { businessId: options.businessId },
+        include: {
+          fromProcess: { select: { name: true } },
+          toProcess: { select: { name: true } },
+        },
+        take: 30,
+        orderBy: { createdAt: "asc" },
+      });
+      lines.push(`Plant links: ${plantLinks.length}`);
+      for (const l of plantLinks.slice(0, 12)) {
+        lines.push(
+          `- ${l.fromProcess.name} → ${l.toProcess.name}` +
+            (l.label ? ` (${l.label})` : ""),
+        );
+      }
       lines.push(
         "Hint: User can Add draft on the canvas or open a block in Workshop to refine.",
+      );
+      lines.push(
+        "Hint: Link mode on Foundation: click source process, then target, to create a plant edge.",
       );
       break;
     }

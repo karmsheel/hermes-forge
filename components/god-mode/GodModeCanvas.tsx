@@ -17,9 +17,11 @@ import {
   GitBranch,
   Hammer,
   Layers,
+  Link2,
   Loader2,
   Maximize2,
   RefreshCw,
+  Unlink,
   Wrench,
   ZoomIn,
   ZoomOut,
@@ -27,13 +29,20 @@ import {
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
+import { PlantEdges } from "@/components/plant/PlantEdges";
 import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
 import {
-  COMPACT_TILE,
   loadGodModeViewMode,
   saveGodModeViewMode,
   type GodModeViewMode,
 } from "@/lib/god-mode-view";
+import {
+  getDeptLabelY as plantDeptLabelY,
+  layoutPlantByDepartment,
+  PLANT_TILE,
+  type PlantTilePosition,
+} from "@/lib/plant-layout";
+import type { ProcessLinkDto } from "@/lib/process-links";
 import { renderMermaidSvg } from "@/lib/mermaid-render";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
@@ -71,6 +80,7 @@ interface LayoutResult {
   canvasWidth: number;
   canvasHeight: number;
   departments: string[];
+  byId?: Map<string, PlantTilePosition>;
 }
 
 function groupByDepartment(processes: ProcessSummary[]): Map<string, ProcessSummary[]> {
@@ -85,57 +95,29 @@ function groupByDepartment(processes: ProcessSummary[]): Map<string, ProcessSumm
 }
 
 function layoutCompactTiles(processes: ProcessSummary[]): LayoutResult {
-  const grouped = groupByDepartment(processes);
-  const departments = [...grouped.keys()];
-  const tiles: DiagramTile[] = [];
-  let y = CANVAS_PADDING;
-  let canvasMaxX = 0;
-  const tileW = COMPACT_TILE.width;
-  const tileH = COMPACT_TILE.height;
-  const gap = COMPACT_TILE.gap;
-
-  for (const dept of departments) {
-    const items = grouped.get(dept) ?? [];
-    let rowX = CANVAS_PADDING;
-    let rowMaxHeight = 0;
-    let rowStartY = y + DEPT_HEADER_HEIGHT;
-
-    for (let i = 0; i < items.length; i++) {
-      const proc = items[i];
-      if (i > 0 && rowX + tileW > COMPACT_TILE.rowMaxWidth) {
-        y = rowStartY + rowMaxHeight + gap;
-        rowX = CANVAS_PADDING;
-        rowStartY = y;
-        rowMaxHeight = 0;
-      }
-
-      tiles.push({
-        process: proc,
-        department: dept,
-        mode: "compact",
-        svg: null,
-        error: null,
-        diagramWidth: 0,
-        diagramHeight: 0,
-        x: rowX,
-        y: rowStartY,
-        width: tileW,
-        height: tileH,
-      });
-
-      rowX += tileW + gap;
-      rowMaxHeight = Math.max(rowMaxHeight, tileH);
-      canvasMaxX = Math.max(canvasMaxX, rowX);
-    }
-
-    y = rowStartY + rowMaxHeight + DEPT_GAP;
-  }
-
+  const plant = layoutPlantByDepartment(
+    processes.map((p) => ({ id: p.id, department: p.department }))
+  );
+  const byProc = new Map(processes.map((p) => [p.id, p]));
+  const tiles: DiagramTile[] = plant.tiles.map((pos) => ({
+    process: byProc.get(pos.id)!,
+    department: pos.department,
+    mode: "compact" as const,
+    svg: null,
+    error: null,
+    diagramWidth: 0,
+    diagramHeight: 0,
+    x: pos.x,
+    y: pos.y,
+    width: pos.width,
+    height: pos.height,
+  }));
   return {
     tiles,
-    canvasWidth: Math.max(canvasMaxX + CANVAS_PADDING, 800),
-    canvasHeight: Math.max(y + CANVAS_PADDING, 600),
-    departments,
+    canvasWidth: plant.canvasWidth,
+    canvasHeight: plant.canvasHeight,
+    departments: plant.departments,
+    byId: plant.byId,
   };
 }
 
@@ -211,8 +193,17 @@ function layoutDiagramTiles(
 }
 
 function getDeptLabelY(dept: string, tiles: DiagramTile[]): number {
-  const first = tiles.find((t) => t.department === dept);
-  return first ? first.y - DEPT_HEADER_HEIGHT : CANVAS_PADDING;
+  return plantDeptLabelY(
+    dept,
+    tiles.map((t) => ({
+      id: t.process.id,
+      department: t.department,
+      x: t.x,
+      y: t.y,
+      width: t.width,
+      height: t.height,
+    }))
+  );
 }
 
 export interface GodModeStats {
@@ -234,11 +225,15 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const [rendering, setRendering] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
+  const [links, setLinks] = useState<ProcessLinkDto[]>([]);
   const [viewMode, setViewMode] = useState<GodModeViewMode>("compact");
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [linkMode, setLinkMode] = useState(false);
+  const [linkFromId, setLinkFromId] = useState<string | null>(null);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const hasFitRef = useRef(false);
   const processesRef = useRef<ProcessSummary[]>([]);
@@ -342,16 +337,26 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/processes");
-      if (res.status === 401) {
+      const [procRes, linkRes] = await Promise.all([
+        fetch("/api/processes"),
+        fetch("/api/process-links"),
+      ]);
+      if (procRes.status === 401) {
         router.push("/");
         return;
       }
-      const data = await res.json();
+      const data = await procRes.json();
       const list: ProcessSummary[] = data.processes || [];
       const biz = data.business;
       const mode = loadGodModeViewMode();
       setViewMode(mode);
+
+      if (linkRes.ok) {
+        const linkData = await linkRes.json();
+        setLinks(linkData.links || []);
+      } else {
+        setLinks([]);
+      }
 
       if (!biz) {
         setBusinessId(null);
@@ -370,6 +375,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       setProcesses([]);
       processesRef.current = [];
       setLayout(null);
+      setLinks([]);
     } finally {
       setLoading(false);
     }
@@ -477,6 +483,53 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     }
     setActiveProcessId(businessId, processId);
     router.push("/workshop");
+  }
+
+  async function createLink(fromId: string, toId: string) {
+    const res = await fetch("/api/process-links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromProcessId: fromId, toProcessId: toId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(data.error || "Could not create link");
+      return;
+    }
+    toast.success("Linked processes");
+    setLinkFromId(null);
+    await load();
+  }
+
+  async function deleteSelectedLink() {
+    if (!selectedLinkId) return;
+    if (!window.confirm("Remove this plant link?")) return;
+    const res = await fetch(`/api/process-links/${selectedLinkId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      toast.error("Could not delete link");
+      return;
+    }
+    toast.success("Link removed");
+    setSelectedLinkId(null);
+    await load();
+  }
+
+  function handleCompactTileClick(processId: string) {
+    if (linkMode && viewMode === "compact") {
+      if (!linkFromId) {
+        setLinkFromId(processId);
+        return;
+      }
+      if (linkFromId === processId) {
+        setLinkFromId(null);
+        return;
+      }
+      void createLink(linkFromId, processId);
+      return;
+    }
+    openInWorkshop(processId);
   }
 
   if (loading) {
@@ -621,12 +674,28 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
             </div>
           ))}
 
+          {viewMode === "compact" && layout.byId ? (
+            <PlantEdges
+              links={links}
+              byId={layout.byId}
+              canvasWidth={layout.canvasWidth}
+              canvasHeight={layout.canvasHeight}
+              selectedLinkId={selectedLinkId}
+              onSelectLink={(id) => {
+                setSelectedLinkId(id);
+                setLinkFromId(null);
+              }}
+            />
+          ) : null}
+
           {layout.tiles.map((tile) =>
             tile.mode === "compact" ? (
               <CompactTile
                 key={tile.process.id}
                 tile={tile}
-                onOpenWorkshop={openInWorkshop}
+                isLinkFrom={linkMode && linkFromId === tile.process.id}
+                linkMode={linkMode}
+                onClick={() => handleCompactTileClick(tile.process.id)}
               />
             ) : (
               <DiagramTileView
@@ -641,9 +710,15 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
 
       <GodModeToolbar
         viewMode={viewMode}
-        onViewModeChange={setMode}
+        onViewModeChange={(m) => {
+          setMode(m);
+          setLinkMode(false);
+          setLinkFromId(null);
+          setSelectedLinkId(null);
+        }}
         tileCount={layout.tiles.length}
         totalCount={processes.length}
+        linkCount={links.length}
         isDiagrams={isDiagrams}
         missingCount={missingCount}
         zoom={zoom}
@@ -652,6 +727,14 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
         onZoomOut={zoomOut}
         onFit={handleFit}
         onRefresh={() => void load()}
+        linkMode={linkMode}
+        onLinkModeChange={(on) => {
+          setLinkMode(on);
+          setLinkFromId(null);
+          setSelectedLinkId(null);
+        }}
+        selectedLinkId={selectedLinkId}
+        onDeleteLink={() => void deleteSelectedLink()}
       />
     </div>
   );
@@ -659,10 +742,14 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
 
 function CompactTile({
   tile,
-  onOpenWorkshop,
+  onClick,
+  isLinkFrom,
+  linkMode,
 }: {
   tile: DiagramTile;
-  onOpenWorkshop: (id: string) => void;
+  onClick: () => void;
+  isLinkFrom?: boolean;
+  linkMode?: boolean;
 }) {
   const shape = normalizeIoShape(tile.process.ioShape);
   const meta = getIoShapeMeta(shape);
@@ -677,14 +764,18 @@ function CompactTile({
       data-godmode-tile
       role="button"
       tabIndex={0}
-      onClick={() => onOpenWorkshop(tile.process.id)}
+      onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpenWorkshop(tile.process.id);
+          onClick();
         }
       }}
-      className="absolute card bg-bg-panel border border-border shadow-sm overflow-hidden group cursor-pointer hover:border-border-strong transition-colors"
+      className={`absolute card bg-bg-panel border shadow-sm overflow-hidden group cursor-pointer transition-colors ${
+        isLinkFrom
+          ? "border-accent ring-2 ring-accent/40"
+          : "border-border hover:border-border-strong"
+      }`}
       style={{
         left: tile.x,
         top: tile.y,
@@ -717,8 +808,18 @@ function CompactTile({
           ) : null}
         </div>
         <div className="mt-1.5 text-[10px] text-center text-accent opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center gap-1">
-          <Hammer className="w-3 h-3" />
-          Workshop
+          {linkMode ? (
+            isLinkFrom ? (
+              "Source"
+            ) : (
+              "Target"
+            )
+          ) : (
+            <>
+              <Hammer className="w-3 h-3" />
+              Workshop
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -805,6 +906,7 @@ function GodModeToolbar({
   onViewModeChange,
   tileCount,
   totalCount,
+  linkCount = 0,
   isDiagrams,
   missingCount = 0,
   zoom,
@@ -814,11 +916,16 @@ function GodModeToolbar({
   onFit,
   onRefresh,
   disableZoom = false,
+  linkMode = false,
+  onLinkModeChange,
+  selectedLinkId,
+  onDeleteLink,
 }: {
   viewMode: GodModeViewMode;
   onViewModeChange: (m: GodModeViewMode) => void;
   tileCount: number;
   totalCount: number;
+  linkCount?: number;
   isDiagrams: boolean;
   missingCount?: number;
   zoom?: number;
@@ -828,13 +935,17 @@ function GodModeToolbar({
   onFit: () => void;
   onRefresh: () => void;
   disableZoom?: boolean;
+  linkMode?: boolean;
+  onLinkModeChange?: (on: boolean) => void;
+  selectedLinkId?: string | null;
+  onDeleteLink?: () => void;
 }) {
   const z = zoom ?? 1;
   const pct = displayPercent ?? Math.round(z * 100);
 
   return (
     <div className="shrink-0 border-t border-border bg-bg/90 px-4 py-2 flex items-center justify-between gap-4 flex-wrap">
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0 flex-wrap">
         <div className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
           <button
             type="button"
@@ -861,6 +972,30 @@ function GodModeToolbar({
             Diagrams
           </button>
         </div>
+        {!isDiagrams && onLinkModeChange ? (
+          <button
+            type="button"
+            onClick={() => onLinkModeChange(!linkMode)}
+            className={`text-xs inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${
+              linkMode
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-bg-panel text-text-muted hover:bg-bg-subtle"
+            }`}
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            {linkMode ? "Linking…" : "Link mode"}
+          </button>
+        ) : null}
+        {selectedLinkId && onDeleteLink ? (
+          <button
+            type="button"
+            onClick={onDeleteLink}
+            className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-text-muted hover:bg-bg-subtle shrink-0"
+          >
+            <Unlink className="w-3.5 h-3.5" />
+            Delete link
+          </button>
+        ) : null}
         <div className="text-xs text-text-muted truncate">
           {isDiagrams ? (
             <>
@@ -875,6 +1010,12 @@ function GodModeToolbar({
           ) : (
             <>
               {tileCount} process block{tileCount !== 1 ? "s" : ""}
+              {linkCount > 0 ? (
+                <span className="text-text-soft">
+                  {" "}
+                  · {linkCount} link{linkCount !== 1 ? "s" : ""}
+                </span>
+              ) : null}
               {totalCount > 0 && tileCount !== totalCount ? (
                 <span className="text-text-soft"> · {totalCount} total</span>
               ) : null}

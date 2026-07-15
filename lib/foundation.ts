@@ -32,12 +32,15 @@ export type FoundationOverview = {
   business: { id: string; name: string; description: string | null } | null;
   processes: FoundationProcessCard[];
   documents: FoundationDocumentSummary[];
+  /** Plant edges (6.5) */
+  links: import("@/lib/process-links").ProcessLinkDto[];
   stats: {
     processCount: number;
     documentCount: number;
     draftCount: number;
     forgedCount: number;
     withDiagramCount: number;
+    linkCount: number;
   };
   /** True when the business is early / thin — prefer Foundation as home. */
   isThin: boolean;
@@ -135,5 +138,6 @@ export function foundationStudioPromptAddon(): string {
     "Tell them the app will offer to seed those drafts; they can also Add draft manually or open Workshop to refine.",
     "Do not invent systems the user has not mentioned. Prefer 3–8 draft processes over dozens.",
     "Documents (basics, market, etc.) hold durable business knowledge; guide them to Documents when writing company facts.",
+    "Handoffs between units become plant links (source → target). Users create them in Link mode on Foundation/God Mode.",
   ].join("\n");
 }

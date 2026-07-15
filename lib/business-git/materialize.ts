@@ -54,6 +54,13 @@ export async function materializeBusinessRepo(
         },
         orderBy: { createdAt: 'asc' },
       },
+      processLinks: {
+        include: {
+          fromProcess: { select: { id: true, name: true } },
+          toProcess: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
       memories: { orderBy: { lastUpdated: 'asc' } },
       documents: { orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }] },
       humanPersonnel: { orderBy: { createdAt: 'asc' } },
@@ -117,6 +124,11 @@ export async function materializeBusinessRepo(
         manualSteps: p.manualSteps,
         ioShape: p.ioShape,
       })),
+      links: business.processLinks.map((l) => ({
+        fromName: l.fromProcess.name,
+        toName: l.toProcess.name,
+        label: l.label,
+      })),
       humanPersonnel: business.humanPersonnel.map((h) => ({
         name: h.name,
         role: h.role,
@@ -127,6 +139,22 @@ export async function materializeBusinessRepo(
         isHired: a.isHired,
       })),
     })
+  );
+
+  await writeJson(
+    path.join(repoPath, 'process-links.json'),
+    business.processLinks.map((l) => ({
+      id: l.id,
+      fromProcessId: l.fromProcessId,
+      toProcessId: l.toProcessId,
+      fromName: l.fromProcess.name,
+      toName: l.toProcess.name,
+      label: l.label,
+      fromPort: l.fromPort,
+      toPort: l.toPort,
+      createdAt: l.createdAt.toISOString(),
+      updatedAt: l.updatedAt.toISOString(),
+    }))
   );
 
   await writeNdjson(

@@ -49,6 +49,9 @@ export function FoundationRoom() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewSource, setReviewSource] = useState<string | undefined>();
   const [applying, setApplying] = useState(false);
+  const [linkMode, setLinkMode] = useState(false);
+  const [linkFromId, setLinkFromId] = useState<string | null>(null);
+  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -268,6 +271,34 @@ export function FoundationRoom() {
     }
     toast.success("Deleted");
     if (selectedProcessId === id) setSelectedProcessId(null);
+    if (linkFromId === id) setLinkFromId(null);
+    await load();
+  }
+
+  async function createLink(fromId: string, toId: string) {
+    const res = await fetch("/api/process-links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fromProcessId: fromId, toProcessId: toId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(data.error || "Could not create link");
+      throw new Error(data.error || "create link failed");
+    }
+    toast.success("Linked processes");
+    await load();
+  }
+
+  async function deleteLink(linkId: string) {
+    if (!window.confirm("Remove this plant link?")) return;
+    const res = await fetch(`/api/process-links/${linkId}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not delete link");
+      return;
+    }
+    toast.success("Link removed");
+    setSelectedLinkId(null);
     await load();
   }
 
@@ -313,6 +344,11 @@ export function FoundationRoom() {
           <p className="text-xs text-text-muted mt-0.5 truncate">
             {overview.stats.processCount} process
             {overview.stats.processCount === 1 ? "" : "es"}
+            {" · "}
+            {overview.stats.linkCount ?? overview.links?.length ?? 0} link
+            {(overview.stats.linkCount ?? overview.links?.length ?? 0) === 1
+              ? ""
+              : "s"}
             {" · "}
             {overview.stats.documentCount} document
             {overview.stats.documentCount === 1 ? "" : "s"}
@@ -366,12 +402,21 @@ export function FoundationRoom() {
         />
         <FoundationCanvas
           processes={processes}
+          links={overview.links ?? []}
           selectedProcessId={selectedProcessId}
           onSelectProcess={setSelectedProcessId}
           onOpenWorkshop={openWorkshop}
           onAddDraft={() => setAddOpen(true)}
           onRename={renameProcess}
           onDelete={deleteProcess}
+          linkMode={linkMode}
+          onLinkModeChange={setLinkMode}
+          linkFromId={linkFromId}
+          onLinkFromChange={setLinkFromId}
+          onCreateLink={createLink}
+          onDeleteLink={deleteLink}
+          selectedLinkId={selectedLinkId}
+          onSelectLink={setSelectedLinkId}
         />
       </div>
 

@@ -977,22 +977,27 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.5 Process-to-process links (plant edges) — **PLANNED** (milestone)
+### 6.5 Process-to-process links (plant edges) — **DONE** (foundation)
 
 **Goal:** First-class **connections between processes** so the plant has a flow network, not only a pile of boxes.
 
-**Data model (sketch):**
-- `ProcessLink` (or equivalent): `fromProcessId`, `toProcessId`, optional `label`, `fromPort` / `toPort`, `businessId`
-- Ports may align with named inputs/outputs later; v1 can be whole-box edges
+**Data model:**
+- `ProcessLink`: `fromProcessId`, `toProcessId`, optional `label`, `fromPort` / `toPort`, `businessId`
+- Unique directed edge per business; cascade delete with process/business
 
-**Deliverables:**
-- [ ] Schema + API CRUD + business log
-- [ ] Hermes can propose links while mapping (“Fulfillment feeds Invoicing”)
-- [ ] User can draw / confirm / delete links on Foundation or God Mode canvas
-- [ ] Validation: same business; no silent cross-business edges
-- [ ] PROCESS.md / Git materialize mention of plant topology (optional snapshot file)
+**Shipped:**
+- [x] Schema + migration + API (`GET/POST /api/process-links`, `PATCH/DELETE /api/process-links/[id]`)
+- [x] Business log: `process_link.created|updated|deleted`
+- [x] Validation: same business, no self-links, no silent cross-business edges
+- [x] Link mode on **Foundation** + **God Mode compact**: click source → target; click edge + Delete link
+- [x] SVG edges via `PlantEdges` + shared `plant-layout`
+- [x] PROCESS.md **Plant links** section + Git `process-links.json` materialize
+- [x] Chatbar prompt/snapshot hints for handoffs
+- [x] Unit tests: `process-links.test.ts`
 
-**Depends on:** 6.1, 6.2 or 6.4 canvas host
+**Partial:** Hermes does not yet auto-create links via tool-calls (proposes verbally; user draws). Ports unused in UI.
+
+**Depends on:** 6.1, 6.2, 6.4
 
 **End-state UX:** “Here is how work moves through the business” — the PFD, not only the unit-op SOPs.
 
@@ -1090,7 +1095,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.2 | Foundation room (business staging) | 6 | **Done** (foundation) |
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
-| 6.5 | Process-to-process links (plant edges) | 6 | Planned (milestone) |
+| 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
 | 6.6 | Business plant PFD (end-state) | 6 | Planned (milestone) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | Planned |
 

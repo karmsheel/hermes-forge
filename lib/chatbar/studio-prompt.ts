@@ -7,6 +7,7 @@ import {
 import { pageBlurbForPath, type PageBlurb } from "./page-registry";
 import type { ChatbarContextMode } from "./context-scope";
 import { foundationStudioPromptAddon } from "@/lib/foundation";
+import { processLinksPromptAddon } from "@/lib/process-links";
 
 export function buildStudioChatSystemPrompt(options: {
   businessName: string;
@@ -43,6 +44,13 @@ export function buildStudioChatSystemPrompt(options: {
     page.routeKey === "foundation" || route.startsWith("/foundation")
       ? foundationStudioPromptAddon()
       : "";
+  const plantLinksAddon =
+    page.routeKey === "foundation" ||
+    route.startsWith("/foundation") ||
+    page.routeKey === "god-mode" ||
+    route.startsWith("/god-mode")
+      ? processLinksPromptAddon()
+      : "";
 
   return [
     identity,
@@ -58,6 +66,7 @@ export function buildStudioChatSystemPrompt(options: {
     `Page purpose: ${page.purpose}`,
     `Context scope mode: ${mode}`,
     foundationAddon ? `\n${foundationAddon}` : "",
+    plantLinksAddon ? `\n${plantLinksAddon}` : "",
     "",
     "When the user asks what is on this page or what they are looking at, ground your answer in the untrusted snapshot and selection if present.",
     options.trainingPrompt ? `\n${options.trainingPrompt}` : "",

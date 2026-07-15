@@ -9,6 +9,7 @@ import {
   type FoundationOverview,
 } from "@/lib/foundation";
 import { isProcessForged } from "@/lib/process-status";
+import { toProcessLinkDto } from "@/lib/process-links";
 
 /** GET — Foundation room overview for the active business. */
 export async function GET(request: NextRequest) {
@@ -22,12 +23,14 @@ export async function GET(request: NextRequest) {
         business: null,
         processes: [],
         documents: [],
+        links: [],
         stats: {
           processCount: 0,
           documentCount: 0,
           draftCount: 0,
           forgedCount: 0,
           withDiagramCount: 0,
+          linkCount: 0,
         },
         isThin: true,
       };
@@ -36,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     await ensureBusinessDocuments(business.id, prisma);
 
-    const [processes, documents, biz] = await Promise.all([
+    const [processes, documents, links, biz] = await Promise.all([
       prisma.process.findMany({
         where: { businessId: business.id },
         orderBy: { updatedAt: "desc" },
@@ -64,6 +67,14 @@ export async function GET(request: NextRequest) {
           updatedAt: true,
         },
       }),
+      prisma.processLink.findMany({
+        where: { businessId: business.id },
+        include: {
+          fromProcess: { select: { name: true } },
+          toProcess: { select: { name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
       prisma.business.findUnique({
         where: { id: business.id },
         select: { id: true, name: true, description: true },
@@ -74,6 +85,7 @@ export async function GET(request: NextRequest) {
     const forgedCount = countForged(processes);
     const draftCount = processes.filter((p) => !isProcessForged(p.status)).length;
     const withDiagramCount = processes.filter((p) => p.diagramMermaid?.trim()).length;
+    const linkDtos = links.map(toProcessLinkDto);
 
     const overview: FoundationOverview = {
       business: biz
@@ -92,12 +104,14 @@ export async function GET(request: NextRequest) {
         pinnedForContext: d.pinnedForContext,
         updatedAt: d.updatedAt.toISOString(),
       })),
+      links: linkDtos,
       stats: {
         processCount: processes.length,
         documentCount: documents.length,
         draftCount,
         forgedCount,
         withDiagramCount,
+        linkCount: linkDtos.length,
       },
       isThin: isThinBusiness({
         processCount: processes.length,

@@ -26,6 +26,12 @@ export interface ProcessMdProcessInput {
   ioShape?: string | null;
 }
 
+export interface ProcessMdLinkInput {
+  fromName: string;
+  toName: string;
+  label?: string | null;
+}
+
 export interface ProcessMdActorInput {
   name: string;
   role: string;
@@ -41,6 +47,8 @@ export interface ProcessMdInput {
   /** Preferred notation when processes don't specify one */
   defaultNotation?: ProcessStandardId;
   processes: ProcessMdProcessInput[];
+  /** Plant edges (6.5) */
+  links?: ProcessMdLinkInput[];
   actors?: ProcessMdActorInput[];
   systems?: string[];
   antiPatterns?: string[];
@@ -170,6 +178,16 @@ export function buildProcessMd(input: ProcessMdInput): string {
 
   lines.push("", "## Processes", "", ...processLines, "");
 
+  const linkLines =
+    input.links && input.links.length > 0
+      ? input.links.map((l) => {
+          const label = l.label?.trim() ? ` — ${l.label.trim()}` : "";
+          return `- **${l.fromName}** → **${l.toName}**${label}`;
+        })
+      : ["_No process-to-process links yet._"];
+
+  lines.push("## Plant links", "", ...linkLines, "");
+
   lines.push("## Anti-patterns", "");
   for (const ap of anti) lines.push(`- ${ap}`);
 
@@ -202,6 +220,7 @@ export function buildProcessMdFromBusiness(business: {
   goals?: string | null;
   constraints?: string | null;
   processes?: ProcessMdProcessInput[];
+  links?: ProcessMdLinkInput[];
   humanPersonnel?: Array<{ name: string; role: string }>;
   hermesAgentProfiles?: Array<{ displayName: string; description?: string | null; isHired?: boolean }>;
 }): string {
@@ -239,6 +258,7 @@ export function buildProcessMdFromBusiness(business: {
     constraints: business.constraints,
     defaultNotation,
     processes,
+    links: business.links,
     actors: actors.length > 0 ? actors : undefined,
   });
 }
