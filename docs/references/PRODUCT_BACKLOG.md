@@ -912,33 +912,26 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.2 Foundation room (business staging) — **PLANNED**
+### 6.2 Foundation room (business staging) — **DONE** (foundation)
 
 **Goal:** New default room for a business that is not “jump straight to Workshop.” User talks about the business; Hermes populates foundations (documents + draft process blocks). User later enters Workshop on a chosen process to refine.
 
-**Working name:** **Foundation** (UI may say “Business foundations” / “Foundation room”).
+**Working name:** **Foundation** (UI: “Business foundations”).
 
-**UX sketch:**
-- Left: progressive sidebar — starts with Home / business context; **Documents** appears when docs exist or are first written; **Processes** list grows as draft blocks are seeded
-- Center: plant-oriented canvas of **draft process shapes** (and later links) — not full Mermaid by default
-- Right: Hermes chat (shell chatbar or room-local; prefer one chat surface — align with 4.17)
-- Entry: create/select new business → land on Foundation, **not** auto-open Workshop
-- Existing “start from brief → workshop” path becomes optional / advanced, or: brief seeds Foundation drafts then user drills in
+**Shipped:**
+- [x] Route `/foundation` + Map-stage nav (`foundation` in `STAGE_NAV_IDS`) + Map stage default landing
+- [x] Foundation room: progressive sidebar (business, documents when present, process list) + plant canvas of I/O-shape cards
+- [x] `GET /api/foundation` overview + `POST /api/foundation/seed-drafts` (idempotent by name)
+- [x] Add draft dialog; **Open in Workshop** sets active process and navigates
+- [x] Shell chatbar only — page blurb, server snapshot, studio prompt addon for Foundation
+- [x] Entry: home brief → Foundation; post-hire → Foundation (hire gate still first for new business)
+- [x] Unit tests: `tests/unit/foundation.test.ts` + stage/page-registry coverage
 
-**Agent behaviors:**
-- [ ] Discuss channels, offers, ops (“we have Twitter, YouTube, online services…”) → create/update **Documents** (business details, channels, etc.)
-- [ ] Same conversation → seed **draft Process** records with name, department/function guess, description, `ioShape`, status `draft`, minimal or empty `diagramMermaid`
-- [ ] Drafts are invitation to refine — not final maps
-- [ ] User opens a draft → Workshop with process-scoped chat and full diagram loop (existing Phase 3)
+**Partial / deferred to 6.3+:**
+- [ ] Hermes tool-calls that auto-write documents + seed drafts mid-chat (today: propose in chat; user Add draft or seed API)
+- [ ] Thin-business auto-redirect when switching businesses (6.7)
 
-**Deliverables:**
-- [ ] Route e.g. `/foundation` (name TBD) + nav placement under Map stage
-- [ ] Default landing for new / thin businesses (product rule: when to send Foundation vs Workshop vs Functions)
-- [ ] Progressive left sidebar (artifact-aware visibility)
-- [ ] Agent tools / structured actions to create draft processes + document patches from chat
-- [ ] Clear CTA: “Open in Workshop” / “Refine process” on each block
-
-**Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes (can stub shapes as siso until 6.1 lands)
+**Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes
 
 **Do not:** Duplicate a second permanent chat UI next to the shell chatbar; rebuild Documents or Workshop from scratch.
 
@@ -1088,7 +1081,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 5.6 | Notion / external connectors | 5 | Pending (M2) |
 | 6.0 | Phase vision & plant/PFD reference | 6 | Planned (vision in backlog) |
 | 6.1 | Process I/O shape library | 6 | **Done** (foundation) |
-| 6.2 | Foundation room (business staging) | 6 | Planned |
+| 6.2 | Foundation room (business staging) | 6 | **Done** (foundation) |
 | 6.3 | Draft process seeding from conversation | 6 | Planned |
 | 6.4 | God Mode compact plant canvas | 6 | Planned |
 | 6.5 | Process-to-process links (plant edges) | 6 | Planned (milestone) |

@@ -69,7 +69,7 @@ export function HomeHero() {
       setBrief("");
       setSelectedTemplateId(null);
       setSelectedTemplate(null);
-      router.push("/workshop");
+      router.push("/foundation");
     } catch {
       toast.error("Could not start from your brief");
     } finally {

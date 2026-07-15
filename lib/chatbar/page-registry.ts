@@ -25,6 +25,21 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p.startsWith("/foundation"),
+    blurb: {
+      routeKey: "foundation",
+      title: "Foundation",
+      purpose:
+        "Plant sketch of the business: draft process blocks (I/O shapes), knowledge documents, and chat-first discovery before deep Workshop mapping.",
+      uiHints: [
+        "Add draft process blocks for each unit of work",
+        "Open a block in Workshop to refine the full diagram",
+        "Describe channels and ops in chat so Hermes can propose drafts",
+        "Open Documents for durable business knowledge",
+      ],
+    },
+  },
+  {
     match: (p) => p.startsWith("/functions"),
     blurb: {
       routeKey: "functions",

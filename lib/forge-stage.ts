@@ -24,7 +24,7 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
  * Holistic items (log, decisions) live in the rail footer and are always shown.
  */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
-  map: ["home", "functions", "workshop", "personnel", "documents", "god-mode"],
+  map: ["home", "foundation", "functions", "workshop", "personnel", "documents", "god-mode"],
   monitor: ["home", "metrics", "content", "cronalytics"],
   automate: ["home", "automations", "automation-analysis", "personnel", "content"],
 };
@@ -71,6 +71,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   if (
     path.startsWith("/workshop") ||
     path.startsWith("/functions") ||
+    path.startsWith("/foundation") ||
     path.startsWith("/documents") ||
     path.startsWith("/god-mode") ||
     path.startsWith("/personnel")
@@ -112,7 +113,7 @@ export function isNavIdInStage(navId: string, stage: ForgeStage): boolean {
 
 /** Default landing route when switching into a stage. */
 export const STAGE_DEFAULT_ROUTES: Record<ForgeStage, string> = {
-  map: "/functions",
+  map: "/foundation",
   monitor: "/metrics",
   automate: "/automations",
 };

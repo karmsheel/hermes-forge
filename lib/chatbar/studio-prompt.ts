@@ -6,6 +6,7 @@ import {
 } from "./context-protocol";
 import { pageBlurbForPath, type PageBlurb } from "./page-registry";
 import type { ChatbarContextMode } from "./context-scope";
+import { foundationStudioPromptAddon } from "@/lib/foundation";
 
 export function buildStudioChatSystemPrompt(options: {
   businessName: string;
@@ -38,6 +39,11 @@ export function buildStudioChatSystemPrompt(options: {
         .join("\n")
     : "You are Hermes running inside Hermes Forge, a local-first business process mapping studio.";
 
+  const foundationAddon =
+    page.routeKey === "foundation" || route.startsWith("/foundation")
+      ? foundationStudioPromptAddon()
+      : "";
+
   return [
     identity,
     `The active business is "${options.businessName}".`,
@@ -51,6 +57,7 @@ export function buildStudioChatSystemPrompt(options: {
     `Current page: ${page.title} (${route})`,
     `Page purpose: ${page.purpose}`,
     `Context scope mode: ${mode}`,
+    foundationAddon ? `\n${foundationAddon}` : "",
     "",
     "When the user asks what is on this page or what they are looking at, ground your answer in the untrusted snapshot and selection if present.",
     options.trainingPrompt ? `\n${options.trainingPrompt}` : "",

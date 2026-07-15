@@ -20,6 +20,7 @@ describe("forge-stage", () => {
   it("infers stage from paths", () => {
     assert.equal(stageFromPath("/workshop"), "map");
     assert.equal(stageFromPath("/functions"), "map");
+    assert.equal(stageFromPath("/foundation"), "map");
     assert.equal(stageFromPath("/documents"), "map");
     assert.equal(stageFromPath("/metrics"), "monitor");
     assert.equal(stageFromPath("/cronalytics"), "monitor");
@@ -36,6 +37,7 @@ describe("forge-stage", () => {
   });
 
   it("filters nav by stage", () => {
+    assert.equal(isNavIdInStage("foundation", "map"), true);
     assert.equal(isNavIdInStage("workshop", "map"), true);
     assert.equal(isNavIdInStage("metrics", "map"), false);
     assert.equal(isNavIdInStage("content", "monitor"), true);

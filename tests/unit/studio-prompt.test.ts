@@ -10,6 +10,7 @@ import {
 describe("pageBlurbForPath", () => {
   it("resolves known routes", () => {
     assert.equal(pageBlurbForPath("/home").routeKey, "home");
+    assert.equal(pageBlurbForPath("/foundation").routeKey, "foundation");
     assert.equal(pageBlurbForPath("/functions").title, "Functions");
     assert.equal(pageBlurbForPath("/workshop/x").routeKey, "workshop");
     assert.equal(pageBlurbForPath("/documents").routeKey, "documents");
@@ -30,6 +31,15 @@ describe("studio prompts", () => {
     });
     assert.match(system, /Acme/);
     assert.match(system, /Personnel/);
+  });
+
+  it("adds Foundation plant-sketch guidance on /foundation", () => {
+    const system = buildStudioChatSystemPrompt({
+      businessName: "Acme",
+      route: "/foundation",
+    });
+    assert.match(system, /Foundation/i);
+    assert.match(system, /plant sketch|I\/O shape|draft process/i);
   });
 
   it("includes hired agent identity when provided", () => {

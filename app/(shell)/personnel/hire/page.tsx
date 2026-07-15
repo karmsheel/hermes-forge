@@ -90,7 +90,7 @@ function AgentHireInner() {
   useEffect(() => {
     if (!required || loading) return;
     if (hiredCount > 0) {
-      router.replace("/home");
+      router.replace("/foundation");
     }
   }, [required, loading, hiredCount, router]);
 
@@ -114,7 +114,7 @@ function AgentHireInner() {
         description: "They are now your chatbar agent for this business.",
       });
 
-      router.push("/home");
+      router.push("/foundation");
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not hire agent");

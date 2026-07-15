@@ -48,6 +48,7 @@ export function createTabId(): string {
 export function routePageLabel(route: string): string {
   const path = (route.split("?")[0] || "/").replace(/\/$/, "") || "/";
   if (path === "/home" || path === "/") return "Home";
+  if (path.startsWith("/foundation")) return "Foundation";
   if (path.startsWith("/workshop")) return "Workshop";
   if (path.startsWith("/functions")) return "Functions";
   if (path.startsWith("/personnel")) return "Personnel";

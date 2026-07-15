@@ -11,6 +11,7 @@ import {
   FolderKanban,
   Hammer,
   Home,
+  Layers,
   MessageSquare,
   Newspaper,
   Plus,
@@ -56,6 +57,13 @@ export function NavRail() {
       label: "Home",
       icon: Home,
       match: (path) => path === "/home",
+    },
+    {
+      id: "foundation",
+      href: "/foundation",
+      label: "Foundation",
+      icon: Layers,
+      match: (path) => path.startsWith("/foundation"),
     },
     {
       id: "functions",

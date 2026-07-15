@@ -86,8 +86,37 @@ export async function buildServerPageSnapshot(options: {
 
   switch (blurb.routeKey) {
     case "home": {
-      lines.push("Hint: Home composer creates a process and seeds workshop chat.");
+      lines.push("Hint: Home composer creates a process and lands on Foundation (plant sketch).");
       lines.push("Hint: Template pills seed the composer with a starter brief.");
+      break;
+    }
+    case "foundation": {
+      lines.push(
+        "Foundation room: low-fidelity plant sketch (I/O shape blocks). Workshop is for deep maps.",
+      );
+      if (processes.length) {
+        lines.push("Draft / process blocks:");
+        for (const p of processes.slice(0, 16)) {
+          lines.push(
+            `- ${p.name} [${p.status}] dept=${p.department || "—"} id=${p.id}`,
+          );
+        }
+      } else {
+        lines.push("No process blocks yet — propose drafts from the user's description.");
+      }
+      const docs = await prisma.businessDocument.findMany({
+        where: { businessId: options.businessId },
+        select: { title: true, kind: true, slug: true },
+        orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+        take: 12,
+      });
+      lines.push(`Knowledge documents: ${docs.length}`);
+      for (const d of docs.slice(0, 8)) {
+        lines.push(`- ${d.title} (${d.kind}/${d.slug})`);
+      }
+      lines.push(
+        "Hint: User can Add draft on the canvas or open a block in Workshop to refine.",
+      );
       break;
     }
     case "functions": {
