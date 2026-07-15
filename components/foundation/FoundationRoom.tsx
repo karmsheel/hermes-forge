@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, MessageSquare, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  MessageSquare,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useShell } from "@/components/shell/ShellContext";
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
@@ -11,19 +16,39 @@ import type {
   FoundationOverview,
   SeedDraftInput,
 } from "@/lib/foundation";
+import {
+  FOUNDATION_DRAFTS_EVENT,
+  extractDraftsFromText,
+  readRememberedStudioConversationId,
+  type FoundationDraftsEventDetail,
+  type ProposedDraft,
+} from "@/lib/foundation-extract";
+import { hermesApiBody } from "@/lib/hermes-models";
+import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { FoundationSidebar } from "./FoundationSidebar";
 import { FoundationCanvas } from "./FoundationCanvas";
 import { AddDraftDialog } from "./AddDraftDialog";
+import {
+  DraftReviewPanel,
+  toReviewRows,
+  type ReviewDraftRow,
+} from "./DraftReviewPanel";
 
 export function FoundationRoom() {
   const router = useRouter();
   const { currentBusiness, openNewBusiness } = useShell();
   const { open: openChat } = useChatbar();
+  const { config: hermesConfig, isConnected } = useHermesConnection();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<FoundationOverview | null>(null);
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [reviewRows, setReviewRows] = useState<ReviewDraftRow[]>([]);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewSource, setReviewSource] = useState<string | undefined>();
+  const [applying, setApplying] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +77,47 @@ export function FoundationRoom() {
     void load();
   }, [load, currentBusiness?.id]);
 
+  const openReview = useCallback(
+    (drafts: ProposedDraft[], sourceLabel?: string) => {
+      if (!drafts.length) {
+        toast.message("No draft processes found to review");
+        return;
+      }
+      setReviewRows(toReviewRows(drafts));
+      setReviewSource(sourceLabel);
+      setReviewOpen(true);
+    },
+    []
+  );
+
+  // Chatbar → Foundation: assistant emitted ```forge-drafts```
+  useEffect(() => {
+    function onDrafts(ev: Event) {
+      const detail = (ev as CustomEvent<FoundationDraftsEventDetail>).detail;
+      if (!detail?.drafts?.length) return;
+      const existing =
+        overview?.processes.map((p) => ({ id: p.id, name: p.name })) ?? [];
+      const byName = new Map(existing.map((p) => [p.name.toLowerCase(), p.id]));
+      const proposed: ProposedDraft[] = detail.drafts.map((d) => {
+        const key = d.name.trim().toLowerCase();
+        const id = byName.get(key) ?? null;
+        return {
+          ...d,
+          existingProcessId: id,
+          isDuplicate: Boolean(id),
+        };
+      });
+      // Also normalize via fence parser for consistent shape ids
+      const viaFence = extractDraftsFromText(
+        "```forge-drafts\n" + JSON.stringify(detail.drafts) + "\n```",
+        existing
+      );
+      openReview(viaFence.drafts.length ? viaFence.drafts : proposed, "chat");
+    }
+    window.addEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
+    return () => window.removeEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
+  }, [openReview, overview?.processes]);
+
   function openWorkshop(processId: string) {
     if (currentBusiness?.id) {
       setActiveProcessId(currentBusiness.id, processId);
@@ -65,7 +131,7 @@ export function FoundationRoom() {
       const res = await fetch("/api/foundation/seed-drafts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drafts: [draft], skipDuplicates: true }),
+        body: JSON.stringify({ drafts: [draft], mode: "skip" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -85,6 +151,124 @@ export function FoundationRoom() {
     } finally {
       setCreating(false);
     }
+  }
+
+  async function extractFromChat(opts?: { useHermes?: boolean }) {
+    setExtracting(true);
+    try {
+      const conversationId = readRememberedStudioConversationId();
+      if (!conversationId) {
+        toast.message("Open the chatbar and discuss the business first");
+        return;
+      }
+
+      const useHermes = opts?.useHermes !== false && isConnected && hermesConfig;
+      const body: Record<string, unknown> = {
+        apply: false,
+        useHermes: Boolean(useHermes),
+        conversationId,
+      };
+      if (useHermes && hermesConfig) {
+        Object.assign(body, hermesApiBody(hermesConfig));
+      }
+
+      const res = await fetch("/api/foundation/extract-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Extract failed");
+      }
+      const drafts = (data.drafts || []) as ProposedDraft[];
+      openReview(
+        drafts,
+        data.source === "fence"
+          ? "chat fence"
+          : data.source === "hermes"
+            ? "Hermes extract"
+            : "chat"
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not extract drafts");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  async function applyReview() {
+    const selected = reviewRows.filter((r) => r.selected && r.name.trim());
+    if (!selected.length) return;
+    setApplying(true);
+    try {
+      const res = await fetch("/api/foundation/seed-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "upsert",
+          drafts: selected.map((r) => ({
+            name: r.name.trim(),
+            description: r.description ?? null,
+            department: r.department ?? null,
+            ioShape: r.ioShape ?? null,
+            trigger: r.trigger ?? null,
+            inputs: r.inputs ?? null,
+            outputs: r.outputs ?? null,
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Seed failed");
+
+      const created = data.createdCount ?? 0;
+      const updated = data.updatedCount ?? 0;
+      const skipped = data.skippedCount ?? 0;
+      toast.success(
+        [
+          created ? `${created} created` : null,
+          updated ? `${updated} updated` : null,
+          skipped ? `${skipped} skipped` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Done"
+      );
+      setReviewOpen(false);
+      setReviewRows([]);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not seed drafts");
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  async function renameProcess(id: string, name: string) {
+    const res = await fetch(`/api/processes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, actor: "human" }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Rename failed");
+    }
+    await load();
+    toast.success("Renamed");
+  }
+
+  async function deleteProcess(id: string, name: string) {
+    if (!window.confirm(`Delete draft “${name}”? This cannot be undone.`)) {
+      return;
+    }
+    const res = await fetch(`/api/processes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Could not delete");
+      return;
+    }
+    toast.success("Deleted");
+    if (selectedProcessId === id) setSelectedProcessId(null);
+    await load();
   }
 
   if (loading && !overview) {
@@ -113,8 +297,6 @@ export function FoundationRoom() {
 
   const processes = overview.processes;
   const documents = overview.documents;
-  // Progressive chrome: documents once seeded; processes always once room has loaded
-  // (empty list still shows the Processes section so users know where drafts land)
   const showDocuments = documents.length > 0;
   const showProcesses = true;
 
@@ -137,7 +319,7 @@ export function FoundationRoom() {
             {overview.isThin ? " · early sketch" : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <button
             type="button"
             onClick={() => void load()}
@@ -145,6 +327,20 @@ export function FoundationRoom() {
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void extractFromChat()}
+            disabled={extracting}
+            className="btn-secondary text-xs inline-flex items-center gap-1.5"
+            title="Extract draft processes from the studio chat thread"
+          >
+            {extracting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5" />
+            )}
+            Seed from chat
           </button>
           <button
             type="button"
@@ -174,6 +370,8 @@ export function FoundationRoom() {
           onSelectProcess={setSelectedProcessId}
           onOpenWorkshop={openWorkshop}
           onAddDraft={() => setAddOpen(true)}
+          onRename={renameProcess}
+          onDelete={deleteProcess}
         />
       </div>
 
@@ -182,6 +380,19 @@ export function FoundationRoom() {
         creating={creating}
         onClose={() => setAddOpen(false)}
         onSubmit={handleSeedDraft}
+      />
+
+      <DraftReviewPanel
+        open={reviewOpen}
+        drafts={reviewRows}
+        applying={applying}
+        sourceLabel={reviewSource}
+        onChange={setReviewRows}
+        onApply={() => void applyReview()}
+        onDismiss={() => {
+          setReviewOpen(false);
+          setReviewRows([]);
+        }}
       />
     </div>
   );

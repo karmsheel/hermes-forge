@@ -937,16 +937,19 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.3 Draft process seeding from conversation — **PLANNED**
+### 6.3 Draft process seeding from conversation — **DONE** (foundation)
 
 **Goal:** Reliable, reviewable pipeline from Foundation chat → many lightweight process stubs.
 
-**Deliverables:**
-- [ ] Structured extraction or tool calls: `{ name, department, description, ioShape, trigger?, inputs?, outputs? }`
-- [ ] Idempotent upsert (avoid duplicate “Twitter posting” every turn)
-- [ ] Business log events: `process.created` (draft seed), optional `process.shape_updated`
-- [ ] User can rename / discard / merge stubs before deep mapping
-- [ ] Status semantics: seeded drafts stay `draft` until workshop refinement / forge path
+**Shipped:**
+- [x] Structured extraction: `lib/foundation-extract.ts` — parse ```forge-drafts``` fences; optional Hermes extract via `POST /api/foundation/extract-drafts`
+- [x] Idempotent seed/upsert: `lib/foundation-seed.ts` + seed-drafts `mode: skip | upsert` (upsert only non-forged)
+- [x] Business log: `process.created` on seed; `process.updated` on upsert (shape/description)
+- [x] Review UI: `DraftReviewPanel` — rename, deselect, discard rows, then seed selected
+- [x] Chatbar handoff: on Foundation, assistant fence → toast + review panel; **Seed from chat** re-extracts studio thread
+- [x] Rename / delete draft stubs on Foundation canvas (forged locked)
+- [x] Status stays `draft` on seed/upsert until workshop refine / forge
+- [x] Unit tests: `tests/unit/foundation-extract.test.ts`
 
 **Depends on:** 6.2 Foundation room, process APIs, business log (4.11)
 
@@ -1082,7 +1085,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.0 | Phase vision & plant/PFD reference | 6 | Planned (vision in backlog) |
 | 6.1 | Process I/O shape library | 6 | **Done** (foundation) |
 | 6.2 | Foundation room (business staging) | 6 | **Done** (foundation) |
-| 6.3 | Draft process seeding from conversation | 6 | Planned |
+| 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | Planned |
 | 6.5 | Process-to-process links (plant edges) | 6 | Planned (milestone) |
 | 6.6 | Business plant PFD (end-state) | 6 | Planned (milestone) |

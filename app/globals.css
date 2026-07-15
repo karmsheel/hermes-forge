@@ -3315,12 +3315,7 @@ body {
   filter: brightness(1.06);
 }
 
-.chatbar-panel--process .chatbar-desktop-bar {
-  margin: 0;
-  padding: 0.4rem 0.75rem;
-  border-top: 1px solid var(--border);
-  background: var(--bg-elevated);
-}
+/* Process/automation dock footer is owned by .chatbar-panel__bottom-row--dock */
 /* Tool Activity Strip (PR-4) */
 .tool-activity-strip {
   margin-top: 0.5rem;
@@ -3690,6 +3685,8 @@ body {
   margin: 0;
   font-size: 0.6875rem;
   color: var(--text-muted);
+  flex: 1;
+  min-width: 0;
 }
 
 .chatbar-panel__composer-help kbd {
@@ -3700,6 +3697,40 @@ body {
   background: var(--bg-subtle);
   font-size: 0.625rem;
   font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+/*
+ * Collapse controls at top-left and bottom-left.
+ * Header, studio footer, and process dock all use 0.75rem horizontal
+ * padding so the two hide buttons share one vertical axis.
+ */
+.chatbar-panel__bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.chatbar-panel__bottom-row--dock {
+  padding: 0.4rem 0.75rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.chatbar-panel__bottom-row--dock .chatbar-desktop-bar {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-top: none;
+  background: transparent;
+}
+
+.chatbar-panel__collapse-btn {
+  flex-shrink: 0;
+  /* Keep icon box stable so top/bottom stack cleanly */
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 .chatbar-collapsed-tab {

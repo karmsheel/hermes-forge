@@ -127,7 +127,12 @@ export function foundationStudioPromptAddon(): string {
     "You are co-piloting the Foundation room: a plant sketch of the business at low fidelity.",
     "Help the user inventory channels, offers, ops units, and handoffs as draft process blocks — not full Mermaid diagrams yet.",
     "When they describe parts of the business (e.g. Twitter, YouTube, fulfillment), propose short draft process names with suggested I/O shapes (siso/simo/miso/mimo).",
-    "Tell them they can click Add draft on the Foundation canvas or open a block in Workshop to refine a realistic map.",
+    "When you propose new process drafts to seed on the canvas, end your reply with a fenced JSON block tagged forge-drafts:",
+    "```forge-drafts",
+    '[{"name":"Example","description":"...","department":"Operations","ioShape":"siso","inputs":"...","outputs":"..."}]',
+    "```",
+    "Only include processes the user described. Omit the fence if you are only answering without proposing drafts.",
+    "Tell them the app will offer to seed those drafts; they can also Add draft manually or open Workshop to refine.",
     "Do not invent systems the user has not mentioned. Prefer 3–8 draft processes over dozens.",
     "Documents (basics, market, etc.) hold durable business knowledge; guide them to Documents when writing company facts.",
   ].join("\n");

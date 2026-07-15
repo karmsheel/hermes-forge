@@ -72,6 +72,11 @@ import {
   type QueuedMessage,
 } from "@/lib/message-queue";
 import type { ChatbarAgentOption, ChatMessage, Conversation } from "@/lib/types";
+import {
+  dispatchFoundationDrafts,
+  parseForgeDraftsFence,
+  rememberStudioConversationId,
+} from "@/lib/foundation-extract";
 import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
@@ -556,6 +561,7 @@ export function ChatbarPanel() {
       }
 
       const conversationId = activeConversationId;
+      rememberStudioConversationId(conversationId);
       const firstVisit = businessId ? !hasSeenIntro(businessId, blurb.routeKey) : false;
       const controller = new AbortController();
       abortRef.current = controller;
@@ -685,6 +691,29 @@ export function ChatbarPanel() {
                       : m,
                   ),
                 );
+                // Phase 6.3 — offer Foundation seed when assistant emits forge-drafts fence
+                const assistantText = payload.message.content || streamed;
+                if (
+                  pathname.startsWith("/foundation") &&
+                  !payload.stopped &&
+                  assistantText
+                ) {
+                  const drafts = parseForgeDraftsFence(assistantText);
+                  if (drafts.length > 0) {
+                    rememberStudioConversationId(conversationId);
+                    dispatchFoundationDrafts({
+                      drafts,
+                      conversationId,
+                      assistantMessageId: payload.message.id,
+                    });
+                    toast.message(
+                      `${drafts.length} draft process${drafts.length === 1 ? "" : "es"} proposed`,
+                      {
+                        description: "Review and seed them on the Foundation canvas.",
+                      },
+                    );
+                  }
+                }
               }
               if (payload?.receipt) {
                 setReceiptsByMessageId((prev) => ({
@@ -960,7 +989,7 @@ export function ChatbarPanel() {
           <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <button
               type="button"
-              className="chatbar-panel__icon-btn"
+              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
               onClick={collapse}
               title="Hide chat (Alt+H)"
               aria-label="Hide chat"
@@ -1023,11 +1052,22 @@ export function ChatbarPanel() {
           />
         </div>
 
-        <ChatbarDesktopBar
-          meterInput={autoMeterInput}
-          diagnosticsInput={autoDiagnosticsInput}
-          disabled={!businessId}
-        />
+        <div className="chatbar-panel__bottom-row chatbar-panel__bottom-row--dock">
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
+            onClick={collapse}
+            title="Hide chat (Alt+H)"
+            aria-label="Hide chat"
+          >
+            <CollapseIcon className="w-4 h-4" />
+          </button>
+          <ChatbarDesktopBar
+            meterInput={autoMeterInput}
+            diagnosticsInput={autoDiagnosticsInput}
+            disabled={!businessId}
+          />
+        </div>
       </aside>
     );
   }
@@ -1046,7 +1086,7 @@ export function ChatbarPanel() {
           <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <button
               type="button"
-              className="chatbar-panel__icon-btn"
+              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
               onClick={collapse}
               title="Hide chat (Alt+H)"
               aria-label="Hide chat"
@@ -1136,11 +1176,22 @@ export function ChatbarPanel() {
           />
         </div>
 
-        <ChatbarDesktopBar
-          meterInput={processMeterInput}
-          diagnosticsInput={processDiagnosticsInput}
-          disabled={!businessId}
-        />
+        <div className="chatbar-panel__bottom-row chatbar-panel__bottom-row--dock">
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
+            onClick={collapse}
+            title="Hide chat (Alt+H)"
+            aria-label="Hide chat"
+          >
+            <CollapseIcon className="w-4 h-4" />
+          </button>
+          <ChatbarDesktopBar
+            meterInput={processMeterInput}
+            diagnosticsInput={processDiagnosticsInput}
+            disabled={!businessId}
+          />
+        </div>
       </aside>
     );
   }
@@ -1157,7 +1208,7 @@ export function ChatbarPanel() {
           <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <button
               type="button"
-              className="chatbar-panel__icon-btn"
+              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
               onClick={collapse}
               title="Hide chat (Alt+H)"
               aria-label="Hide chat"
@@ -1546,14 +1597,25 @@ export function ChatbarPanel() {
             }}
             disabled={!businessId}
           />
-          <p className="chatbar-panel__composer-help">
-            {sending
-              ? canSteer
-                ? "Stop · Steer · Queue while busy · "
-                : "Stop ends the run · Enter queues while busy · "
-              : "Enter sends · "}
-            Scope chip · model dock · <kbd>Alt</kbd>+<kbd>H</kbd>
-          </p>
+          <div className="chatbar-panel__bottom-row">
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+            <p className="chatbar-panel__composer-help">
+              {sending
+                ? canSteer
+                  ? "Stop · Steer · Queue while busy · "
+                  : "Stop ends the run · Enter queues while busy · "
+                : "Enter sends · "}
+              Scope chip · model dock · <kbd>Alt</kbd>+<kbd>H</kbd>
+            </p>
+          </div>
         </div>
       </footer>
     </aside>
