@@ -39,7 +39,6 @@ import {
 import {
   getDeptLabelY as plantDeptLabelY,
   layoutPlantByDepartment,
-  PLANT_TILE,
   type PlantTilePosition,
 } from "@/lib/plant-layout";
 import type { ProcessLinkDto } from "@/lib/process-links";
