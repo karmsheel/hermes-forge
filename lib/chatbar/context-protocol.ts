@@ -252,30 +252,42 @@ export function serializeForgeContextForPrompt(payload: ForgeContextPayload): st
   return lines.join("\n");
 }
 
+/** Local first-visit intro copy (no API call). Snapshot is separate for collapsible UI. */
+export type PageIntroCopy = {
+  /** Short welcome markdown always shown in the intro banner. */
+  body: string;
+  /**
+   * Live page snapshot Hermes receives with Follow page.
+   * UI should show this collapsed by default under “What Hermes can see”.
+   */
+  agentView?: string;
+};
+
 /** Build a short local intro message (no API call). */
 export function buildPageIntroCopy(options: {
   businessName: string;
   page: PageBlurb;
   snapshotText?: string;
-}): string {
+}): PageIntroCopy {
   const hints =
     options.page.uiHints?.length ?
-      options.page.uiHints.map((h) => `• ${h}`).join("\n")
-    : "• Ask me what you can do here\n• Ask me to explain what you are looking at";
+      options.page.uiHints.map((h) => `- ${h}`).join("\n")
+    : "- Ask me what you can do here\n- Ask me to explain what you are looking at";
 
-  const snap =
-    options.snapshotText?.trim() ?
-      `\n\nHere is a quick snapshot of what I can see:\n${options.snapshotText.trim().slice(0, 600)}`
-    : "";
+  const agentView = options.snapshotText?.trim() || undefined;
 
-  return [
+  const body = [
     `This is **${options.page.title}** for **${options.businessName}**.`,
     options.page.purpose,
     "",
     "Things you can try:",
     hints,
-    snap,
     "",
     "Ask me anything about this page — or switch the scope chip to **Chat only** if you want a general conversation without page data.",
   ].join("\n");
+
+  return {
+    body,
+    ...(agentView ? { agentView } : {}),
+  };
 }

@@ -39,11 +39,5 @@ export default function WorkshopPage() {
     );
   }
 
-  return (
-    <WorkshopSession
-      businessId={currentBusiness.id}
-      businessName={currentBusiness.name}
-      isActive
-    />
-  );
+  return <WorkshopSession businessId={currentBusiness.id} isActive />;
 }

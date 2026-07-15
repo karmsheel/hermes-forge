@@ -47,14 +47,14 @@ export function ContentStudio({
   businessId,
 }: {
   businessId: string | null;
-  businessName?: string | null;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<ContentListItem[]>([]);
   const [health, setHealth] = useState<ContentHealthCounts>(emptyContentHealth());
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  // Default to review queue so agent drafts are front-and-center
+  const [statusFilter, setStatusFilter] = useState<string>("review");
   const [draftTitle, setDraftTitle] = useState("");
   const [draftBody, setDraftBody] = useState("");
   const [draftStatus, setDraftStatus] = useState<ContentStatus>("idea");
@@ -269,6 +269,7 @@ export function ContentStudio({
             )}
             {items.map((item) => {
               const active = item.id === selectedId;
+              const fromAgent = item.source === "hermes";
               return (
                 <li key={item.id}>
                   <button
@@ -280,7 +281,14 @@ export function ContentStudio({
                         : "text-text-muted hover:bg-bg-subtle hover:text-text"
                     }`}
                   >
-                    <div className="font-medium truncate">{item.title}</div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-medium truncate">{item.title}</span>
+                      {fromAgent && (
+                        <span className="shrink-0 rounded px-1 py-px text-[9px] font-semibold uppercase tracking-wide bg-accent/15 text-accent">
+                          Agent
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide opacity-80">
                       <span>{CONTENT_STATUS_LABELS[item.status as ContentStatus] ?? item.status}</span>
                       <span>·</span>
@@ -359,8 +367,20 @@ export function ContentStudio({
                 onChange={(e) => setDraftBody(e.target.value)}
                 placeholder="Draft body (markdown)…"
               />
-              <div className="border-t border-border px-3 py-2 text-[10px] text-text-muted">
-                Source: {selected.source}
+              <div className="border-t border-border px-3 py-2 text-[10px] text-text-muted flex flex-wrap items-center gap-2">
+                <span>
+                  Source:{" "}
+                  {selected.source === "hermes" ? (
+                    <span className="text-accent font-medium">Hermes agent</span>
+                  ) : (
+                    selected.source
+                  )}
+                </span>
+                {selected.status === "review" && (
+                  <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide">
+                    Needs review
+                  </span>
+                )}
                 {selected.shippedAt
                   ? ` · Shipped ${formatUpdated(selected.shippedAt)}`
                   : ""}

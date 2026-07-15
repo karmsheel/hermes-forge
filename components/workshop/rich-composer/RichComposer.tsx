@@ -124,30 +124,53 @@ export function RichComposer({
       return filterMentionables(mentionables, query).map((m) => ({
         key: `${m.kind}:${m.ref ?? m.label}`,
         label: m.label,
-        description: m.ref ? `${m.kind} • ${m.ref}` : m.kind,
+        description:
+          m.description ??
+          (m.ref ? `${m.kind} • ${m.ref}` : m.kind),
         badge: m.kind,
       }));
     }
     return [];
   }, [mode, query, mentionables]);
 
-  // Recompute the popover anchor when mode/text/caret changes. The state set
-  // here is a pure measurement update and re-runs only when the caret or text
-  // changes — there is no cascading render in practice.
+  // Recompute the popover anchor when mode/text/caret changes (and on scroll/resize).
+  // Use viewport coords so the portal popover sits next to the caret even
+  // when the composer is at the bottom of the global chat dock.
   useLayoutEffect(() => {
     const ta = textareaRef.current;
     if (!ta || mode === "idle" || queryStart == null) {
       setAnchor(null);
       return;
     }
-    const coords = getCaretCoordinates(ta, queryStart + 1 + query.length);
-    if (!coords) {
-      setAnchor(null);
-      return;
-    }
-    // Clamp so the popover stays inside the textarea's right edge.
-    const maxX = ta.clientWidth - POPOVER_MAX_WIDTH - 8;
-    setAnchor({ x: Math.max(8, Math.min(coords.x, maxX)), y: coords.y });
+
+    const updateAnchor = () => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const coords = getCaretCoordinates(el, queryStart + 1 + query.length);
+      if (!coords) {
+        setAnchor(null);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const localX = Math.max(
+        8,
+        Math.min(coords.x, el.clientWidth - POPOVER_MAX_WIDTH - 8),
+      );
+      setAnchor({
+        x: rect.left + localX,
+        // Bottom of the caret line in viewport space
+        y: rect.top + Math.max(0, coords.y) + (coords.height || 16),
+      });
+    };
+
+    updateAnchor();
+    window.addEventListener("resize", updateAnchor);
+    // Capture scroll from nested chat panels
+    window.addEventListener("scroll", updateAnchor, true);
+    return () => {
+      window.removeEventListener("resize", updateAnchor);
+      window.removeEventListener("scroll", updateAnchor, true);
+    };
   }, [mode, queryStart, query, value]);
 
   // Detect mode from the current value + caret.

@@ -2,13 +2,15 @@
 
 /**
  * Compute the (x, y) coordinates of a textarea caret, relative to the
- * textarea's top-left corner. Returns null if the element or selection
- * can't be measured.
+ * textarea's top-left content box (same space as a child with
+ * `position: absolute; left/top` inside a `position: relative` wrapper).
  *
- * Uses the well-known "mirror div" technique: clone the textarea's text
- * up to the caret, copy its styles, and measure where the trailing
- * character lands. This is the same approach Lexical and ProseMirror use
- * for inline mention popovers.
+ * Uses the mirror-div technique: clone styles + text up to the caret and
+ * measure the marker **inside the mirror** (not vs the real textarea's
+ * viewport rect). Comparing mirror coords to the textarea's
+ * getBoundingClientRect is wrong when the mirror is parked at body (0,0)
+ * and the composer sits at the bottom of the chat dock — that produced
+ * huge negative Y and pinned the @ popover to the top of the chat panel.
  */
 export function getCaretCoordinates(
   textarea: HTMLTextAreaElement,
@@ -17,37 +19,40 @@ export function getCaretCoordinates(
   const value = textarea.value;
   if (typeof window === "undefined" || typeof document === "undefined") return null;
 
-  // Build a mirror div with the same styling.
   const div = document.createElement("div");
   copyStyles(textarea, div);
   div.style.position = "absolute";
   div.style.visibility = "hidden";
   div.style.whiteSpace = "pre-wrap";
   div.style.wordWrap = "break-word";
+  // Park off-screen; only relative geometry inside the mirror matters.
   div.style.top = "0";
-  div.style.left = "0";
+  div.style.left = "-9999px";
   div.style.width = `${textarea.clientWidth}px`;
+  // Height must not clip multi-line content for measurement.
+  div.style.height = "auto";
+  div.style.overflow = "hidden";
 
-  // Two spans: text up to caret, then a marker span for the caret position.
   const before = document.createElement("span");
-  before.textContent = value.substring(0, position);
+  // Preserve trailing newlines so the caret drops to the next line.
+  before.textContent = value.substring(0, position).replace(/\n$/g, "\n\u200b");
   div.appendChild(before);
 
   const marker = document.createElement("span");
-  marker.textContent = value.substring(position) || ".";
+  marker.textContent = "\u200b";
   div.appendChild(marker);
 
   document.body.appendChild(div);
-  const beforeRect = before.getBoundingClientRect();
-  const markerRect = marker.getBoundingClientRect();
-  document.body.removeChild(div);
 
-  const taRect = textarea.getBoundingClientRect();
-  // The mirror is laid out in the same coordinate space; subtract textarea top.
-  const x = markerRect.left - taRect.left;
-  const y = (beforeRect.top === markerRect.top ? markerRect.top : beforeRect.bottom) - taRect.top;
-  const height = markerRect.height || 16;
-  return { x, y, height };
+  try {
+    // offsetTop/Left are relative to the offset parent (the mirror div).
+    const x = marker.offsetLeft - textarea.scrollLeft;
+    const y = marker.offsetTop - textarea.scrollTop;
+    const height = marker.offsetHeight || parseFloat(getComputedStyle(textarea).lineHeight) || 16;
+    return { x, y, height };
+  } finally {
+    document.body.removeChild(div);
+  }
 }
 
 const COPY_STYLE_PROPS = [

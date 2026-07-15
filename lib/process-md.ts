@@ -10,6 +10,7 @@ import {
   resolveProcessStandard,
   type ProcessStandardId,
 } from "@/lib/process-standards";
+import { extractSystemsFromProcesses } from "@/lib/systems";
 
 export interface ProcessMdProcessInput {
   name: string;
@@ -69,17 +70,10 @@ function uniqueNonEmpty(values: Array<string | null | undefined>): string[] {
 
 /**
  * Infer systems from free-text process fields (best-effort).
+ * Delegates to shared systems extractor (list parse + known product names).
  */
 export function inferSystemsFromProcesses(processes: ProcessMdProcessInput[]): string[] {
-  const blob = processes
-    .map((p) => [p.inputs, p.outputs, p.manualSteps, p.description].filter(Boolean).join(" "))
-    .join(" ");
-  // Common tool/system tokens; keep conservative
-  const known =
-    blob.match(
-      /\b(?:Salesforce|HubSpot|Slack|Jira|Notion|Excel|Sheets|SAP|Workday|Zendesk|Stripe|QuickBooks|n8n|Hermes|Gmail|Outlook|SharePoint|ServiceNow|Asana|Linear|GitHub|Airtable|Shopify)\b/gi,
-    ) ?? [];
-  return uniqueNonEmpty(known);
+  return extractSystemsFromProcesses(processes);
 }
 
 /**

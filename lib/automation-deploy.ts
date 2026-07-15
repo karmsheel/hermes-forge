@@ -1,4 +1,12 @@
 import type { AutomationAgentSummary, AutomationPlan } from './automation-types';
+import { buildContentIngestUrl } from './content-ingest';
+
+export type CronPromptIngestOptions = {
+  /** Absolute Forge origin, e.g. http://127.0.0.1:3000 */
+  forgeBaseUrl: string;
+  /** Bearer token stored on Automation.ingestToken */
+  ingestToken: string;
+};
 
 export function buildCronPrompt(
   process: {
@@ -9,7 +17,8 @@ export function buildCronPrompt(
     diagramMermaid: string | null;
   },
   plan: AutomationPlan,
-  agent?: AutomationAgentSummary | null
+  agent?: AutomationAgentSummary | null,
+  ingest?: CronPromptIngestOptions | null
 ): string {
   const steps =
     plan.automatableSteps.length > 0
@@ -36,6 +45,42 @@ export function buildCronPrompt(
         .join('\n')
     : '';
 
+  const ingestBlock = ingest
+    ? [
+        '',
+        '=== Hermes Forge Content handoff (required when you produce ideas/drafts) ===',
+        'After producing content, POST each piece into the Forge Content inventory so the owner can review it.',
+        `POST ${buildContentIngestUrl(ingest.forgeBaseUrl)}`,
+        'Headers:',
+        '  Content-Type: application/json',
+        `  Authorization: Bearer ${ingest.ingestToken}`,
+        'Body JSON (one piece per request):',
+        '{',
+        '  "title": "Short headline",',
+        '  "bodyMarkdown": "Full draft in markdown",',
+        '  "status": "review",',
+        '  "channel": "linkedin" | "x" | "newsletter" | "blog" | "other" | null',
+        '}',
+        'Rules:',
+        '- Use status "review" for drafts that need human approval (default).',
+        '- Use status "idea" only for short topic seeds without a full draft.',
+        '- Do not claim external publish unless you actually posted via tools.',
+        '- If HTTP tools are unavailable, still structure the deliver message as:',
+        '  TITLE: ...',
+        '  BODY:',
+        '  ...markdown...',
+        '  so the owner can paste it via Automations → Simulate content handoff.',
+        '=== end Content handoff ===',
+      ].join('\n')
+    : [
+        '',
+        'Content inventory (Hermes Forge): When this process produces ideas or drafts,',
+        'structure your output as a titled markdown piece the owner can paste into the',
+        'Forge Content inventory (status: idea → draft → review → ready → shipped).',
+        'Prefer clear title + body. Do not claim you published externally unless you',
+        'actually did via available tools.',
+      ].join('\n');
+
   return [
     `You are executing a scheduled automation for the business process "${process.name}".`,
     agentBlock,
@@ -49,12 +94,7 @@ export function buildCronPrompt(
     steps,
     manual,
     diagram,
-    '',
-    'Content inventory (Hermes Forge): When this process produces ideas or drafts,',
-    'structure your output as a titled markdown piece the owner can paste into the',
-    'Forge Content inventory (status: idea → draft → review → ready → shipped).',
-    'Prefer clear title + body. Do not claim you published externally unless you',
-    'actually did via available tools.',
+    ingestBlock,
     '',
     'Follow the steps precisely. If nothing needs attention, respond with [SILENT].',
   ]

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Building2, Clock, Plug, Zap } from "lucide-react";
+import { ArrowLeft, Clock, Plug, Zap } from "lucide-react";
 import {
   AUTOMATION_DEPLOY_LABELS,
   type AutomationDeployStatus,
@@ -17,7 +17,6 @@ import { DeployPanel } from "./DeployPanel";
 
 interface AutomationSidebarProps {
   processName: string;
-  businessName: string | null;
   department: string;
   trigger: string | null;
   inputs: string | null;
@@ -63,7 +62,6 @@ function pathLabel(path: AutomationPlan["recommendedPath"]): string {
 
 export function AutomationSidebar({
   processName,
-  businessName,
   department,
   trigger,
   inputs,
@@ -100,12 +98,6 @@ export function AutomationSidebar({
             <div className="text-[10px] text-zinc-500">Design & deploy plan</div>
           </div>
         </div>
-        {businessName && (
-          <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 mt-2 truncate">
-            <Building2 className="w-3 h-3 shrink-0" />
-            <span className="truncate">{businessName}</span>
-          </div>
-        )}
       </div>
 
       <div className="p-4 border-b border-zinc-800 space-y-3">

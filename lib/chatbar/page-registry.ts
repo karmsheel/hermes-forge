@@ -29,11 +29,13 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     blurb: {
       routeKey: "functions",
       title: "Functions",
-      purpose: "Browse your org by department and see which workflows are mapped or automated.",
+      purpose:
+        "Browse your org by function, expand blocks to see workflows, and reassign processes between functions.",
       uiHints: [
-        "Click a function to open it filtered in Workshop",
+        "Click a function block to list its workflows",
+        "Use Move on a workflow to assign it to another function",
+        "Add a new function to the map with New function",
         "Use the analytics section for automation coverage",
-        "Ask which department needs mapping first",
       ],
     },
   },
@@ -136,15 +138,30 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => /^\/automations\/[^/]+/.test(p),
+    blurb: {
+      routeKey: "automation-studio",
+      title: "Automation studio",
+      purpose:
+        "Design automation for an approved process: Hermes cron vs n8n, integrations, schedule, then deploy. Chat in this dock designs the plan; the left panel deploys.",
+      uiHints: [
+        "Discuss schedule, delivery channel, and which steps to automate",
+        "Assign a hired Hermes agent before deploying a cron",
+        "When the plan is ready, use Deploy on the left",
+        "Open Content for agent drafts after live jobs run",
+      ],
+    },
+  },
+  {
     match: (p) => p.startsWith("/automations"),
     blurb: {
       routeKey: "automations",
       title: "Automations",
       purpose:
-        "Automate stage: assign Hermes agents and deploy Hermes cron jobs for approved processes. n8n is optional advanced runtime.",
+        "Automate stage: open approved processes to design and deploy. Hermes cron first; n8n is optional advanced runtime.",
       uiHints: [
-        "Assign a hired Hermes agent before deploying a cron",
-        "Prefer Hermes cron for agent writing/research loops",
+        "Open an approved process to enter Automation studio",
+        "Design the plan in Hermes chat, then deploy from the studio panel",
         "Open Content to manage drafts the agent produces",
       ],
     },

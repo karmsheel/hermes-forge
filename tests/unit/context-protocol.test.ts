@@ -110,15 +110,27 @@ describe("clampSnapshotText", () => {
 });
 
 describe("page intros", () => {
-  it("builds intro with hints", () => {
+  it("builds intro with hints and separates agent view", () => {
     const page = pageBlurbForPath("/personnel");
     const copy = buildPageIntroCopy({
       businessName: "Acme",
       page,
-      snapshotText: "Humans: 2",
+      snapshotText: "Humans: 2\nRoles: 1",
     });
-    assert.match(copy, /Personnel/);
-    assert.match(copy, /Acme/);
-    assert.match(copy, /Humans: 2/);
+    assert.match(copy.body, /Personnel/);
+    assert.match(copy.body, /Acme/);
+    // Snapshot stays out of the always-visible body (UI collapses it).
+    assert.ok(!copy.body.includes("Humans: 2"));
+    assert.equal(copy.agentView, "Humans: 2\nRoles: 1");
+  });
+
+  it("omits agent view when no snapshot", () => {
+    const page = pageBlurbForPath("/home");
+    const copy = buildPageIntroCopy({
+      businessName: "Acme",
+      page,
+    });
+    assert.match(copy.body, /Home|home|business/i);
+    assert.equal(copy.agentView, undefined);
   });
 });

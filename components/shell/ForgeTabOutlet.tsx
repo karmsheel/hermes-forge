@@ -161,7 +161,6 @@ export function ForgeTabOutlet({ children }: { children: ReactNode }) {
       {mountedWorkshopTabs.map((tab) => {
         const isActive = tab.id === activeTabId && activeIsWorkshop;
         const bizId = tab.businessId || currentBusiness?.id;
-        const bizName = tab.businessName || currentBusiness?.name || "Business";
         if (!bizId) return null;
 
         return (
@@ -176,7 +175,6 @@ export function ForgeTabOutlet({ children }: { children: ReactNode }) {
             <WorkshopSession
               tabId={tab.id}
               businessId={bizId}
-              businessName={bizName}
               initialProcessId={tab.processId ?? null}
               initialWorkspaceTab={tab.workspaceTab}
               isActive={isActive}

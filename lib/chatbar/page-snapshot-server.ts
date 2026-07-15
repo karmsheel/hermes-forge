@@ -188,6 +188,54 @@ export async function buildServerPageSnapshot(options: {
       }
       break;
     }
+    case "automation-studio": {
+      const processId = route.match(/^\/automations\/([^/?#]+)/)?.[1];
+      if (processId) {
+        const auto = await prisma.automation.findUnique({
+          where: { processId },
+          select: {
+            status: true,
+            type: true,
+            externalId: true,
+            planJson: true,
+            hermesAgentProfile: { select: { displayName: true } },
+            process: {
+              select: {
+                name: true,
+                department: true,
+                status: true,
+                trigger: true,
+              },
+            },
+          },
+        });
+        if (auto?.process) {
+          lines.push(`Studio process: ${auto.process.name} [${auto.process.status}]`);
+          lines.push(`Department: ${auto.process.department || "—"}`);
+          lines.push(`Automation status: ${auto.status}`);
+          if (auto.type) lines.push(`Runtime type: ${auto.type}`);
+          if (auto.externalId) lines.push("Deployed: yes (external job linked)");
+          else lines.push("Deployed: not yet");
+          if (auto.hermesAgentProfile) {
+            lines.push(`Assigned agent: ${auto.hermesAgentProfile.displayName}`);
+          } else {
+            lines.push("Assigned agent: none — recommend hiring/assigning before cron deploy");
+          }
+          if (auto.planJson) {
+            const preview = auto.planJson.replace(/\s+/g, " ").trim().slice(0, 400);
+            lines.push(`Plan draft (truncated): ${preview}`);
+          } else {
+            lines.push("Plan draft: empty — design in this chat toward Ready to deploy");
+          }
+        } else {
+          lines.push(`Automation studio process id=${processId} (loading or not found)`);
+        }
+      }
+      lines.push(
+        "Hint: This dock is the automation design chat. Deploy from the left panel when ready.",
+      );
+      break;
+    }
     case "automations": {
       const approved = processes.filter(
         (p) =>

@@ -13,9 +13,6 @@ export default function ContentPage() {
           Inventory
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">Content</h1>
-        {currentBusiness && (
-          <p className="mt-1 text-sm text-accent">in {currentBusiness.name}</p>
-        )}
         <p className="mt-3 max-w-2xl text-sm text-text-muted">
           Pieces you ship — ideas, drafts, review, ready, shipped. Separate from
           Documents (business knowledge). In Automate, assign a Hermes agent and
@@ -23,10 +20,7 @@ export default function ContentPage() {
         </p>
       </div>
 
-      <ContentStudio
-        businessId={currentBusiness?.id ?? null}
-        businessName={currentBusiness?.name ?? null}
-      />
+      <ContentStudio businessId={currentBusiness?.id ?? null} />
     </main>
   );
 }

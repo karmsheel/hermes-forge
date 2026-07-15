@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 
 export interface SuggestionItem {
   /** Stable key. */
@@ -13,14 +14,21 @@ export interface SuggestionItem {
   badge?: string;
 }
 
+export type SuggestionAnchor = {
+  /** Viewport X (for position:fixed). */
+  x: number;
+  /** Viewport Y of the caret baseline / line bottom (for position:fixed). */
+  y: number;
+};
+
 interface SuggestionPopoverProps {
   open: boolean;
   items: SuggestionItem[];
   activeIndex: number;
   onSelect: (item: SuggestionItem) => void;
   onActiveIndexChange: (i: number) => void;
-  /** Position of the popover, relative to the textarea. */
-  anchor: { x: number; y: number } | null;
+  /** Viewport coordinates of the caret (from getBoundingClientRect + caret offset). */
+  anchor: SuggestionAnchor | null;
   /** Empty-state hint when no matches. */
   emptyHint?: string;
 }
@@ -36,6 +44,13 @@ export function SuggestionPopover({
 }: SuggestionPopoverProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const activeItemRef = useRef<HTMLLIElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [panelHeight, setPanelHeight] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -44,17 +59,57 @@ export function SuggestionPopover({
     el.scrollIntoView({ block: "nearest" });
   }, [activeIndex, open]);
 
-  if (!open || !anchor) return null;
+  // Measure panel so we can flip below the caret when there isn't room above.
+  useEffect(() => {
+    if (!open || !panelRef.current) {
+      setPanelHeight(0);
+      return;
+    }
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height ?? 0;
+      setPanelHeight(h);
+    });
+    ro.observe(panelRef.current);
+    setPanelHeight(panelRef.current.getBoundingClientRect().height);
+    return () => ro.disconnect();
+  }, [open, items.length, emptyHint]);
 
-  // Clamp the active index to a valid range.
+  if (!open || !anchor || !mounted) return null;
+
   const safeIndex = items.length > 0 ? Math.min(activeIndex, items.length - 1) : -1;
 
-  return (
+  const gap = 6;
+  const maxH = 256; // max-h-64
+  const estimatedH = panelHeight || Math.min(maxH, Math.max(40, items.length * 44 + 8));
+  const spaceAbove = anchor.y - gap;
+  const placeAbove = spaceAbove >= Math.min(estimatedH, 120);
+
+  // Keep list inside the viewport horizontally.
+  const maxLeft = typeof window !== "undefined" ? window.innerWidth - 288 - 8 : anchor.x;
+  const left = Math.max(8, Math.min(anchor.x, maxLeft));
+
+  const style: CSSProperties = placeAbove
+    ? {
+        position: "fixed",
+        left,
+        top: anchor.y - gap,
+        transform: "translateY(-100%)",
+        zIndex: 80,
+      }
+    : {
+        position: "fixed",
+        left,
+        top: anchor.y + gap,
+        zIndex: 80,
+      };
+
+  return createPortal(
     <div
+      ref={panelRef}
       role="listbox"
       aria-label="Suggestions"
-      className="absolute z-30 w-72 max-h-64 overflow-y-auto rounded-lg border border-border bg-bg-elevated shadow-lg"
-      style={{ left: anchor.x, top: anchor.y + 18 }}
+      className="w-72 max-h-64 overflow-y-auto rounded-lg border border-border bg-bg-elevated shadow-lg"
+      style={style}
       onMouseDown={(e) => {
         // Prevent the textarea from blurring when the user clicks an item.
         e.preventDefault();
@@ -94,6 +149,7 @@ export function SuggestionPopover({
           })}
         </ul>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -3,6 +3,11 @@ import { callHermes, parseJsonFromLlm, type HermesConfig } from '@/lib/hermes';
 import { sanitizeMermaidSource } from '@/lib/mermaid-sanitize';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
 import { WELCOME_MESSAGE } from '@/lib/process-welcome';
+import {
+  analyzeSplitCandidates,
+  formatSplitAnalysisForPrompt,
+  type SplitAnalysis,
+} from '@/lib/mermaid-graph';
 
 const SPLIT_PROPOSAL =
   /split (this |it )?(into|out)|separate workflow|own workflow|two (distinct |separate )?(process|workflow)|multiple (distinct )?flow|parallel (process|flow|stream)|should be (its own|a separate)|peel off|break (this |it )?(into|out)/i;
@@ -35,10 +40,9 @@ export function userConfirmsSplit(content: string): boolean {
 export function shouldExecuteSplit(input: {
   userContent: string;
   lastAssistantContent?: string;
+  /** Kept for call-site compatibility; forged processes may be split. */
   status: string;
 }): boolean {
-  if (input.status === 'approved' || input.status === 'forged') return false;
-
   if (userRequestsSplit(input.userContent)) return true;
 
   return Boolean(
@@ -46,6 +50,29 @@ export function shouldExecuteSplit(input: {
       assistantProposedSplit(input.lastAssistantContent) &&
       userConfirmsSplit(input.userContent)
   );
+}
+
+/** True when split should reopen the parent out of forged/approved state. */
+export function isForgedOrApprovedStatus(status: string): boolean {
+  return status === 'approved' || status === 'forged';
+}
+
+/** Structural analysis of a process diagram for split UI + agent context. */
+export function analyzeProcessSplit(
+  diagramMermaid: string | null | undefined,
+  status?: string
+): SplitAnalysis {
+  const analysis = analyzeSplitCandidates(diagramMermaid);
+  if (status && isForgedOrApprovedStatus(status) && analysis.canSplit) {
+    return {
+      ...analysis,
+      reasons: [
+        ...analysis.reasons,
+        'This process is forged — splitting will reopen it as draft so you can re-forge after review.',
+      ],
+    };
+  }
+  return analysis;
 }
 
 const SPLIT_PLAN_PROMPT = `You are a business process architect for Hermes Forge.
@@ -60,6 +87,7 @@ Rules:
 - Remove the child's nodes and edges from the parent diagram — no duplicate flows.
 - Keep node labels short. Use semantic IDs (not "end").
 - Names should be specific (e.g. "Invoice Approval" not "Process 2").
+- Prefer the structural candidate flows when provided; do not invent unrelated steps.
 
 Return ONLY valid JSON (no markdown fences):
 
@@ -93,7 +121,7 @@ export interface ProcessSplitPlan {
   };
 }
 
-function parseSplitPlan(raw: unknown): ProcessSplitPlan | null {
+export function parseSplitPlan(raw: unknown): ProcessSplitPlan | null {
   if (!raw || typeof raw !== 'object') return null;
   const plan = raw as Record<string, unknown>;
   const parent = plan.parent as Record<string, unknown> | undefined;
@@ -150,13 +178,17 @@ export async function generateSplitPlan(
     .map((m) => `${m.role}: ${m.content}`)
     .join('\n\n');
 
+  const analysis = analyzeSplitCandidates(process.diagramMermaid);
+  const analysisBlock = formatSplitAnalysisForPrompt(analysis);
+
   const context = [
     `Current workflow name: ${process.name}`,
     `Description: ${process.description || 'Not yet described'}`,
     process.diagramMermaid
       ? `\nCurrent diagram:\n${process.diagramMermaid}`
       : '\nNo diagram yet.',
-    `\nConversation:\n${conversation}`,
+    analysisBlock ? `\n${analysisBlock}` : '',
+    `\nConversation:\n${conversation || '(none)'}`,
     `\nUser instruction: ${userInstruction}`,
     '\nProduce the split plan JSON now.',
   ].join('\n');
@@ -185,38 +217,30 @@ export interface ProcessSplitResult {
   parentName: string;
 }
 
-export async function executeProcessSplit(
-  config: HermesConfig,
+/** Persist an already-generated plan (no Hermes call). */
+export async function applyProcessSplit(
   processId: string,
-  userInstruction: string
+  plan: ProcessSplitPlan
 ): Promise<ProcessSplitResult> {
   const process = await prisma.process.findUnique({
     where: { id: processId },
-    include: {
-      messages: { orderBy: { createdAt: 'asc' } },
-    },
   });
 
   if (!process) {
     throw new Error('Process not found');
   }
 
-  if (process.status === 'approved' || process.status === 'forged') {
-    throw new Error('Approved workflows cannot be split. Re-open mapping first.');
-  }
-
-  const plan = await generateSplitPlan(config, process, userInstruction);
-
+  const wasForged = isForgedOrApprovedStatus(process.status);
   const childDept = categorizeWorkflow(`${plan.child.name} ${plan.child.description}`);
 
-  const result = await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     const child = await tx.process.create({
       data: {
         businessId: process.businessId,
         name: plan.child.name,
         description: plan.child.description,
         department: childDept,
-        status: 'mapping',
+        status: 'draft',
         nameStatus: 'confirmed',
         diagramMermaid: plan.child.diagramMermaid,
         diagramUpdatedAt: new Date(),
@@ -231,14 +255,22 @@ export async function executeProcessSplit(
         diagramMermaid: plan.parent.diagramMermaid,
         diagramUpdatedAt: new Date(),
         nameStatus: 'confirmed',
+        // Diagram changed — reopen forged maps so automation is re-confirmed.
+        ...(wasForged
+          ? { status: 'draft', approvedAt: null }
+          : {}),
       },
     });
+
+    const reopenNote = wasForged
+      ? `\n\nThis process was forged; I've reopened it as **draft** so you can review the remaining flow and re-forge when ready.`
+      : '';
 
     await tx.chatMessage.create({
       data: {
         processId: processId,
         role: 'assistant',
-        content: `${plan.parent.assistantNote}\n\nI've created a separate workflow "${plan.child.name}" in the sidebar — each flow is now isolated for automation.`,
+        content: `${plan.parent.assistantNote}\n\nI've created a separate workflow "${plan.child.name}" in the sidebar — each flow is now isolated for automation.${reopenNote}`,
       },
     });
 
@@ -265,6 +297,64 @@ export async function executeProcessSplit(
       parentName: plan.parent.name,
     };
   });
-
-  return result;
 }
+
+/**
+ * Plan (Hermes) + apply. Used by chat intercept and simple POST apply without a pre-built plan.
+ */
+export async function executeProcessSplit(
+  config: HermesConfig,
+  processId: string,
+  userInstruction: string,
+  existingPlan?: ProcessSplitPlan
+): Promise<ProcessSplitResult> {
+  const process = await prisma.process.findUnique({
+    where: { id: processId },
+    include: {
+      messages: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+
+  if (!process) {
+    throw new Error('Process not found');
+  }
+
+  const plan =
+    existingPlan ??
+    (await generateSplitPlan(config, process, userInstruction));
+
+  return applyProcessSplit(processId, plan);
+}
+
+export async function planProcessSplit(
+  config: HermesConfig,
+  processId: string,
+  userInstruction: string
+): Promise<{ plan: ProcessSplitPlan; analysis: SplitAnalysis }> {
+  const process = await prisma.process.findUnique({
+    where: { id: processId },
+    include: {
+      messages: { orderBy: { createdAt: 'asc' } },
+    },
+  });
+
+  if (!process) {
+    throw new Error('Process not found');
+  }
+
+  if (!process.diagramMermaid?.trim()) {
+    throw new Error('Process has no diagram to split.');
+  }
+
+  const analysis = analyzeProcessSplit(process.diagramMermaid, process.status);
+  const plan = await generateSplitPlan(
+    config,
+    process,
+    userInstruction ||
+      'Split into two single-flow workflows for automation. Prefer structural candidate flows.'
+  );
+
+  return { plan, analysis };
+}
+
+export { formatSplitAnalysisForPrompt, type SplitAnalysis };

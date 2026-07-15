@@ -13,9 +13,6 @@ export default function MetricsPage() {
           Monitor
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">Metrics</h1>
-        {currentBusiness && (
-          <p className="mt-1 text-sm text-accent">in {currentBusiness.name}</p>
-        )}
         <p className="mt-3 max-w-2xl text-sm text-text-muted">
           Instrument what matters before you automate. Track content pipeline
           health and channel signals (followers, engagement). Record samples

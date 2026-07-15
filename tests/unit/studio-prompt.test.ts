@@ -13,6 +13,8 @@ describe("pageBlurbForPath", () => {
     assert.equal(pageBlurbForPath("/functions").title, "Functions");
     assert.equal(pageBlurbForPath("/workshop/x").routeKey, "workshop");
     assert.equal(pageBlurbForPath("/documents").routeKey, "documents");
+    assert.equal(pageBlurbForPath("/automations/abc").routeKey, "automation-studio");
+    assert.equal(pageBlurbForPath("/automations").routeKey, "automations");
   });
 
   it("falls back for unknown routes", () => {

@@ -58,4 +58,35 @@ describe('buildCronPrompt agent bind', () => {
     assert.match(prompt, /Preferred model: gpt-test/);
     assert.match(prompt, /flowchart TD/);
   });
+
+  it('embeds content ingest callback when options provided', () => {
+    const prompt = buildCronPrompt(
+      {
+        name: 'Content cycle',
+        description: 'Weekly drafts',
+        trigger: 'Monday',
+        manualSteps: null,
+        diagramMermaid: null,
+      },
+      plan,
+      {
+        id: 'agent1',
+        displayName: 'Writer',
+        profileKey: 'writer',
+        description: null,
+        model: null,
+        isHired: true,
+        isDefault: false,
+        iconKey: null,
+      },
+      {
+        forgeBaseUrl: 'http://127.0.0.1:3847',
+        ingestToken: 'forge-ingest-test-token',
+      }
+    );
+    assert.match(prompt, /Content handoff/);
+    assert.match(prompt, /http:\/\/127\.0\.0\.1:3847\/api\/content\/ingest/);
+    assert.match(prompt, /Authorization: Bearer forge-ingest-test-token/);
+    assert.match(prompt, /"status": "review"/);
+  });
 });

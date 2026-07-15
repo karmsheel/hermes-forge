@@ -102,9 +102,6 @@ export default function DecisionsPage() {
           <Scale className="w-7 h-7 text-accent" />
           Decisions
         </h1>
-        {currentBusiness && (
-          <p className="text-sm text-accent mt-1">in {currentBusiness.name}</p>
-        )}
         <p className="text-sm text-text-muted mt-3 max-w-2xl">
           Human-in-the-loop approvals for forged business knowledge. Agents propose;
           you authorize, reject, or redirect with instructions.

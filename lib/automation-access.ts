@@ -173,6 +173,7 @@ type AutomationRowWithRelations = {
   externalUrl: string | null;
   deployedAt: Date | null;
   hermesAgentProfileId: string | null;
+  ingestToken?: string | null;
   createdAt: Date;
   updatedAt: Date;
   messages: { id: string; automationId: string; role: string; content: string; createdAt: Date }[];
@@ -205,6 +206,7 @@ export function serializeAutomation(row: AutomationRowWithRelations): Automation
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     hermesAgentProfile: agent,
+    hasIngestToken: Boolean(row.ingestToken),
     messages: row.messages,
   };
 }

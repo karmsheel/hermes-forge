@@ -80,6 +80,8 @@ export interface Automation {
   updatedAt: string | Date;
   /** Present when loaded with agent relation. */
   hermesAgentProfile?: AutomationAgentSummary | null;
+  /** True when Hermes can POST drafts via /api/content/ingest (token never exposed). */
+  hasIngestToken?: boolean;
 }
 
 export interface AutomationWithMessages extends Automation {

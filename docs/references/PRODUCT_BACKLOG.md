@@ -405,10 +405,11 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Files:** `components/workshop/rich-composer/*`, `ProcessChat.tsx`
 
-**Shipped:** `RichComposer` with `@` autocomplete (diagram step nodes), slash commands (`/help`, `/name`, `/add-step`, `/simplify`, `/export`, `/accuracy`), suggestion popover, node context pill.
+**Shipped:** `RichComposer` with `@` autocomplete (diagram step nodes), slash commands (`/help`, `/name`, `/add-step`, `/simplify`, `/export`, `/split`, `/accuracy`), suggestion popover, node context pill.
 
 **Remaining:**
-- [ ] `@department` / `@system` / actor mentionables (beyond diagram nodes)
+- [x] `@system` mentionables (from Questions “Systems involved”, known tools, diagram labels)
+- [x] `@department` / actor mentionables (via personnel roster — 4.10)
 - [ ] `/export` format args (e.g. pdf) if server export is added (3.8)
 
 ---
@@ -451,6 +452,31 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 **Shipped:** Markdown SOP, Mermaid source, PNG diagram, PDF diagram, Cursor JSON bundle; copy/download; "Open in Cursor" prompt; `/export` slash command opens Export tab; scope to active conversation when forks exist.
 
 **Notes:** PNG/PDF use client-side Mermaid → SVG → canvas (and a minimal PDF wrapper). Server-side `app/api/processes/[id]/export/route.ts` deferred — not required for desktop/BYOK deliverables.
+
+---
+
+### 3.9 Diagram multi-flow split — **DONE** (foundation)
+
+**Goal:** When a single process Mermaid contains multiple independent workflows, peel one flow into a **new** process and leave a single coherent flow on the parent (same parent `id`). Shared API for UI and agent/chat.
+
+**Files:** `lib/mermaid-graph.ts`, `lib/process-split.ts`, `app/api/processes/[id]/split/route.ts`, `components/workshop/SplitProcessDialog.tsx`, `WorkshopSession.tsx`, chat prompt injection in `lib/diagram.ts` + `app/api/processes/[id]/chat/route.ts`
+
+**Shipped:**
+- [x] Deterministic graph analysis (connected components) → `canSplit` / `showSplitButton` (high confidence on disconnected multi-flow)
+- [x] API: `GET` analyze; `POST` `action=plan|apply|analyze` (plan preview, apply with optional plan body)
+- [x] Workshop banner + header **Split** when multi-flow detected; modal plan → preview Mermaid → confirm
+- [x] Slash `/split` (optional instruction args)
+- [x] Chat intercept still executes on user request / confirm after assistant proposes split
+- [x] Split analysis injected into process chat system prompt when multi-flow
+- [x] Forged/approved maps may be split; parent reopens as **draft** (clears `approvedAt`) after apply
+- [x] Unit tests: `tests/unit/mermaid-graph.test.ts`
+
+**Remaining (optional):**
+- [ ] Deterministic extract-by-`nodeIds` (peel selected subgraph without full LLM rewrite)
+- [ ] Multi-way split (N components → N−1 children in one pass, or guided sequential peels)
+- [ ] Soft “maybe multi-trigger” affordance for medium-confidence single-component graphs
+
+**Do not:** Clone full chat history onto the child; invent steps not present in the source diagram during apply.
 
 ---
 
@@ -554,11 +580,11 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
-### 4.10 Personnel roster — **MOSTLY DONE** (workshop + automation bind)
+### 4.10 Personnel roster — **DONE** (workshop + automation bind)
 
 **Goal:** Org roster for humans and hired Hermes agents; feed swimlanes, `@actor` mentions, and automation assignment.
 
-**Status:** UI, API, DB, workshop integration, and **automation agent bind** shipped. Explicit `@system` mentionables still open.
+**Status:** UI, API, DB, workshop integration, automation agent bind, and **`@system` mentionables** shipped.
 
 **Files:** `app/(shell)/personnel/page.tsx`, `app/api/personnel/**`, `components/personnel/*`, `lib/personnel/*`, `prisma/schema.prisma` (`HumanPersonnel`, `HermesAgentProfile`)
 
@@ -577,7 +603,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 **Remaining:**
 - [x] `Automation` → `hermesAgentProfileId` for hired agents (studio picker + cron prompt + deploy gate)
 - [x] Import `personnel.json` on business git import (4.11 restore)
-- [ ] Explicit `@system` mentionables (beyond roster roles)
+- [x] Explicit `@system` mentionables (beyond roster roles) — see 3.5 / `lib/systems.ts`
 
 **Shipped (agent bind):** Deploy panel agent picker; `PATCH /api/processes/[id]/automation`; Hermes cron deploy requires hired agent; cron prompt injects agent identity; list shows assigned agent; git meta includes agent profile key.
 
@@ -792,7 +818,8 @@ M0 is **Hermes-only inside Forge** (no Notion required; n8n secondary until M1).
 **M0 polish:**
 - [x] Default deploy path Hermes cron (n8n labeled advanced)
 - [x] Cron prompts mention Forge Content inventory for drafts
-- [ ] Auto-create Content items from cron output (needs Hermes→Forge callback/tool)
+- [x] Auto-create Content via `POST /api/content/ingest` (Automation.ingestToken) + simulate handoff UI
+- [x] In-app notification (`content_review`) when agent drafts need review
 - [ ] Pause/resume UX + owner-facing run health (beyond Cronalytics)
 
 ### 5.4 Content Ops template — **DONE**
@@ -826,10 +853,11 @@ Optional systems of record after Hermes-only loop is proven.
 | 3.2 | Node comments | 3 | Done |
 | 3.3 | Questions panel | 3 | Done |
 | 3.4 | Conversation fork | 3 | **Done** |
-| 3.5 | Rich composer | 3 | Mostly done |
+| 3.5 | Rich composer | 3 | Mostly done (`@system` done; `/export` args optional) |
 | 3.6 | Workspace tabs | 3 | Done |
 | 3.7 | Queued messages | 3 | Done |
 | 3.8 | Export handoff | 3 | **Done** (client PNG/PDF) |
+| 3.9 | Diagram multi-flow split | 3 | **Done** (foundation) |
 | 4.1 | Template library | 4 | **Done** (JSON files) |
 | 4.2 | PROCESS.md | 4 | **Done** (foundation) |
 | 4.3 | Template marketplace | 4 | Pending |
@@ -839,7 +867,7 @@ Optional systems of record after Hermes-only loop is proven.
 | 4.7 | User theme install (JSON) | 4 | Done |
 | 4.8 | VS Code theme import (Electron) | 4 | Done |
 | 4.9 | UI primitive convergence | 4 | Done |
-| 4.10 | Personnel roster | 4 | **Mostly done** (workshop + automation bind) |
+| 4.10 | Personnel roster | 4 | **Done** (workshop + automation bind + systems mentions via 3.5) |
 | 4.11 | Immutable business log | 4 | **Mostly done** (push + import; decision.* events shipped) |
 | 4.12 | Business decisions / HITL | 4 | **Done** |
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
@@ -873,7 +901,7 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Done** — Decisions HITL API + UI + `decision.*` events; unused `PERSONNEL_REMOVED` removed; personnel git import |
 | AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
 | AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
-| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Mostly done** — mentions + prompts + swimlane lanes; personnel git import + automation agent bind done; `@system` mentions still open |
+| AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Done** — mentions + prompts + swimlane lanes; personnel git import + automation agent bind; `@system` mentions via 3.5 |
 
 **Session outcomes (code):**
 - `docs/references/audit.md` committed as canonical audit
@@ -901,7 +929,7 @@ When picking up a backlog item:
 - Business isolation (`lib/workshop-storage.ts`, `requireProcessAccess` active-business guard)
 - Settings: System / Light / Dark mode + skin picker (`components/settings/SettingsMenu.tsx`, `SkinPicker.tsx`, `lib/themes/`)
 - Process approval + automation studio + n8n integration (4.4)
-- Personnel roster + workshop wiring + automation agent bind (4.10); `@system` mentions still open
+- Personnel roster + workshop wiring + automation agent bind (4.10); `@system` mentions (3.5)
 - Business log + git materialize (4.11); decision.* events via 4.12
 - God Mode canvas (4.13)
 - Cronalytics dev tooling (4.14)
@@ -911,7 +939,6 @@ When picking up a backlog item:
 - `/dashboard` — merged into `/functions` (analytics section below org chart)
 
 **Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-6 … AUDIT-10** above. Highlights:
-- Explicit `@system` mentionables still open (3.5 / AUDIT-10)
 - No HTTP/SSE integration tests yet (unit smoke via `npm test` only)
 - Optional theme export pruning (AUDIT-6 residual)
 - Optional 4.12: supersede/revoke UI; freeform policy decisions

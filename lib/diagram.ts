@@ -19,6 +19,7 @@ import {
   formatSwimlanePersonnelAddon,
   type PersonnelRoster,
 } from './personnel/context';
+import { formatSystemsPromptContext } from './systems';
 
 const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
 
@@ -126,6 +127,13 @@ export function buildChatSystemPrompt(context: {
   personnel?: PersonnelRoster | null;
   /** Pinned / basics knowledge documents (4.18) */
   knowledgeDocuments?: DocumentForPrompt[] | null;
+  /**
+   * Structural multi-flow analysis of the current Mermaid diagram.
+   * When present and non-empty, encourage proposing a split when appropriate.
+   */
+  splitAnalysisNote?: string | null;
+  /** Known systems / tools for @-mentions (3.5). */
+  systems?: string[] | null;
 }): string {
   const standardId = context.processStandard ?? resolveProcessStandard(context.description);
   const standard = getProcessStandard(standardId);
@@ -171,6 +179,12 @@ export function buildChatSystemPrompt(context: {
     ? `\n${personnelBlock}\nWhen the user @-mentions a person or role, treat that as the actor for the step they are discussing.\n`
     : '';
 
+  const systemsBlock =
+    context.systems && context.systems.length > 0
+      ? formatSystemsPromptContext(context.systems)
+      : '';
+  const systemsNote = systemsBlock ? `\n${systemsBlock}\n` : '';
+
   return `You are Hermes, an expert Business Process Analyst for Hermes Forge.
 
 You are helping the user map ONE specific business process through conversation. A live Mermaid diagram updates in the background as you learn more — the user can see it and give corrections.
@@ -192,8 +206,10 @@ Workflow splitting (important):
 - Ask clearly: "Should I split [name the flow] into its own workflow?" — wait for the user to confirm before assuming the split happened.
 - If the user asks to split, separate, or break apart flows, acknowledge and confirm which flow goes where.
 - After a split, the sidebar will show a new workflow — tell the user to check the left panel.
+- The user can also use the Split control on the diagram or /split — do not claim a split already happened until they confirm or the system executes it.
+- Forged processes can still be split when the diagram contains multiple independent flows; after a split the parent reopens as draft for re-forge.
 
-${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${knowledgeNote}${personnelNote}
+${context.splitAnalysisNote?.trim() ? `\n${context.splitAnalysisNote.trim()}\n` : ''}${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${knowledgeNote}${personnelNote}${systemsNote}
 
 ${standard.chatPromptAddon}
 

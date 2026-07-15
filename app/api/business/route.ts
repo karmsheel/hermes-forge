@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       where: { id: business.id },
       include: {
         processes: { orderBy: { automationScore: 'desc' } },
+        functions: { orderBy: { name: 'asc' } },
         memories: { orderBy: { lastUpdated: 'desc' }, take: 12 },
       },
     });

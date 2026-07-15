@@ -19,6 +19,7 @@ import {
   getClaimedJobIdsForBusiness,
   listHermesJobsSafe,
 } from '@/lib/automation-sync';
+import { generateIngestToken } from '@/lib/content-ingest';
 import { createHermesJob } from '@/lib/hermes-jobs';
 import { createN8nWorkflow } from '@/lib/n8n-client';
 import { generateN8nWorkflow } from '@/lib/n8n-workflow-gen';
@@ -34,6 +35,8 @@ const DeploySchema = z.object({
   n8nApiKey: z.string().optional(),
   schedule: z.string().optional(),
   deliver: z.string().optional(),
+  /** Public Forge origin for content ingest callbacks (window.location.origin). */
+  forgeBaseUrl: z.string().url().optional(),
   /** Optional override; defaults to automation.hermesAgentProfileId. */
   hermesAgentProfileId: z.string().min(1).optional().nullable(),
   credentialMap: z.record(z.string(), z.object({ id: z.string(), name: z.string(), type: z.string().optional() })).optional(),
@@ -191,7 +194,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const schedule = body.schedule ?? defaultCronSchedule(plan);
     const deliver = body.deliver ?? defaultCronDeliver(plan);
-    const prompt = buildCronPrompt(process, plan, assignedAgent);
+
+    // Ensure stable ingest token for Hermes → Forge Content handoff
+    const existingTokenRow = await prisma.automation.findUnique({
+      where: { id: automation.id },
+      select: { ingestToken: true },
+    });
+    let ingestToken = existingTokenRow?.ingestToken ?? null;
+    if (!ingestToken) {
+      ingestToken = generateIngestToken();
+      await prisma.automation.update({
+        where: { id: automation.id },
+        data: { ingestToken },
+      });
+    }
+
+    const forgeBaseUrl =
+      body.forgeBaseUrl?.replace(/\/$/, '') ||
+      request.nextUrl.origin.replace(/\/$/, '');
+
+    const prompt = buildCronPrompt(process, plan, assignedAgent, {
+      forgeBaseUrl,
+      ingestToken,
+    });
     const jobName = forgeJobNameForProcess(process.name);
 
     const [jobs, claimedJobIds] = await Promise.all([
@@ -223,6 +248,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         externalUrl: null,
         deployedAt: new Date(),
         hermesAgentProfileId: assignedAgent.id,
+        ingestToken,
       },
     });
     const updated = await loadAutomationWithRelations(automation.id);
@@ -254,6 +280,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         linkedExisting: Boolean(existingJob),
         agentId: assignedAgent.id,
         agentName: assignedAgent.displayName,
+        contentIngest: {
+          url: `${forgeBaseUrl}/api/content/ingest`,
+          enabled: true,
+        },
       },
     });
   } catch (error) {

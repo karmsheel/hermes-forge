@@ -45,10 +45,8 @@ function formatUpdated(iso: string): string {
 
 export function DocumentsStudio({
   businessId,
-  businessName,
 }: {
   businessId: string | null;
-  businessName: string | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -370,7 +368,7 @@ export function DocumentsStudio({
             </li>
           )}
         </ul>
-        {businessName && (
+        {businessId && (
           <p className="border-t border-border px-3 py-2 text-[10px] text-text-faint">
             Pinned docs feed Hermes when mapping processes
           </p>

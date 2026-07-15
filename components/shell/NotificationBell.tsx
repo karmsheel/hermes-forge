@@ -185,6 +185,18 @@ export function NotificationBell() {
                           Open decision
                         </Link>
                       )}
+                      {n.type === "content_review" && (
+                        <Link
+                          href="/content"
+                          className="text-[10px] text-accent hover:underline px-1 py-0.5"
+                          onClick={() => {
+                            setOpenPanel(false);
+                            void markRead([n.id]);
+                          }}
+                        >
+                          Open Content
+                        </Link>
+                      )}
                     </div>
                     <div className="text-[10px] text-text-soft mt-1">
                       {new Date(n.createdAt).toLocaleString()}

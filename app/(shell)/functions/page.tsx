@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
@@ -13,25 +13,36 @@ import {
   type AnalyticsProcess,
 } from "@/components/functions/BusinessAnalyticsSection";
 import { FunctionOrgChart } from "@/components/functions/FunctionOrgChart";
-import { aggregateFunctions } from "@/lib/functions";
+import { NewFunctionDialog } from "@/components/functions/NewFunctionDialog";
+import { aggregateFunctions, normalizeDepartment } from "@/lib/functions";
 import type { FunctionSummary } from "@/lib/functions";
 import type { ProcessSummary } from "@/lib/types";
-import { setActiveFunctionFilter } from "@/lib/workshop-storage";
+
+type DeclaredFunction = {
+  id: string;
+  name: string;
+  description: string | null;
+};
 
 export default function FunctionsPage() {
   const router = useRouter();
   const { currentBusiness } = useShell();
-  const { go, openWorkshop, enabled: tabsEnabled } = useShellNavigate();
+  const { go } = useShellNavigate();
   const [business, setBusiness] = useState<AnalyticsBusiness | null>(null);
   const [processes, setProcesses] = useState<AnalyticsProcess[]>([]);
+  const [declared, setDeclared] = useState<DeclaredFunction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newOpen, setNewOpen] = useState(false);
+  const [expandedFunction, setExpandedFunction] = useState<string | null>(null);
+  const [movingProcessId, setMovingProcessId] = useState<string | null>(null);
 
   const functions: FunctionSummary[] = useMemo(
     () =>
       aggregateFunctions(
         processes.map((p) => ({ department: p.department }) as ProcessSummary),
+        declared,
       ),
-    [processes],
+    [processes, declared],
   );
 
   const load = useCallback(async () => {
@@ -63,6 +74,14 @@ export default function FunctionsPage() {
             estimatedTimeSaved: p.estimatedTimeSaved,
             trigger: p.trigger,
             manualSteps: p.manualSteps,
+            status: p.status,
+          })),
+        );
+        setDeclared(
+          (data.functions || []).map((f: DeclaredFunction) => ({
+            id: f.id,
+            name: f.name,
+            description: f.description ?? null,
           })),
         );
       } else {
@@ -79,11 +98,13 @@ export default function FunctionsPage() {
             : null,
         );
         setProcesses([]);
+        setDeclared([]);
       }
     } catch {
       toast.error("Failed to load functions");
       setBusiness(null);
       setProcesses([]);
+      setDeclared([]);
     } finally {
       setLoading(false);
     }
@@ -93,28 +114,89 @@ export default function FunctionsPage() {
     load();
   }, [load, currentBusiness?.id]);
 
-  function openFunctionInWorkshop(functionName: string, e?: MouseEvent) {
-    const businessId = business?.id || currentBusiness?.id;
-    if (businessId) {
-      setActiveFunctionFilter(businessId, functionName);
+  // Drop expansion if the function disappears after a move/reload
+  useEffect(() => {
+    if (expandedFunction && !functions.some((f) => f.name === expandedFunction)) {
+      setExpandedFunction(null);
     }
-    const newTab = Boolean(e && (e.metaKey || e.ctrlKey));
-    openWorkshop({
-      businessId: businessId ?? undefined,
-      businessName: business?.name || currentBusiness?.name,
-      newTab,
-    });
+  }, [functions, expandedFunction]);
+
+  function toggleFunction(name: string) {
+    setExpandedFunction((prev) => (prev === name ? null : name));
   }
 
-  function openWorkshopClick(e: MouseEvent) {
-    openWorkshop({
-      businessId: business?.id || currentBusiness?.id,
-      businessName: business?.name || currentBusiness?.name,
-      newTab: e.metaKey || e.ctrlKey,
+  async function moveWorkflow(processId: string, toFunction: string) {
+    const target = normalizeDepartment(toFunction);
+    const proc = processes.find((p) => p.id === processId);
+    if (!proc) return;
+    if (normalizeDepartment(proc.department) === target) return;
+
+    setMovingProcessId(processId);
+    // Optimistic update
+    setProcesses((prev) =>
+      prev.map((p) => (p.id === processId ? { ...p, department: target } : p)),
+    );
+
+    try {
+      const res = await fetch(`/api/processes/${processId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          department: target,
+          actor: "human",
+          confirmLiveEdit: true,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Failed to move workflow",
+        );
+      }
+      const updated = await res.json();
+      setProcesses((prev) =>
+        prev.map((p) =>
+          p.id === processId
+            ? {
+                ...p,
+                department: updated.department ?? target,
+                name: updated.name ?? p.name,
+                status: updated.status ?? p.status,
+              }
+            : p,
+        ),
+      );
+      toast.success(`Moved to ${target}`);
+      setExpandedFunction(target);
+    } catch (err) {
+      // Revert
+      setProcesses((prev) =>
+        prev.map((p) =>
+          p.id === processId ? { ...p, department: proc.department } : p,
+        ),
+      );
+      toast.error(err instanceof Error ? err.message : "Failed to move workflow");
+    } finally {
+      setMovingProcessId(null);
+    }
+  }
+
+  function handleFunctionCreated(fn: DeclaredFunction) {
+    setDeclared((prev) => {
+      if (prev.some((p) => p.name.toLowerCase() === fn.name.toLowerCase())) return prev;
+      return [...prev, fn].sort((a, b) => a.name.localeCompare(b.name));
     });
+    setExpandedFunction(fn.name);
+    toast.success(`Added “${fn.name}” to the map`);
   }
 
   const businessName = business?.name || currentBusiness?.name || "Your business";
+  const workflows = processes.map((p) => ({
+    id: p.id,
+    name: p.name,
+    department: p.department,
+    status: p.status ?? null,
+  }));
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 w-full">
@@ -123,24 +205,23 @@ export default function FunctionsPage() {
         processes={processes}
         functions={functions}
       />
-      <div className="flex items-end justify-between mb-8">
+      <div className="flex items-end justify-between mb-8 gap-4">
         <div>
-          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Your workspace</div>
+          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Map stage</div>
           <h1 className="text-3xl font-semibold tracking-tight">Functions</h1>
           <p className="text-sm text-text-muted mt-2 max-w-2xl">
-            Business areas and workflows for the active business. Click a function to open it in the
-            workshop
-            {tabsEnabled ? " (Ctrl+click for a new tab)" : ""}.
+            Business areas and workflows. Click a function to list its workflows; use Move to reassign
+            a workflow to another function.
           </p>
         </div>
         <button
           type="button"
-          onClick={openWorkshopClick}
-          className="btn-primary text-sm"
-          title={tabsEnabled ? "Open workshop · Ctrl+click for new tab" : "Open workshop"}
+          onClick={() => setNewOpen(true)}
+          className="btn-primary text-sm shrink-0"
+          disabled={!business}
         >
           <Plus className="w-4 h-4" />
-          New process
+          New function
         </button>
       </div>
 
@@ -151,7 +232,9 @@ export default function FunctionsPage() {
         </div>
       ) : !business ? (
         <div className="card p-10 text-center border-dashed">
-          <p className="text-text-muted mb-4">No active business. Select or create one in Business Manager.</p>
+          <p className="text-text-muted mb-4">
+            No active business. Select or create one in Business Manager.
+          </p>
           <button type="button" onClick={() => go("/business-manager")} className="btn-primary">
             Open Business Manager
           </button>
@@ -164,21 +247,22 @@ export default function FunctionsPage() {
                 <FunctionOrgChart
                   businessName={businessName}
                   functions={[]}
-                  onSelectFunction={openFunctionInWorkshop}
+                  workflows={[]}
+                  expandedFunction={null}
+                  onToggleFunction={toggleFunction}
+                  onMoveWorkflow={moveWorkflow}
                 />
                 <p className="text-sm text-text-muted text-center mt-6 max-w-md mx-auto">
-                  No functions yet. Create processes in the workshop — they are grouped by department
-                  (e.g. Marketing, Operations).
+                  No functions yet. Add a business area to the map, then group workflows under it.
                 </p>
                 <div className="flex justify-center mt-4">
                   <button
                     type="button"
-                    onClick={openWorkshopClick}
+                    onClick={() => setNewOpen(true)}
                     className="btn-primary text-sm"
-                    title={tabsEnabled ? "Open workshop · Ctrl+click for new tab" : "Open workshop"}
                   >
                     <Plus className="w-4 h-4" />
-                    Go to workshop
+                    New function
                   </button>
                 </div>
               </div>
@@ -186,7 +270,11 @@ export default function FunctionsPage() {
               <FunctionOrgChart
                 businessName={businessName}
                 functions={functions}
-                onSelectFunction={openFunctionInWorkshop}
+                workflows={workflows}
+                expandedFunction={expandedFunction}
+                onToggleFunction={toggleFunction}
+                onMoveWorkflow={moveWorkflow}
+                movingProcessId={movingProcessId}
               />
             )}
           </section>
@@ -200,6 +288,16 @@ export default function FunctionsPage() {
           </div>
         </>
       )}
+
+      <NewFunctionDialog
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        onCreated={handleFunctionCreated}
+        existingNames={functions.map((f) => f.name)}
+        industry={business?.industry}
+        description={business?.description}
+        goals={business?.goals}
+      />
     </main>
   );
 }

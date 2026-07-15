@@ -56,6 +56,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   processes           Process[]
+  functions           BusinessFunction[]
   conversations       Conversation[]
   memories            Memory[]
   documents           BusinessDocument[]
@@ -68,6 +69,23 @@ model Business {
   humanPersonnel      HumanPersonnel[]
   hermesAgentProfiles HermesAgentProfile[]
   agentTrainingItems  AgentTrainingItem[]
+}
+
+/// Declared org function / department on the business map (Map stage).
+/// Empty functions (no workflows yet) still appear on the Functions chart.
+model BusinessFunction {
+  id          String   @id @default(cuid())
+  businessId  String
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId])
 }
 
 /// Operational content inventory (Phase 5) — pieces you ship, not knowledge docs.
@@ -354,6 +372,9 @@ model Automation {
   // Hired Hermes agent that owns this automation (4.10)
   hermesAgentProfileId String?
   hermesAgentProfile   HermesAgentProfile? @relation(fields: [hermesAgentProfileId], references: [id], onDelete: SetNull)
+
+  /// Bearer token for POST /api/content/ingest (Hermes cron → Content inventory)
+  ingestToken       String?  @unique
 
   messages          AutomationMessage[]
   createdAt         DateTime @default(now())

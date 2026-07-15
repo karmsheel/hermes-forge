@@ -24,6 +24,7 @@ import {
   Square,
 } from "lucide-react";
 import { toast } from "sonner";
+import { AutomationChat } from "@/components/automations/AutomationChat";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { ConversationsMenu } from "@/components/workshop/ConversationsMenu";
@@ -71,8 +72,10 @@ import {
   type QueuedMessage,
 } from "@/lib/message-queue";
 import type { ChatbarAgentOption, ChatMessage, Conversation } from "@/lib/types";
+import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
+import { CollapsibleAgentView } from "./CollapsibleAgentView";
 import { ContextReceipt } from "./ContextReceipt";
 import { ToolActivityStrip } from "./ToolActivityStrip";
 import { useChatbar } from "./ChatbarProvider";
@@ -92,6 +95,8 @@ type IntroBanner = {
   routeKey: string;
   title: string;
   body: string;
+  /** Live snapshot — rendered collapsed under “What Hermes can see”. */
+  agentView?: string;
 };
 
 /**
@@ -113,6 +118,8 @@ export function ChatbarPanel() {
     introRequestKey,
     processSession,
     isProcessScoped,
+    automationSession,
+    isAutomationScoped,
     composerFocusRequest,
     decisionSessionRequest,
   } = useChatbar();
@@ -324,7 +331,7 @@ export function ChatbarPanel() {
       snapParts.push(`Selection: ${pageRegistration.selection.summary}`);
     }
 
-    const body = buildPageIntroCopy({
+    const intro = buildPageIntroCopy({
       businessName,
       page: blurb,
       snapshotText:
@@ -336,7 +343,8 @@ export function ChatbarPanel() {
     setIntroBanner({
       routeKey: blurb.routeKey,
       title: `Welcome to ${blurb.title}`,
-      body,
+      body: intro.body,
+      ...(intro.agentView ? { agentView: intro.agentView } : {}),
     });
   }, [
     isOpen,
@@ -915,6 +923,115 @@ export function ChatbarPanel() {
     messageCount: processSession?.messages?.length ?? 0,
   };
 
+  // Automation studio mode: design chat for approved process (no dual column).
+  if (isAutomationScoped && automationSession) {
+    const autoMeterInput = {
+      messages: automationSession.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      })),
+      draftText: "",
+      contextText: pageRegistration?.snapshotLines?.join("\n") ?? "",
+    };
+    const autoDiagnosticsInput = {
+      route: pathname,
+      businessId,
+      businessName: currentBusiness?.name ?? null,
+      contextMode,
+      residency,
+      side,
+      isProcessScoped: false,
+      processId: automationSession.processId,
+      processName: automationSession.processName,
+      conversationId: null,
+      messageCount: automationSession.messages.length,
+    };
+
+    return (
+      <aside
+        className={`chatbar-panel chatbar-panel--side-${isLeft ? "left" : "right"} chatbar-panel--process${isOpen ? " is-open" : " is-collapsed"}`}
+        aria-label="Hermes automation chat"
+        aria-hidden={!isOpen}
+        inert={!isOpen ? true : undefined}
+      >
+        <header className="chatbar-panel__header">
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+            <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
+            <div className="chatbar-panel__brand-copy min-w-0">
+              <p className="chatbar-panel__eyebrow">Automation</p>
+              <span
+                className="chatbar-panel__session-title"
+                title={automationSession.processName}
+              >
+                {automationSession.processName}
+              </span>
+            </div>
+          </div>
+          <div className="chatbar-panel__header-actions">
+            {automationSession.extractingLabel ? (
+              <span className="chatbar-panel__pill chatbar-panel__pill--warn" role="status">
+                {automationSession.extractingLabel}
+              </span>
+            ) : null}
+            <span
+              className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
+              title={status.error || conn.text}
+              role="status"
+            >
+              {conn.text}
+            </span>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={automationSession.onOpenConnection}
+              title="Hermes connection"
+              aria-label="Hermes connection"
+            >
+              <PlugZap className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+
+        <div className="chatbar-panel__process-body">
+          <AutomationChat
+            messages={automationSession.messages}
+            processName={automationSession.processName}
+            isLoading={automationSession.isLoading}
+            onSend={automationSession.onSend}
+            onOpenConnection={automationSession.onOpenConnection}
+            embedded
+          />
+        </div>
+
+        <ChatbarDesktopBar
+          meterInput={autoMeterInput}
+          diagnosticsInput={autoDiagnosticsInput}
+          disabled={!businessId}
+        />
+      </aside>
+    );
+  }
+
   // Process mode: workshop registers a live process session (PR-5).
   // Studio history/composer are hidden; ProcessChat (mentions + slash) runs in the dock.
   if (isProcessScoped && processSession) {
@@ -1200,7 +1317,12 @@ export function ChatbarPanel() {
                 <Info className="w-3.5 h-3.5" aria-hidden />
                 <strong>{introBanner.title}</strong>
               </div>
-              <div className="chatbar-panel__intro-body">{introBanner.body}</div>
+              <div className="chatbar-panel__intro-body">
+                <ChatMarkdown markdown={introBanner.body} />
+              </div>
+              {introBanner.agentView ? (
+                <CollapsibleAgentView text={introBanner.agentView} />
+              ) : null}
               <div className="chatbar-panel__intro-actions">
                 <button type="button" className="chatbar-panel__intro-dismiss" onClick={dismissIntro}>
                   Got it
@@ -1271,13 +1393,19 @@ export function ChatbarPanel() {
                 <div className="chatbar-panel__message-role">
                   {isUser ? "You" : "Hermes"}
                 </div>
-                <div className="chatbar-panel__message-content">
+                <div
+                  className={`chatbar-panel__message-content${
+                    !isUser ? " chatbar-panel__message-content--md" : ""
+                  }`}
+                >
                   {isStreamingEmpty ? (
                     <span className="chatbar-panel__thinking">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
                     </span>
-                  ) : (
+                  ) : isUser ? (
                     message.content
+                  ) : (
+                    <ChatMarkdown markdown={message.content} />
                   )}
                 </div>
                 {receipt ? <ContextReceipt receipt={receipt} /> : null}

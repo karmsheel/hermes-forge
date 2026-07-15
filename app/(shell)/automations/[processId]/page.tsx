@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { AutomationSidebar } from "@/components/automations/AutomationSidebar";
-import { AutomationChat } from "@/components/automations/AutomationChat";
 import { MermaidDiagram } from "@/components/workshop/MermaidDiagram";
 import { N8nConnectionDialog } from "@/components/n8n/N8nConnectionDialog";
+import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { automationStatusToDeployStatus } from "@/lib/automation-types";
+import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session";
 import type { AutomationStudioData } from "@/lib/automation-types";
 
 type PageProps = { params: Promise<{ processId: string }> };
@@ -21,9 +22,12 @@ export default function AutomationStudioPage({ params }: PageProps) {
   const router = useRouter();
   const { openHermesConnection, currentBusiness } = useShell();
   const { config: hermesConfig } = useHermesConnection();
+  const {
+    registerAutomationSession,
+    open: openChatbar,
+  } = useChatbar();
 
   const [studio, setStudio] = useState<AutomationStudioData | null>(null);
-  const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatLoading, setChatLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -64,10 +68,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
   const loadStudio = useCallback(async () => {
     setLoading(true);
     try {
-      const [studioRes, bizRes] = await Promise.all([
-        fetch(`/api/processes/${processId}/automation`),
-        fetch("/api/automations"),
-      ]);
+      const studioRes = await fetch(`/api/processes/${processId}/automation`);
 
       if (studioRes.status === 401) {
         router.push("/");
@@ -84,11 +85,6 @@ export default function AutomationStudioPage({ params }: PageProps) {
       data = await syncCronIfConnected(data);
       setStudio(data);
       setCredentialMap(data.credentialMap ?? {});
-
-      if (bizRes.ok) {
-        const biz = await bizRes.json();
-        setBusinessName(biz.business?.name ?? null);
-      }
     } catch {
       toast.error("Failed to load automation studio");
       router.push("/automations");
@@ -182,63 +178,109 @@ export default function AutomationStudioPage({ params }: PageProps) {
     }
   }
 
-  async function handleSendMessage(content: string) {
-    if (!hermesConfig || !studio) return;
+  const handleSendMessage = useCallback(
+    async (content: string) => {
+      if (!hermesConfig || !studio) return;
 
-    setChatLoading(true);
+      setChatLoading(true);
 
-    const optimisticUser = {
-      id: `temp-${Date.now()}`,
-      automationId: studio.automation.id,
-      role: "user" as const,
-      content,
-      createdAt: new Date().toISOString(),
+      const optimisticUser = {
+        id: `temp-${Date.now()}`,
+        automationId: studio.automation.id,
+        role: "user" as const,
+        content,
+        createdAt: new Date().toISOString(),
+      };
+
+      setStudio((prev) =>
+        prev
+          ? {
+              ...prev,
+              automation: {
+                ...prev.automation,
+                messages: [...prev.automation.messages, optimisticUser],
+              },
+            }
+          : prev
+      );
+
+      try {
+        const res = await fetch(`/api/processes/${processId}/automation/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content,
+            ...hermesApiBody(hermesConfig),
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Chat failed");
+        }
+
+        const data = await res.json();
+        setStudio(data);
+        setChatLoading(false);
+
+        if (data.cronLinked) {
+          toast.success("Detected existing Hermes cron job for this process");
+        }
+
+        if (data.runExtraction) {
+          void runExtraction(processId);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
+        await loadStudio();
+        setChatLoading(false);
+      }
+    },
+    [hermesConfig, studio, processId, runExtraction, loadStudio]
+  );
+
+  // Bind automation design chat into the global chatbar (no dual chat column).
+  useEffect(() => {
+    if (!studio) {
+      registerAutomationSession(null);
+      return;
+    }
+
+    const session: AutomationSessionBinding = {
+      processId,
+      processName: studio.process.name,
+      messages: studio.automation.messages,
+      isLoading: chatLoading,
+      extractingLabel: extracting ? "Updating plan…" : null,
+      onSend: (content) => {
+        void handleSendMessage(content);
+      },
+      onOpenConnection: openHermesConnection,
     };
 
-    setStudio((prev) =>
-      prev
-        ? {
-            ...prev,
-            automation: {
-              ...prev.automation,
-              messages: [...prev.automation.messages, optimisticUser],
-            },
-          }
-        : prev
-    );
+    registerAutomationSession(session);
+  }, [
+    studio,
+    processId,
+    chatLoading,
+    extracting,
+    handleSendMessage,
+    openHermesConnection,
+    registerAutomationSession,
+  ]);
 
-    try {
-      const res = await fetch(`/api/processes/${processId}/automation/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          ...hermesApiBody(hermesConfig),
-        }),
-      });
+  useEffect(() => {
+    return () => {
+      registerAutomationSession(null);
+    };
+  }, [registerAutomationSession]);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Chat failed");
-      }
-
-      const data = await res.json();
-      setStudio(data);
-      setChatLoading(false);
-
-      if (data.cronLinked) {
-        toast.success("Detected existing Hermes cron job for this process");
-      }
-
-      if (data.runExtraction) {
-        void runExtraction(processId);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
-      await loadStudio();
-      setChatLoading(false);
+  // Open chatbar when entering automation studio so design chat is discoverable
+  useEffect(() => {
+    if (studio?.process.id) {
+      openChatbar();
     }
-  }
+  }, [studio?.process.id, openChatbar]);
 
   if (loading || !studio) {
     return (
@@ -251,34 +293,36 @@ export default function AutomationStudioPage({ params }: PageProps) {
   const deployStatus = automationStatusToDeployStatus(studio.automation);
 
   return (
-      <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">Automation studio</div>
-            <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
-              {businessName ? `${businessName} · ${studio.process.name}` : studio.process.name}
-            </h1>
+    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
+      <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-widest text-text-muted">
+            Automation studio
           </div>
-          <div className="flex items-center gap-2">
-            {extracting && (
-              <div className="text-[10px] text-green flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
-                Updating plan…
-              </div>
-            )}
-            <button
-              onClick={loadStudio}
-              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh
-            </button>
-          </div>
-        </header>
+          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+            {studio.process.name}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {extracting && (
+            <div className="text-[10px] text-green flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
+              Updating plan…
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={loadStudio}
+            className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
+      </header>
 
       <div className="flex-1 flex min-h-0">
         <AutomationSidebar
           processName={studio.process.name}
-          businessName={businessName}
           department={studio.process.department}
           trigger={studio.process.trigger}
           inputs={studio.process.inputs}
@@ -307,6 +351,10 @@ export default function AutomationStudioPage({ params }: PageProps) {
               Approved process map
             </div>
             <h1 className="text-lg font-semibold tracking-tight">{studio.process.name}</h1>
+            <p className="text-[11px] text-text-muted mt-1">
+              Design the automation in Hermes chat (right dock). Assign an agent and deploy from
+              the left panel when the plan is ready.
+            </p>
           </div>
 
           <div className="flex-1 min-h-0 relative bg-[radial-gradient(circle_at_1px_1px,#27272a_1px,transparent_0)] [background-size:24px_24px]">
@@ -322,14 +370,6 @@ export default function AutomationStudioPage({ params }: PageProps) {
             )}
           </div>
         </main>
-
-        <AutomationChat
-          messages={studio.automation.messages}
-          processName={studio.process.name}
-          isLoading={chatLoading}
-          onSend={handleSendMessage}
-          onOpenConnection={openHermesConnection}
-        />
       </div>
 
       <N8nConnectionDialog open={n8nConnectionOpen} onClose={() => setN8nConnectionOpen(false)} />

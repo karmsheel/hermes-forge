@@ -13,21 +13,9 @@ export default function DocumentsPage() {
           Knowledge
         </div>
         <h1 className="text-3xl font-semibold tracking-tight">Documents</h1>
-        {currentBusiness && (
-          <p className="mt-1 text-sm text-accent">in {currentBusiness.name}</p>
-        )}
-        <p className="mt-3 max-w-2xl text-sm text-text-muted">
-          Durable business knowledge — basics, customers, market, strategy, and
-          notes. Pin documents so Hermes uses them as context when mapping
-          processes or helping you strategize. Open Hermes chat to talk through
-          updates; edit markdown here when you want precise control.
-        </p>
       </div>
 
-      <DocumentsStudio
-        businessId={currentBusiness?.id ?? null}
-        businessName={currentBusiness?.name ?? null}
-      />
+      <DocumentsStudio businessId={currentBusiness?.id ?? null} />
     </main>
   );
 }

@@ -13,6 +13,7 @@ export interface AnalyticsProcess {
   estimatedTimeSaved: number | null;
   trigger?: string | null;
   manualSteps?: string | null;
+  status?: string | null;
 }
 
 export interface AnalyticsBusiness {

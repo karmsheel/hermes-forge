@@ -7,6 +7,8 @@ const PUBLIC_PATHS = ['/', '/login', '/signup', '/sign-in'];
 const AUTH_API_PREFIX = '/api/auth';
 // Hermes connection probes run before the user signs in (local BYOK gateway).
 const HERMES_API_PREFIX = '/api/hermes';
+// Token-authenticated agent → Content handoff (Automation.ingestToken).
+const CONTENT_INGEST_PATH = '/api/content/ingest';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -22,7 +24,8 @@ export async function middleware(request: NextRequest) {
   if (
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith(AUTH_API_PREFIX) ||
-    pathname.startsWith(HERMES_API_PREFIX)
+    pathname.startsWith(HERMES_API_PREFIX) ||
+    pathname === CONTENT_INGEST_PATH
   ) {
     return NextResponse.next();
   }

@@ -93,4 +93,19 @@ describe("simpleMarkdownToHtml", () => {
     assert.match(html, /&lt;script&gt;/);
     assert.doesNotMatch(html, /<script>/);
   });
+
+  it("renders bold and italic", () => {
+    const html = simpleMarkdownToHtml("Say **hello** and *world* please.");
+    assert.match(html, /<strong>hello<\/strong>/);
+    assert.match(html, /<em>world<\/em>/);
+    assert.doesNotMatch(html, /\*\*hello\*\*/);
+    assert.doesNotMatch(html, /\*world\*/);
+  });
+
+  it("renders inline code and lists", () => {
+    const html = simpleMarkdownToHtml("Use `npm test`\n\n- one\n- two");
+    assert.match(html, /<code class="doc-md__code">npm test<\/code>/);
+    assert.match(html, /<ul class="doc-md__ul">/);
+    assert.match(html, /<li>one<\/li>/);
+  });
 });

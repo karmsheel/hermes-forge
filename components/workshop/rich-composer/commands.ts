@@ -67,6 +67,13 @@ export const SLASH_COMMANDS: ReadonlyArray<SlashCommandDescriptor> = [
     // No handler — parent page routes this to the Export tab.
   },
   {
+    command: "split",
+    label: "Split into two workflows",
+    description: "Peel a second process out of this diagram (preview, then confirm).",
+    argHint: "which flow to peel off",
+    // No handler — parent opens the split dialog.
+  },
+  {
     command: "accuracy",
     label: "Confirm accuracy",
     description: "Tell Hermes the current map is accurate.",

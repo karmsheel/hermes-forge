@@ -153,7 +153,6 @@ interface GodModeCanvasProps {
   onStatsChange?: (stats: {
     total: number;
     withDiagrams: number;
-    businessName: string | null;
   }) => void;
 }
 
@@ -164,7 +163,6 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
-  const [businessName, setBusinessName] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [layout, setLayout] = useState<LayoutResult | null>(null);
@@ -208,15 +206,13 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       const biz = data.business;
 
       if (!biz) {
-        setBusinessName(null);
         setBusinessId(null);
         setTotalCount(0);
         setLayout(null);
-        onStatsChange?.({ total: 0, withDiagrams: 0, businessName: null });
+        onStatsChange?.({ total: 0, withDiagrams: 0 });
         return;
       }
 
-      setBusinessName(biz.name);
       setBusinessId(biz.id);
       setTotalCount(processes.length);
 
@@ -224,7 +220,6 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       onStatsChange?.({
         total: processes.length,
         withDiagrams: withDiagrams.length,
-        businessName: biz.name,
       });
 
       if (withDiagrams.length === 0) {
@@ -377,7 +372,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     );
   }
 
-  if (!businessName) {
+  if (!businessId) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="text-center card max-w-lg p-10">

@@ -11,7 +11,6 @@ export default function GodModePage() {
   const [stats, setStats] = useState({
     total: 0,
     withDiagrams: 0,
-    businessName: null as string | null,
   });
 
   useEffect(() => {
@@ -30,19 +29,13 @@ export default function GodModePage() {
         <div>
           <div className="text-[10px] uppercase tracking-widest text-text-muted">Overview</div>
           <h1 className="font-semibold text-sm text-text-strong">God Mode</h1>
-          {stats.businessName && (
+          {stats.total > 0 && (
             <p className="text-xs text-text-muted mt-0.5">
-              {stats.businessName}
-              {stats.total > 0 && (
+              {stats.total} process{stats.total !== 1 ? "es" : ""}
+              {stats.withDiagrams > 0 && (
                 <>
                   {" "}
-                  · {stats.total} process{stats.total !== 1 ? "es" : ""}
-                  {stats.withDiagrams > 0 && (
-                    <>
-                      {" "}
-                      · {stats.withDiagrams} with diagram{stats.withDiagrams !== 1 ? "s" : ""}
-                    </>
-                  )}
+                  · {stats.withDiagrams} with diagram{stats.withDiagrams !== 1 ? "s" : ""}
                 </>
               )}
             </p>

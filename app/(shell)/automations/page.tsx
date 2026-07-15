@@ -103,10 +103,7 @@ export default function AutomationsPage() {
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
         <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">Automations</div>
-            <h1 className="font-semibold text-sm text-text-strong">
-              {businessName ?? "Approved process maps"}
-            </h1>
+            <h1 className="font-semibold text-sm text-text-strong">Automations</h1>
           </div>
           <div className="flex items-center gap-2">
             <button

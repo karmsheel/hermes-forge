@@ -75,17 +75,14 @@ function formatRecordedNote(event: BusinessEventRecord): string | null {
 function BusinessLogFeedList({
   businessId,
   filter,
-  fallbackName,
 }: {
   businessId: string | null;
   filter: BusinessLogFilter;
-  fallbackName: string | null;
 }) {
   const [events, setEvents] = useState<BusinessEventRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [bizName, setBizName] = useState<string | null>(fallbackName);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,7 +100,6 @@ function BusinessLogFeedList({
         const data = await res.json();
         if (cancelled) return;
         setEvents((data.events ?? []) as BusinessEventRecord[]);
-        setBizName(data.business?.name ?? fallbackName ?? null);
         setNextCursor(data.nextCursor ?? null);
       })
       .catch(() => {
@@ -118,7 +114,7 @@ function BusinessLogFeedList({
     return () => {
       cancelled = true;
     };
-  }, [businessId, filter, fallbackName]);
+  }, [businessId, filter]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -280,11 +276,6 @@ function BusinessLogFeedList({
         </div>
       )}
 
-      {bizName && (
-        <p className="text-xs text-text-faint text-center mt-6">
-          Showing activity for {bizName}
-        </p>
-      )}
     </>
   );
 }
@@ -312,7 +303,6 @@ export function BusinessLogFeed() {
         key={`${currentBusiness?.id ?? "no-business"}-${filter}`}
         businessId={currentBusiness?.id ?? null}
         filter={filter}
-        fallbackName={currentBusiness?.name ?? null}
       />
     </div>
   );

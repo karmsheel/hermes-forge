@@ -14,7 +14,13 @@ import {
   shouldPromptForAccuracy,
   userConfirmsAccuracy,
 } from '@/lib/process-approval';
-import { executeProcessSplit, shouldExecuteSplit } from '@/lib/process-split';
+import {
+  analyzeProcessSplit,
+  executeProcessSplit,
+  formatSplitAnalysisForPrompt,
+  shouldExecuteSplit,
+} from '@/lib/process-split';
+import { extractSystemsFromFields } from '@/lib/systems';
 import { liveOccurredNow, recordBusinessEvent, truncatePreview } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { buildNodeCommentPrefix } from '@/lib/node-comment';
@@ -225,6 +231,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // 4.18 — pinned / basics knowledge documents
     const knowledgeDocuments = await loadDocumentsForPrompt(process.businessId, prisma);
 
+    const splitAnalysis = analyzeProcessSplit(
+      process.diagramMermaid,
+      approvedFromChat ? 'forged' : process.status
+    );
+    const splitAnalysisNote = formatSplitAnalysisForPrompt(splitAnalysis);
+
+    // 3.5 — systems from Questions tab + known tools in process text
+    const processSystems = extractSystemsFromFields({
+      name: process.name,
+      description: process.description,
+      trigger: process.trigger,
+      inputs: process.inputs,
+      outputs: process.outputs,
+      manualSteps: process.manualSteps,
+    });
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
@@ -240,6 +262,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
             processMd,
             knowledgeDocuments,
             personnel,
+            systems: processSystems,
+            splitAnalysisNote: splitAnalysisNote || null,
             shouldAskAccuracy:
               !approvedFromChat &&
               process.status !== 'approved' &&

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast as sonnerToast } from "sonner";
-import { CheckCircle2, RefreshCw, Zap } from "lucide-react";
+import { CheckCircle2, RefreshCw, Scissors, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { serializeNodeCommentSummary } from "@/lib/node-comment";
@@ -16,10 +16,12 @@ import { DetailsPanel } from "@/components/workshop/DetailsPanel";
 import { SourcePanel } from "@/components/workshop/SourcePanel";
 import { QuestionsPanel } from "@/components/workshop/QuestionsPanel";
 import { ExportMenu } from "@/components/export/ExportMenu";
+import { SplitProcessDialog } from "@/components/workshop/SplitProcessDialog";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import { analyzeSplitCandidates } from "@/lib/mermaid-graph";
 import {
   aggregateFunctions,
   filterProcessesByFunctionKeepingActive,
@@ -47,6 +49,10 @@ import {
   personnelToMentionables,
   type PersonnelRoster,
 } from "@/lib/personnel/context";
+import {
+  extractSystemsFromFields,
+  systemsToMentionables,
+} from "@/lib/systems";
 import type { Mentionable } from "@/components/workshop/rich-composer/parse";
 import { forgeFetch } from "@/lib/forge-fetch";
 
@@ -60,7 +66,6 @@ export type WorkshopSessionProps = {
   /** Stable id when multi-mounted under desktop tabs (4.15). */
   tabId?: string;
   businessId: string;
-  businessName: string;
   /** Prefer this process on first load (tab snapshot). */
   initialProcessId?: string | null;
   initialWorkspaceTab?: WorkspaceTab;
@@ -79,7 +84,6 @@ export type WorkshopSessionProps = {
 export function WorkshopSession({
   tabId: _tabId,
   businessId: scopedBusinessId,
-  businessName: scopedBusinessName,
   initialProcessId = null,
   initialWorkspaceTab,
   isActive = true,
@@ -89,7 +93,6 @@ export function WorkshopSession({
   const [activeProcess, setActiveProcess] = useState<ProcessWithMessages | null>(null);
   const [activeId, setActiveId] = useState<string | null>(initialProcessId ?? null);
   const businessId = scopedBusinessId;
-  const businessName = scopedBusinessName;
   const [functionFilter, setFunctionFilter] = useState<string | null>(null);
   /** 4.10 — roster for @-mentions (actors + roles) */
   const [personnelRoster, setPersonnelRoster] = useState<PersonnelRoster | null>(null);
@@ -119,6 +122,9 @@ export function WorkshopSession({
     const [activeTab, setActiveTab] = useState<WorkspaceTab>(
       initialWorkspaceTab ?? "diagram",
     );
+    // Diagram split: multi-flow → two processes
+    const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+    const [splitInstruction, setSplitInstruction] = useState("");
     // 3.4 Conversation fork
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const activeConversationIdRef = useRef<string | null>(null);
@@ -820,17 +826,51 @@ export function WorkshopSession({
   // 3.5: Handle slash commands that the composer couldn't handle itself —
   // e.g. /export switches the workspace tab to the export panel.
   const handleSlashCommand = useCallback(
-    (command: string, _args: string): boolean => {
+    (command: string, args: string): boolean => {
       if (command === "export") {
         setActiveTab("export");
         onMetaChangeRef.current?.({ workspaceTab: "export" });
         toast.success("Opened export menu");
         return true;
       }
+      if (command === "split") {
+        if (!activeIdRef.current) {
+          toast.error("Select a process first");
+          return true;
+        }
+        setSplitInstruction(args.trim());
+        setSplitDialogOpen(true);
+        return true;
+      }
       // Unknown commands fall through; the composer shows a built-in /help.
       return false;
     },
-    [],
+    [toast],
+  );
+
+  const handleSplitApplied = useCallback(
+    async (result: {
+      process: unknown;
+      split: {
+        parentProcessId: string;
+        childProcessId: string;
+        childName: string;
+        parentName: string;
+      };
+    }) => {
+      if (result.process && typeof result.process === "object") {
+        setActiveProcess(result.process as ProcessWithMessages);
+      }
+      setStreamingDiagram(null);
+      toast.success(
+        `Split complete — created "${result.split.childName}". Both are in the sidebar.`
+      );
+      await loadProcessList();
+      if (activeIdRef.current && businessId) {
+        void loadProcess(activeIdRef.current, businessId).catch(() => {});
+      }
+    },
+    [businessId, loadProcess, loadProcessList, toast],
   );
 
   const handleWorkspaceTabChange = useCallback((tab: WorkspaceTab) => {
@@ -891,22 +931,44 @@ export function WorkshopSession({
     [diagramNodes],
   );
 
-  /** 4.10 + 3.5: actors/roles from roster first, then diagram steps */
+  /** 3.5 / 4.10: systems from discovery + known tools on the active process */
+  const systemMentionables = useMemo((): Mentionable[] => {
+    if (!activeProcess) return [];
+    const systems = extractSystemsFromFields({
+      name: activeProcess.name,
+      description: activeProcess.description,
+      trigger: activeProcess.trigger,
+      inputs: activeProcess.inputs,
+      outputs: activeProcess.outputs,
+      manualSteps: activeProcess.manualSteps,
+    });
+    // Also scan diagram labels for known product names (e.g. node "Post to Slack")
+    const fromDiagramLabels = extractSystemsFromFields({
+      description: diagramNodes.map((n) => n.label).join(" "),
+    });
+    return systemsToMentionables([...systems, ...fromDiagramLabels]);
+  }, [activeProcess, diagramNodes]);
+
+  /** 4.10 + 3.5: actors/roles, then systems, then diagram steps */
   const workshopMentionables = useMemo((): Mentionable[] => {
     const fromPersonnel = personnelRoster
       ? personnelToMentionables(personnelRoster).map((m) => ({
           ref: m.ref,
           label: m.label,
           kind: m.kind as Mentionable["kind"],
+          description: m.description,
         }))
       : [];
-    // Prefer personnel when labels collide with a node name
-    const personLabels = new Set(fromPersonnel.map((m) => m.label.toLowerCase()));
+    const reserved = new Set([
+      ...fromPersonnel.map((m) => m.label.toLowerCase()),
+      ...systemMentionables.map((m) => m.label.toLowerCase()),
+    ]);
+    // Prefer personnel / systems when labels collide with a node name
     const fromDiagram = diagramMentionables.filter(
-      (n) => !personLabels.has(n.label.toLowerCase()),
+      (n) => !reserved.has(n.label.toLowerCase()),
     );
-    return [...fromPersonnel, ...fromDiagram];
-  }, [personnelRoster, diagramMentionables]);
+    return [...fromPersonnel, ...systemMentionables, ...fromDiagram];
+  }, [personnelRoster, systemMentionables, diagramMentionables]);
 
   const handleDiagramNodesChange = useCallback((nodes: MermaidNodeInfo[]) => {
     setDiagramNodes((prev) => {
@@ -938,6 +1000,16 @@ export function WorkshopSession({
     activeProcess?.status === "approved" || activeProcess?.status === "forged";
   const canApprove =
     activeProcess && canApproveForAutomation(activeProcess) && !approving;
+
+  const splitAnalysis = useMemo(
+    () => analyzeSplitCandidates(diagramChart),
+    [diagramChart],
+  );
+  // Forged maps can still be multi-flow; allow split (apply reopens parent as draft).
+  const showSplitButton =
+    Boolean(activeProcess) &&
+    !diagramStreaming &&
+    splitAnalysis.showSplitButton;
 
   // PR-5: bind process chat into the global chatbar (one surface; no dual column).
   // Only the active multi-tab session owns the dock binding.
@@ -1046,10 +1118,7 @@ export function WorkshopSession({
         />
         <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">Workshop</div>
-            <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
-              {businessName || "Select a business"}
-            </h1>
+            <h1 className="font-semibold text-sm text-text-strong">Workshop</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1103,6 +1172,20 @@ export function WorkshopSession({
                     ? PROCESS_STATUS_LABELS.forged
                     : PROCESS_STATUS_LABELS.draft}
                 </span>
+              )}
+              {showSplitButton && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSplitInstruction("");
+                    setSplitDialogOpen(true);
+                  }}
+                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                  title="This diagram looks like multiple independent flows"
+                >
+                  <Scissors className="w-3.5 h-3.5" />
+                  Split
+                </button>
               )}
               {canApprove && (
                 <button
@@ -1162,18 +1245,43 @@ export function WorkshopSession({
                   Loading process...
                 </div>
               ) : (
-                <MermaidDiagram
-                  chart={diagramChart}
-                  isStreaming={diagramStreaming}
-                  className="absolute inset-0 z-0"
-                  onNodeClick={handleNodeClick}
-                  selectedNodeLabel={selectedNode?.label}
-                  selectedNode={selectedNode}
-                  onDeselect={clearSelectedNode}
-                  onNodesChange={handleDiagramNodesChange}
-                  commentedNodes={commentedNodes}
-                  onNodeCommentClick={handleNodeCommentClick}
-                />
+                <>
+                  {showSplitButton && (
+                    <div className="absolute top-3 left-3 right-3 z-10 flex justify-center pointer-events-none">
+                      <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-amber/40 bg-bg-elevated/95 backdrop-blur px-3 py-2 shadow-lg max-w-lg">
+                        <Scissors className="w-3.5 h-3.5 text-amber shrink-0" />
+                        <p className="text-xs text-text-muted min-w-0">
+                          <span className="text-text font-medium">
+                            Looks like {splitAnalysis.componentCount} separate flows.
+                          </span>{" "}
+                          Split into single-process diagrams?
+                        </p>
+                        <button
+                          type="button"
+                          className="btn-primary text-[11px] py-1 px-2.5 shrink-0"
+                          onClick={() => {
+                            setSplitInstruction("");
+                            setSplitDialogOpen(true);
+                          }}
+                        >
+                          Split…
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <MermaidDiagram
+                    chart={diagramChart}
+                    isStreaming={diagramStreaming}
+                    className="absolute inset-0 z-0"
+                    onNodeClick={handleNodeClick}
+                    selectedNodeLabel={selectedNode?.label}
+                    selectedNode={selectedNode}
+                    onDeselect={clearSelectedNode}
+                    onNodesChange={handleDiagramNodesChange}
+                    commentedNodes={commentedNodes}
+                    onNodeCommentClick={handleNodeCommentClick}
+                  />
+                </>
               )}
             </div>
           )}
@@ -1212,6 +1320,21 @@ export function WorkshopSession({
           )}
         </main>
       </div>
+
+      {activeProcess && (
+        <SplitProcessDialog
+          open={splitDialogOpen}
+          onClose={() => setSplitDialogOpen(false)}
+          processId={activeProcess.id}
+          processName={activeProcess.name}
+          hermes={hermesConfig}
+          initialInstruction={splitInstruction}
+          apiFetch={apiFetch}
+          onApplied={(result) => {
+            void handleSplitApplied(result);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -22,6 +22,8 @@ export interface Mentionable {
   /** Display label users see and type after @. */
   label: string;
   kind: MentionKind;
+  /** Optional second-line hint in the @ suggestion list. */
+  description?: string;
 }
 
 export interface ParsedMention {

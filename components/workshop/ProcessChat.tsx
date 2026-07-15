@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GitBranch, Loader2, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import type { ChatMessage } from "@/lib/types";
 import {
   RichComposer,
@@ -275,9 +276,16 @@ export function ProcessChat({
                 }`}
               >
                 {nodeComment && <NodeCommentBadge label={nodeComment.label} />}
-                <div className="whitespace-pre-wrap leading-relaxed">
-                  {nodeComment ? nodeComment.content : msg.content}
-                </div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap leading-relaxed">
+                    {nodeComment ? nodeComment.content : msg.content}
+                  </div>
+                ) : (
+                  <ChatMarkdown
+                    markdown={msg.content}
+                    className="leading-relaxed"
+                  />
+                )}
                 {showFork ? (
                   <button
                     type="button"

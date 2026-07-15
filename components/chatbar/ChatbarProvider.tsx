@@ -18,6 +18,7 @@ import {
   saveChatbarContextMode,
   type ChatbarContextMode,
 } from "@/lib/chatbar/context-scope";
+import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import {
   CHATBAR_RESIDENCY_MODES,
@@ -70,6 +71,14 @@ interface ChatbarContextValue {
   registerProcessSession: (session: ProcessSessionBinding | null) => void;
   isProcessScoped: boolean;
 
+  /**
+   * When set, chatbar is automation-studio scoped.
+   * Studio threads are hidden; AutomationChat mounts inside the dock.
+   */
+  automationSession: AutomationSessionBinding | null;
+  registerAutomationSession: (session: AutomationSessionBinding | null) => void;
+  isAutomationScoped: boolean;
+
   /** Focus process/studio composer; optional prefill */
   focusComposer: (opts?: { prefill?: string; submit?: boolean }) => void;
   composerFocusRequest: { key: number; prefill?: string; submit?: boolean } | null;
@@ -105,6 +114,8 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const [processSession, setProcessSession] = useState<ProcessSessionBinding | null>(
     null,
   );
+  const [automationSession, setAutomationSession] =
+    useState<AutomationSessionBinding | null>(null);
   const [composerFocusRequest, setComposerFocusRequest] = useState<{
     key: number;
     prefill?: string;
@@ -174,6 +185,13 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const registerProcessSession = useCallback((session: ProcessSessionBinding | null) => {
     setProcessSession(session);
   }, []);
+
+  const registerAutomationSession = useCallback(
+    (session: AutomationSessionBinding | null) => {
+      setAutomationSession(session);
+    },
+    [],
+  );
 
   const requestPageIntro = useCallback((_routeKey?: string) => {
     setIntroRequestKey((k) => k + 1);
@@ -252,6 +270,9 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       processSession,
       registerProcessSession,
       isProcessScoped: Boolean(processSession),
+      automationSession,
+      registerAutomationSession,
+      isAutomationScoped: Boolean(automationSession),
       focusComposer,
       composerFocusRequest,
       openDecisionSession,
@@ -274,6 +295,8 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       requestPageIntro,
       processSession,
       registerProcessSession,
+      automationSession,
+      registerAutomationSession,
       focusComposer,
       composerFocusRequest,
       openDecisionSession,
