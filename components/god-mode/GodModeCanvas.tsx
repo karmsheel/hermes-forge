@@ -351,8 +351,12 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       setViewMode(mode);
 
       if (linkRes.ok) {
-        const linkData = await linkRes.json();
-        setLinks(linkData.links || []);
+        try {
+          const linkData = await linkRes.json();
+          setLinks(linkData.links || []);
+        } catch {
+          setLinks([]);
+        }
       } else {
         setLinks([]);
       }

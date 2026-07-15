@@ -269,12 +269,19 @@ export function WorkshopSession({
     try {
       const res = await apiFetch("/api/processes");
       if (res.status === 401) {
-        window.location.href = "/";
+        // Only the foreground workshop may navigate — background multi-tab
+        // sessions must not hard-redirect the whole app (foundation/functions loops).
+        if (isActiveRef.current) {
+          window.location.href = "/";
+        }
         return;
       }
       const data = await res.json();
       if (!data.business) {
-        window.location.href = "/functions";
+        if (isActiveRef.current) {
+          // Soft land on Functions only when this workshop is visible
+          window.location.href = "/functions";
+        }
         return;
       }
 

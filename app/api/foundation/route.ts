@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     await ensureBusinessDocuments(business.id, prisma);
 
-    const [processes, documents, links, biz] = await Promise.all([
+    const [processes, documents, biz] = await Promise.all([
       prisma.process.findMany({
         where: { businessId: business.id },
         orderBy: { updatedAt: "desc" },
@@ -67,25 +67,33 @@ export async function GET(request: NextRequest) {
           updatedAt: true,
         },
       }),
-      prisma.processLink.findMany({
-        where: { businessId: business.id },
-        include: {
-          fromProcess: { select: { name: true } },
-          toProcess: { select: { name: true } },
-        },
-        orderBy: { createdAt: "asc" },
-      }),
       prisma.business.findUnique({
         where: { id: business.id },
         select: { id: true, name: true, description: true },
       }),
     ]);
 
+    // Plant links are optional — never fail the whole Foundation page if the
+    // ProcessLink table/client is mid-migration.
+    let linkDtos: ReturnType<typeof toProcessLinkDto>[] = [];
+    try {
+      const links = await prisma.processLink.findMany({
+        where: { businessId: business.id },
+        include: {
+          fromProcess: { select: { name: true } },
+          toProcess: { select: { name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+      linkDtos = links.map(toProcessLinkDto);
+    } catch (linkErr) {
+      console.warn("Foundation links load failed (non-fatal)", linkErr);
+    }
+
     const cards = processes.map(toFoundationProcessCard);
     const forgedCount = countForged(processes);
     const draftCount = processes.filter((p) => !isProcessForged(p.status)).length;
     const withDiagramCount = processes.filter((p) => p.diagramMermaid?.trim()).length;
-    const linkDtos = links.map(toProcessLinkDto);
 
     const overview: FoundationOverview = {
       business: biz

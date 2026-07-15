@@ -23,6 +23,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
   const isGodMode = pathname.startsWith("/god-mode");
+  const isFoundation = pathname.startsWith("/foundation");
   const isHome = pathname === "/home";
   const layoutClass = [
     "app-shell-layout",
@@ -30,7 +31,8 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     !isOpen && "app-shell-layout--chat-collapsed",
     `app-shell-layout--chat-side-${side}`,
     isBusinessManager && "app-shell-layout--business-manager",
-    (isWorkshop || isAutomation || isGodMode) && "app-shell-layout--full",
+    (isWorkshop || isAutomation || isGodMode || isFoundation) &&
+      "app-shell-layout--full",
     isHome && "app-shell-layout--home",
     tabsEnabled && "app-shell-layout--tabs",
     tabStripVisible && "app-shell-layout--tab-strip",

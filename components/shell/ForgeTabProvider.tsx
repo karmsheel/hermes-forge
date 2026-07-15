@@ -177,7 +177,7 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
 
     if (stored && stored.tabs.length > 0) {
       // Enrich tabs for the current business with latest avatar (older storage had no avatar fields)
-      const restored = stored.tabs.map((t) =>
+      let restored = stored.tabs.map((t) =>
         t.businessId === currentBusiness.id
           ? {
               ...t,
@@ -187,19 +187,46 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
             }
           : t,
       );
+      let activeId = stored.activeTabId;
+      let active = restored.find((t) => t.id === activeId) ?? restored[0]!;
+
+      // Prefer the URL the user is already on over yanking them to a stored tab route.
+      // Forcing replace(active.route) caused foundation ↔ workshop ↔ functions loops when
+      // a background WorkshopSession also hard-redirected on missing business.
+      const pathRoute = normalizeShellRoute(pathname || "/home");
+      const activeRoute = normalizeShellRoute(active.route);
+      if (pathRoute !== activeRoute) {
+        const isGenericLanding =
+          pathRoute === "/home" || pathRoute === "/" || pathRoute === "";
+        if (isGenericLanding) {
+          // Cold start on home — restore last tab destination
+          switchingRef.current = true;
+          router.replace(active.route);
+          queueMicrotask(() => {
+            switchingRef.current = false;
+          });
+        } else {
+          // Deep link / intentional nav (e.g. /foundation) — adopt URL onto active tab
+          const idx = restored.findIndex((t) => t.id === active.id);
+          if (idx >= 0) {
+            restored = [...restored];
+            restored[idx] = applyTabPatch(active, {
+              route: pathRoute,
+              businessId: currentBusiness.id,
+              businessName: currentBusiness.name,
+              avatarEmoji: currentBusiness.avatarEmoji,
+              avatarIcon: currentBusiness.avatarIcon,
+            });
+            active = restored[idx]!;
+            activeId = active.id;
+          }
+        }
+      }
+
       setTabs(restored);
-      setActiveTabId(stored.activeTabId);
-      const active = restored.find((t) => t.id === stored.activeTabId) ?? restored[0]!;
+      setActiveTabId(activeId);
       touchActivation(active.id);
       persist(restored, active.id);
-      // Align visible route with active tab if needed
-      if (normalizeShellRoute(pathname || "/home") !== normalizeShellRoute(active.route)) {
-        switchingRef.current = true;
-        router.replace(active.route);
-        queueMicrotask(() => {
-          switchingRef.current = false;
-        });
-      }
       if (active.businessId !== currentBusiness.id) {
         void switchBusiness(active.businessId);
       }
