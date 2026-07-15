@@ -879,7 +879,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.1 Process I/O shape library — **PLANNED**
+### 6.1 Process I/O shape library — **DONE** (foundation)
 
 **Goal:** Every process has a simple **I/O shape** (black-box topology) used for overview UI, agent language, and later plant layout.
 
@@ -892,18 +892,19 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | `miso` | Multi in, single out | `⇉ □ →` | Merge / assemble / consolidate |
 | `mimo` | Multi in, multi out | `⇉ □ ⇉` | Hub / exchange / multi-feed multi-product |
 
-**Data model (sketch):**
-- `Process.ioShape` — enum string, default `"siso"`
+**Data model:**
+- `Process.ioShape` — string, default `"siso"` (`lib/io-shape.ts`)
 - Prefer name **`ioShape`** / UI **“Shape”** over overloaded “process type”
 - Optional later: `ioShapeOverride` if manual pin is needed; primary path is **recompute on change**
 
-**Behavior:**
-- [ ] Schema + Prisma migration + types (`lib/types.ts`, APIs, PROCESS.md list line)
-- [ ] Auto-assign on process create (default `siso`; light inference from brief optional)
-- [ ] Recompute when diagram / structured I/O updates (chat-driven evolution: siso → simo/mimo as boundaries grow)
-- [ ] Counting rule: **process-boundary** inputs/outputs only — not internal Mermaid branches
-- [ ] Small SVG glyph components (token-colored); badge in workshop details / process list
-- [ ] Teach Hermes the four shapes in process chat / Foundation prompts
+**Shipped:**
+- [x] Schema + Prisma migration + types (`lib/types.ts`, APIs, PROCESS.md list line)
+- [x] Auto-assign on process create (default `siso`; derive from inputs/outputs/diagram when present)
+- [x] Recompute on process PATCH (I/O / diagram / explicit shape), diagram subagent, split, decision execute
+- [x] Counting rule: **process-boundary** inputs/outputs only — free-text lists first, else Mermaid sources/sinks (not internal branch fan-out when paths merge)
+- [x] SVG glyphs + badge (`components/process/IoShapeGlyph.tsx`); Details panel + process sidebar
+- [x] Hermes prompt addon + PROCESS.md I/O shapes section
+- [x] Unit tests (`tests/unit/io-shape.test.ts`)
 
 **Depends on:** Process model, workshop diagram updates (3.1)
 
@@ -1086,7 +1087,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 5.5 | n8n Automate expansion | 5 | Pending (M1) |
 | 5.6 | Notion / external connectors | 5 | Pending (M2) |
 | 6.0 | Phase vision & plant/PFD reference | 6 | Planned (vision in backlog) |
-| 6.1 | Process I/O shape library | 6 | Planned |
+| 6.1 | Process I/O shape library | 6 | **Done** (foundation) |
 | 6.2 | Foundation room (business staging) | 6 | Planned |
 | 6.3 | Draft process seeding from conversation | 6 | Planned |
 | 6.4 | God Mode compact plant canvas | 6 | Planned |

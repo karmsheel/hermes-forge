@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { ProposedAction } from '@/lib/decision-types';
 import { isProcessForged } from '@/lib/process-status';
+import { deriveIoShape } from '@/lib/io-shape';
 
 export class DecisionExecuteError extends Error {
   constructor(message: string) {
@@ -77,6 +78,18 @@ export async function executeProposedActions(
         });
         if (!process) throw new DecisionExecuteError('Process not found');
         // Execution is authorized by the decision — allow even if forged
+        const nextInputs =
+          action.patch.inputs !== undefined ? action.patch.inputs : process.inputs;
+        const nextOutputs =
+          action.patch.outputs !== undefined ? action.patch.outputs : process.outputs;
+        const nextDiagram =
+          action.patch.diagramMermaid !== undefined
+            ? action.patch.diagramMermaid
+            : process.diagramMermaid;
+        const touchesIo =
+          action.patch.inputs !== undefined ||
+          action.patch.outputs !== undefined ||
+          action.patch.diagramMermaid !== undefined;
         await prisma.process.update({
           where: { id: action.processId },
           data: {
@@ -97,6 +110,15 @@ export async function executeProposedActions(
               ? {
                   diagramMermaid: action.patch.diagramMermaid,
                   diagramUpdatedAt: new Date(),
+                }
+              : {}),
+            ...(touchesIo
+              ? {
+                  ioShape: deriveIoShape({
+                    inputs: nextInputs,
+                    outputs: nextOutputs,
+                    diagramMermaid: nextDiagram,
+                  }),
                 }
               : {}),
           },

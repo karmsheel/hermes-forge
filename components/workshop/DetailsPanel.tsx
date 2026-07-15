@@ -2,6 +2,8 @@
 
 import type { ProcessWithMessages } from "@/lib/types";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
+import { IoShapeBadge } from "@/components/process/IoShapeGlyph";
+import { getIoShapeMeta } from "@/lib/io-shape";
 
 interface DetailsPanelProps {
   process: ProcessWithMessages;
@@ -29,6 +31,16 @@ export function DetailsPanel({ process }: DetailsPanelProps) {
         <DetailField label="Inputs" value={process.inputs} />
         <DetailField label="Outputs" value={process.outputs} />
         <DetailField label="Manual Steps" value={process.manualSteps} />
+
+        <div className="space-y-1">
+          <dt className="text-[10px] uppercase tracking-widest text-text-muted">Shape</dt>
+          <dd className="flex flex-wrap items-center gap-2">
+            <IoShapeBadge shape={process.ioShape} showLabel />
+            <span className="text-xs text-text-muted">
+              {getIoShapeMeta(process.ioShape).meaning}
+            </span>
+          </dd>
+        </div>
 
         <div className="pt-3 border-t border-border space-y-3">
           <h3 className="text-[10px] uppercase tracking-widest text-text-muted">Status</h3>

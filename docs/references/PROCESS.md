@@ -18,9 +18,10 @@ It is **generated** from live SQLite state (`lib/process-md.ts`). Users shape it
 |---------|--------|
 | **Overview** | Business name, description, industry, goals, constraints |
 | **Notation** | Process standard tag on processes (`auto`, `bpmn-lite`, `swimlane`, `flowchart`) |
+| **I/O shapes** | Closed library: `siso` / `simo` / `miso` / `mimo` (Phase 6.1 black-box interface) |
 | **Actors** | Human personnel + hired Hermes agent profiles |
 | **Systems** | Discovery fields + known tool names inferred from process text |
-| **Processes** | List of mapped processes with function, status, trigger, I/O |
+| **Processes** | List of mapped processes with function, status, I/O shape, trigger, I/O |
 | **Anti-patterns** | Built-in defaults (split independent triggers, no invented systems, etc.) |
 | **Export format** | Markdown SOP, Mermaid, PNG, PDF, Cursor bundle |
 
@@ -44,6 +45,12 @@ Wholesale ops for regional distribution.
 ## Notation
 - **Default:** Swimlane (`swimlane`)
 
+## I/O shapes
+- `siso` (→ □ →) — Single in, single out
+- `simo` (→ □ ⇉) — Single in, multi out
+- `miso` (⇉ □ →) — Multi in, single out
+- `mimo` (⇉ □ ⇉) — Multi in, multi out
+
 ## Actors
 - **Jordan Lee** — Owner
 - **Ops Agent** — Hermes agent
@@ -56,6 +63,7 @@ Wholesale ops for regional distribution.
 ### Order fulfillment
 - **Function:** Operations
 - **Status:** mapping
+- **I/O shape:** `siso` (→ □ →) — Single in, single out
 - **Trigger:** New paid order
 
 ## Anti-patterns

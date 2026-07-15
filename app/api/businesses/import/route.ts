@@ -21,6 +21,7 @@ const ImportProcessSchema = z.object({
   outputs: z.string().nullable().optional(),
   manualSteps: z.string().nullable().optional(),
   diagramMermaid: z.string().nullable().optional(),
+  ioShape: z.string().nullable().optional(),
   messages: z.array(ImportMessageSchema).default([]),
 });
 
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
             diagramMermaid: p.diagramMermaid ?? null,
             diagramUpdatedAt: p.diagramMermaid ? new Date() : null,
             status: 'discovered',
+            ioShape: p.ioShape?.trim() || 'siso',
           },
         });
 

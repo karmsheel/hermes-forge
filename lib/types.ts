@@ -64,6 +64,8 @@ export interface Process {
   nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
+  /** Phase 6.1 — siso | simo | miso | mimo */
+  ioShape: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -122,6 +124,8 @@ export interface ProcessSummary {
   nameStatus: string;
   diagramMermaid: string | null;
   diagramUpdatedAt: string | null;
+  /** Phase 6.1 — siso | simo | miso | mimo */
+  ioShape: string;
   updatedAt: string;
   createdAt: string;
   _count: { messages: number };

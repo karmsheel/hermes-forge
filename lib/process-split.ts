@@ -8,6 +8,7 @@ import {
   formatSplitAnalysisForPrompt,
   type SplitAnalysis,
 } from '@/lib/mermaid-graph';
+import { deriveIoShape } from '@/lib/io-shape';
 
 const SPLIT_PROPOSAL =
   /split (this |it )?(into|out)|separate workflow|own workflow|two (distinct |separate )?(process|workflow)|multiple (distinct )?flow|parallel (process|flow|stream)|should be (its own|a separate)|peel off|break (this |it )?(into|out)/i;
@@ -232,6 +233,16 @@ export async function applyProcessSplit(
 
   const wasForged = isForgedOrApprovedStatus(process.status);
   const childDept = categorizeWorkflow(`${plan.child.name} ${plan.child.description}`);
+  const childShape = deriveIoShape({
+    diagramMermaid: plan.child.diagramMermaid,
+    inputs: process.inputs,
+    outputs: process.outputs,
+  });
+  const parentShape = deriveIoShape({
+    diagramMermaid: plan.parent.diagramMermaid,
+    inputs: process.inputs,
+    outputs: process.outputs,
+  });
 
   return prisma.$transaction(async (tx) => {
     const child = await tx.process.create({
@@ -244,6 +255,7 @@ export async function applyProcessSplit(
         nameStatus: 'confirmed',
         diagramMermaid: plan.child.diagramMermaid,
         diagramUpdatedAt: new Date(),
+        ioShape: childShape,
       },
     });
 
@@ -255,6 +267,7 @@ export async function applyProcessSplit(
         diagramMermaid: plan.parent.diagramMermaid,
         diagramUpdatedAt: new Date(),
         nameStatus: 'confirmed',
+        ioShape: parentShape,
         // Diagram changed — reopen forged maps so automation is re-confirmed.
         ...(wasForged
           ? { status: 'draft', approvedAt: null }

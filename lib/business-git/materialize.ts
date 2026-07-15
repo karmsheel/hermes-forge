@@ -115,6 +115,7 @@ export async function materializeBusinessRepo(
         inputs: p.inputs,
         outputs: p.outputs,
         manualSteps: p.manualSteps,
+        ioShape: p.ioShape,
       })),
       humanPersonnel: business.humanPersonnel.map((h) => ({
         name: h.name,
@@ -286,6 +287,7 @@ export async function materializeBusinessRepo(
       status: process.status,
       approvedAt: process.approvedAt?.toISOString() ?? null,
       nameStatus: process.nameStatus,
+      ioShape: process.ioShape ?? 'siso',
       diagramUpdatedAt: process.diagramUpdatedAt?.toISOString() ?? null,
       createdAt: process.createdAt.toISOString(),
       updatedAt: process.updatedAt.toISOString(),

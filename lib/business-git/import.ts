@@ -366,6 +366,7 @@ export async function importBusinessFromGitRepo(
               nameStatus: snap.meta.nameStatus ?? 'confirmed',
               diagramMermaid: snap.diagram.trim() ? snap.diagram : null,
               diagramUpdatedAt: snap.diagram.trim() ? new Date() : null,
+              ioShape: snap.meta.ioShape ?? 'siso',
             },
           });
           processIdMap.set(snap.oldId, proc.id);

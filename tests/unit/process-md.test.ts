@@ -27,12 +27,14 @@ describe("buildProcessMd", () => {
     assert.match(md, /# PROCESS\.md — Acme Ops/);
     assert.match(md, /## Overview/);
     assert.match(md, /## Notation/);
+    assert.match(md, /## I\/O shapes/);
     assert.match(md, /## Actors/);
     assert.match(md, /Jordan/);
     assert.match(md, /## Systems/);
     assert.match(md, /Shopify/);
     assert.match(md, /## Processes/);
     assert.match(md, /Order fulfillment/);
+    assert.match(md, /I\/O shape/);
     assert.match(md, /## Anti-patterns/);
     assert.match(md, /## Export format/);
   });

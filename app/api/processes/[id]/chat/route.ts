@@ -210,6 +210,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             inputs: true,
             outputs: true,
             manualSteps: true,
+            ioShape: true,
           },
           orderBy: { updatedAt: 'desc' },
           take: 20,
@@ -263,6 +264,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             knowledgeDocuments,
             personnel,
             systems: processSystems,
+            ioShape: process.ioShape,
             splitAnalysisNote: splitAnalysisNote || null,
             shouldAskAccuracy:
               !approvedFromChat &&

@@ -10,6 +10,7 @@ import {
   type ProcessDiscoveryFields,
 } from './process-discovery';
 import { processMdPromptAddon } from './process-md';
+import { ioShapePromptAddon } from './io-shape';
 import {
   documentsPromptAddon,
   type DocumentForPrompt,
@@ -134,6 +135,8 @@ export function buildChatSystemPrompt(context: {
   splitAnalysisNote?: string | null;
   /** Known systems / tools for @-mentions (3.5). */
   systems?: string[] | null;
+  /** Phase 6.1 — current black-box I/O shape */
+  ioShape?: string | null;
 }): string {
   const standardId = context.processStandard ?? resolveProcessStandard(context.description);
   const standard = getProcessStandard(standardId);
@@ -185,6 +188,8 @@ export function buildChatSystemPrompt(context: {
       : '';
   const systemsNote = systemsBlock ? `\n${systemsBlock}\n` : '';
 
+  const shapeNote = `\n${ioShapePromptAddon(context.ioShape)}\n`;
+
   return `You are Hermes, an expert Business Process Analyst for Hermes Forge.
 
 You are helping the user map ONE specific business process through conversation. A live Mermaid diagram updates in the background as you learn more — the user can see it and give corrections.
@@ -209,7 +214,7 @@ Workflow splitting (important):
 - The user can also use the Split control on the diagram or /split — do not claim a split already happened until they confirm or the system executes it.
 - Forged processes can still be split when the diagram contains multiple independent flows; after a split the parent reopens as draft for re-forge.
 
-${context.splitAnalysisNote?.trim() ? `\n${context.splitAnalysisNote.trim()}\n` : ''}${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${knowledgeNote}${personnelNote}${systemsNote}
+${context.splitAnalysisNote?.trim() ? `\n${context.splitAnalysisNote.trim()}\n` : ''}${namingNote}${approvedNote}${discoveryNote}${accuracyNote}${contractNote}${knowledgeNote}${personnelNote}${systemsNote}${shapeNote}
 
 ${standard.chatPromptAddon}
 

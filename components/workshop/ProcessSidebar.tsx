@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Plus,
-  GitBranch,
   Loader2,
   Check,
   X,
@@ -15,6 +14,8 @@ import {
 import type { FunctionSummary } from "@/lib/functions";
 import type { ProcessSummary } from "@/lib/types";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
+import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
+import { getIoShapeMeta } from "@/lib/io-shape";
 import { FunctionFilterPicker } from "./FunctionFilterPicker";
 
 interface ProcessSidebarProps {
@@ -247,11 +248,21 @@ export function ProcessSidebar({
                         }`}
                       >
                         <div className="flex items-start gap-2">
-                          <GitBranch
-                            className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                          <span
+                            className={`mt-0.5 shrink-0 ${
                               hasDiagram ? "text-green" : "text-text-soft"
                             }`}
-                          />
+                            title={getIoShapeMeta(proc.ioShape).label}
+                          >
+                            <IoShapeGlyph
+                              shape={proc.ioShape}
+                              size="sm"
+                              title={false}
+                              className={
+                                hasDiagram ? "text-green" : "text-text-soft"
+                              }
+                            />
+                          </span>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1">
                               <span className="text-sm font-medium truncate flex-1">

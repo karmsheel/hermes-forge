@@ -17,6 +17,7 @@ const TRACKED_PROCESS_FIELDS = [
   'inputs',
   'outputs',
   'manualSteps',
+  'ioShape',
 ] as const;
 
 /** Live event that happened at request time. */

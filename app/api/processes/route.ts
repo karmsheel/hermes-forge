@@ -5,6 +5,7 @@ import { WELCOME_MESSAGE } from '@/lib/process-welcome';
 import { categorizeWorkflow } from '@/lib/categorize-workflow';
 import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
+import { deriveIoShape, isIoShapeId } from '@/lib/io-shape';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
         nameStatus: true,
         diagramMermaid: true,
         diagramUpdatedAt: true,
+        ioShape: true,
         updatedAt: true,
         createdAt: true,
         _count: { select: { messages: true } },
@@ -66,6 +68,17 @@ export async function POST(request: NextRequest) {
       typeof body.diagramMermaid === 'string' && body.diagramMermaid.trim()
         ? body.diagramMermaid.trim()
         : null;
+    const inputs =
+      typeof body.inputs === 'string' && body.inputs.trim() ? body.inputs.trim() : null;
+    const outputs =
+      typeof body.outputs === 'string' && body.outputs.trim() ? body.outputs.trim() : null;
+    const explicitShape = isIoShapeId(body.ioShape) ? body.ioShape : null;
+    const ioShape = deriveIoShape({
+      inputs,
+      outputs,
+      diagramMermaid,
+      explicit: explicitShape,
+    });
 
     const dept = body.department || categorizeWorkflow(`${body.name || ''} ${body.description || ''}`);
 
@@ -76,8 +89,11 @@ export async function POST(request: NextRequest) {
             description: body.description || '',
             department: dept,
             status: 'mapping',
+            inputs,
+            outputs,
             diagramMermaid,
             diagramUpdatedAt: diagramMermaid ? new Date() : null,
+            ioShape,
             conversations: {
               create: {
                 title: 'Main',

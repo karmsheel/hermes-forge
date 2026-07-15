@@ -15,6 +15,7 @@ import {
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { ensureBusinessOwner } from '@/lib/personnel/ensure-owner';
 import { ensureBusinessDocuments } from '@/lib/documents';
+import { deriveIoShape } from '@/lib/io-shape';
 
 const StartFromBriefSchema = z.object({
   brief: z.string().min(1).max(5000),
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       }
 
       const processTextForCat = `${body.processName || ''} ${trimmed}`;
+      const ioShape = deriveIoShape({ diagramMermaid });
       const createdProcess = await tx.process.create({
         data: {
           businessId: business.id,
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
           status: 'mapping',
           diagramMermaid,
           diagramUpdatedAt: diagramMermaid ? new Date() : null,
+          ioShape,
           conversations: {
             create: {
               title: 'Main',

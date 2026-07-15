@@ -11,6 +11,7 @@ import {
   type ProcessStandardId,
 } from "@/lib/process-standards";
 import { extractSystemsFromProcesses } from "@/lib/systems";
+import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
 
 export interface ProcessMdProcessInput {
   name: string;
@@ -21,6 +22,8 @@ export interface ProcessMdProcessInput {
   inputs?: string | null;
   outputs?: string | null;
   manualSteps?: string | null;
+  /** Phase 6.1 — siso | simo | miso | mimo */
+  ioShape?: string | null;
 }
 
 export interface ProcessMdActorInput {
@@ -100,10 +103,12 @@ export function buildProcessMd(input: ProcessMdInput): string {
     input.processes.length === 0
       ? ["_No processes mapped yet._"]
       : input.processes.map((p) => {
+          const shape = getIoShapeMeta(normalizeIoShape(p.ioShape));
           const bits = [
             `### ${p.name}`,
             `- **Function:** ${p.department}`,
             `- **Status:** ${p.status}`,
+            `- **I/O shape:** \`${shape.id}\` (${shape.glyph}) — ${shape.label}`,
           ];
           if (p.trigger?.trim()) bits.push(`- **Trigger:** ${p.trigger.trim()}`);
           if (p.inputs?.trim()) bits.push(`- **Inputs / systems:** ${p.inputs.trim()}`);
@@ -138,6 +143,14 @@ export function buildProcessMd(input: ProcessMdInput): string {
     "",
     `- **Default:** ${notation.label} (\`${notation.id}\`)`,
     `- ${notation.shortDescription}`,
+    "",
+    "## I/O shapes",
+    "",
+    "Each process has a black-box interface shape (external feeds/products, not internal branches):",
+    "- `siso` (→ □ →) — Single in, single out",
+    "- `simo` (→ □ ⇉) — Single in, multi out",
+    "- `miso` (⇉ □ →) — Multi in, single out",
+    "- `mimo` (⇉ □ ⇉) — Multi in, multi out",
     "",
     "## Actors",
     "",

@@ -206,6 +206,7 @@ export interface ParsedProcessMeta {
   status?: string;
   approvedAt?: string | null;
   nameStatus?: string;
+  ioShape?: string;
 }
 
 export function parseProcessMeta(data: unknown, fallbackId: string): ParsedProcessMeta | null {
@@ -236,6 +237,7 @@ export function parseProcessMeta(data: unknown, fallbackId: string): ParsedProce
     status: typeof row.status === 'string' ? row.status : 'mapping',
     approvedAt: typeof row.approvedAt === 'string' ? row.approvedAt : null,
     nameStatus: typeof row.nameStatus === 'string' ? row.nameStatus : 'confirmed',
+    ioShape: typeof row.ioShape === 'string' ? row.ioShape : 'siso',
   };
 }
 

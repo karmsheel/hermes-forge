@@ -14,6 +14,7 @@ import {
   forgeProcessDirect,
   recordLiveOwnerEdit,
 } from '@/lib/decisions/service';
+import { deriveIoShape, isIoShapeId } from '@/lib/io-shape';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -112,6 +113,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       'outputs',
       'manualSteps',
       'diagramMermaid',
+      'ioShape',
     ];
     const touchesContent = contentFields.some((k) => body[k] !== undefined);
 
@@ -135,6 +137,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       body.status !== undefined ? buildApprovalUpdate(body.status) : {};
 
     const before = result.process;
+    const nextInputs = body.inputs !== undefined ? body.inputs : before.inputs;
+    const nextOutputs = body.outputs !== undefined ? body.outputs : before.outputs;
+    const nextDiagram =
+      body.diagramMermaid !== undefined ? body.diagramMermaid : before.diagramMermaid;
+    const shouldRecomputeShape =
+      body.inputs !== undefined ||
+      body.outputs !== undefined ||
+      body.diagramMermaid !== undefined ||
+      body.ioShape !== undefined;
+    const nextIoShape = shouldRecomputeShape
+      ? deriveIoShape({
+          inputs: nextInputs,
+          outputs: nextOutputs,
+          diagramMermaid: nextDiagram,
+          explicit: isIoShapeId(body.ioShape) ? body.ioShape : null,
+        })
+      : undefined;
+
     const process = await prisma.process.update({
       where: { id },
       data: {
@@ -148,6 +168,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         diagramMermaid: body.diagramMermaid,
         diagramUpdatedAt: body.diagramMermaid ? new Date() : undefined,
         nameStatus: body.name !== undefined ? 'confirmed' : undefined,
+        ...(nextIoShape !== undefined ? { ioShape: nextIoShape } : {}),
         ...approvalPatch,
       },
     });

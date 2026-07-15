@@ -10,6 +10,7 @@ import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
 import { proposeForgedDiagramChange } from '@/lib/decisions/propose';
 import { isProcessForged } from '@/lib/process-status';
 import { loadPersonnelRoster } from '@/lib/personnel/load-roster';
+import { deriveIoShape } from '@/lib/io-shape';
 
 const AgentSchema = z.object({
   baseUrl: z.string(),
@@ -98,11 +99,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
                     )
                   );
                 } else {
+                  const ioShape = deriveIoShape({
+                    inputs: process.inputs,
+                    outputs: process.outputs,
+                    diagramMermaid: event.mermaid,
+                  });
                   await prisma.process.update({
                     where: { id },
                     data: {
                       diagramMermaid: event.mermaid,
                       diagramUpdatedAt: new Date(),
+                      ioShape,
                     },
                   });
                   await recordBusinessEvent({
@@ -170,11 +177,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (updatedDiagram) {
+      const ioShape = deriveIoShape({
+        inputs: process.inputs,
+        outputs: process.outputs,
+        diagramMermaid: updatedDiagram,
+      });
       await prisma.process.update({
         where: { id },
         data: {
           diagramMermaid: updatedDiagram,
           diagramUpdatedAt: new Date(),
+          ioShape,
         },
       });
       await recordBusinessEvent({

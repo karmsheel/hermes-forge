@@ -348,6 +348,9 @@ model Process {
   diagramMermaid     String?
   diagramUpdatedAt   DateTime?
 
+  // Phase 6.1 — black-box I/O shape (siso | simo | miso | mimo); recompute on I/O / diagram change
+  ioShape            String   @default("siso")
+
   messages           ChatMessage[]
   conversations      Conversation[]
   automation         Automation?
