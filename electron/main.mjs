@@ -191,7 +191,9 @@ async function migrateDatabase(env) {
       {
         cwd: root,
         env: { ...env, ELECTRON_RUN_AS_NODE: "1" },
-        timeoutMs: 25_000,
+        // Desktop userData forge.db can be slow under antivirus; do not skip
+        // pending migrations (missing columns → API 500s and navigation thrash).
+        timeoutMs: 90_000,
       },
     );
     console.log("[desktop] Migrations finished");
