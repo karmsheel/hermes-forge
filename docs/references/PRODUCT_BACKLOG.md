@@ -957,16 +957,19 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.4 God Mode → compact plant canvas — **PLANNED**
+### 6.4 God Mode → compact plant canvas — **DONE** (foundation)
 
 **Goal:** Replace (or toggle away from) full-Mermaid tiles with **uniform I/O-shape cards** so the whole business is scannable on one pan/zoom canvas.
 
-**Deliverables:**
-- [ ] Compact tile: name, function, status, shape glyph (fixed size)
-- [ ] Toggle: Compact shapes | Full diagrams (migration path from 4.13)
-- [ ] Fit-to-view remains usable with dozens of processes
-- [ ] Click → Workshop (or Foundation focus)
-- [ ] Optional free-drag positions (persist layout later — 6.5/6.6)
+**Shipped:**
+- [x] Compact tile: name, status, shape glyph (fixed size via `COMPACT_TILE`)
+- [x] Toggle: **Compact** | **Diagrams** (persisted `forge:god-mode-view`; default compact)
+- [x] Fit-to-view / pan / zoom still apply to both modes
+- [x] Click compact card → Workshop (active process set)
+- [x] Empty states link Foundation when no processes; “Show compact shapes” when diagrams empty
+- [x] `lib/god-mode-view.ts` + unit smoke test
+
+**Deferred:** free-drag positions / persist layout (6.5–6.6)
 
 **Depends on:** 4.13 God Mode, 6.1 shapes
 
@@ -1086,7 +1089,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.1 | Process I/O shape library | 6 | **Done** (foundation) |
 | 6.2 | Foundation room (business staging) | 6 | **Done** (foundation) |
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
-| 6.4 | God Mode compact plant canvas | 6 | Planned |
+| 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | Planned (milestone) |
 | 6.6 | Business plant PFD (end-state) | 6 | Planned (milestone) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | Planned |

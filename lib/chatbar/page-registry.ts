@@ -236,8 +236,13 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     blurb: {
       routeKey: "god-mode",
       title: "God Mode",
-      purpose: "Canvas overview of processes by department (dev-gated).",
-      uiHints: ["Use this for a high-level process landscape"],
+      purpose:
+        "Plant canvas of all processes by function (dev-gated). Compact I/O-shape cards by default; toggle Diagrams for full Mermaid tiles.",
+      uiHints: [
+        "Use Compact mode to scan the whole business",
+        "Toggle Diagrams for full process maps",
+        "Click a card to open Workshop",
+      ],
     },
   },
   {

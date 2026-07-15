@@ -15,6 +15,8 @@ import {
   ArrowRight,
   Building2,
   GitBranch,
+  Hammer,
+  Layers,
   Loader2,
   Maximize2,
   RefreshCw,
@@ -24,6 +26,14 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
+import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
+import {
+  COMPACT_TILE,
+  loadGodModeViewMode,
+  saveGodModeViewMode,
+  type GodModeViewMode,
+} from "@/lib/god-mode-view";
 import { renderMermaidSvg } from "@/lib/mermaid-render";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
@@ -45,6 +55,7 @@ const MIN_TILE_WIDTH = 320;
 interface DiagramTile {
   process: ProcessSummary;
   department: string;
+  mode: "compact" | "diagram";
   svg: string | null;
   error: string | null;
   diagramWidth: number;
@@ -70,12 +81,65 @@ function groupByDepartment(processes: ProcessSummary[]): Map<string, ProcessSumm
     list.push(proc);
     groups.set(dept, list);
   }
-  return new Map(
-    [...groups.entries()].sort(([a], [b]) => a.localeCompare(b)),
-  );
+  return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
 }
 
-function layoutTiles(
+function layoutCompactTiles(processes: ProcessSummary[]): LayoutResult {
+  const grouped = groupByDepartment(processes);
+  const departments = [...grouped.keys()];
+  const tiles: DiagramTile[] = [];
+  let y = CANVAS_PADDING;
+  let canvasMaxX = 0;
+  const tileW = COMPACT_TILE.width;
+  const tileH = COMPACT_TILE.height;
+  const gap = COMPACT_TILE.gap;
+
+  for (const dept of departments) {
+    const items = grouped.get(dept) ?? [];
+    let rowX = CANVAS_PADDING;
+    let rowMaxHeight = 0;
+    let rowStartY = y + DEPT_HEADER_HEIGHT;
+
+    for (let i = 0; i < items.length; i++) {
+      const proc = items[i];
+      if (i > 0 && rowX + tileW > COMPACT_TILE.rowMaxWidth) {
+        y = rowStartY + rowMaxHeight + gap;
+        rowX = CANVAS_PADDING;
+        rowStartY = y;
+        rowMaxHeight = 0;
+      }
+
+      tiles.push({
+        process: proc,
+        department: dept,
+        mode: "compact",
+        svg: null,
+        error: null,
+        diagramWidth: 0,
+        diagramHeight: 0,
+        x: rowX,
+        y: rowStartY,
+        width: tileW,
+        height: tileH,
+      });
+
+      rowX += tileW + gap;
+      rowMaxHeight = Math.max(rowMaxHeight, tileH);
+      canvasMaxX = Math.max(canvasMaxX, rowX);
+    }
+
+    y = rowStartY + rowMaxHeight + DEPT_GAP;
+  }
+
+  return {
+    tiles,
+    canvasWidth: Math.max(canvasMaxX + CANVAS_PADDING, 800),
+    canvasHeight: Math.max(y + CANVAS_PADDING, 600),
+    departments,
+  };
+}
+
+function layoutDiagramTiles(
   rendered: Array<{
     process: ProcessSummary;
     department: string;
@@ -105,9 +169,10 @@ function layoutTiles(
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const scale = item.diagramWidth > 0
-        ? Math.min(1, MAX_DIAGRAM_WIDTH / item.diagramWidth)
-        : 1;
+      const scale =
+        item.diagramWidth > 0
+          ? Math.min(1, MAX_DIAGRAM_WIDTH / item.diagramWidth)
+          : 1;
       const scaledW = Math.max(MIN_TILE_WIDTH, item.diagramWidth * scale);
       const scaledH = item.diagramHeight * scale;
       const tileWidth = scaledW + TILE_INNER_PADDING * 2;
@@ -122,6 +187,7 @@ function layoutTiles(
 
       tiles.push({
         ...item,
+        mode: "diagram",
         x: rowX,
         y: rowStartY,
         width: tileWidth,
@@ -149,11 +215,14 @@ function getDeptLabelY(dept: string, tiles: DiagramTile[]): number {
   return first ? first.y - DEPT_HEADER_HEIGHT : CANVAS_PADDING;
 }
 
+export interface GodModeStats {
+  total: number;
+  withDiagrams: number;
+  viewMode: GodModeViewMode;
+}
+
 interface GodModeCanvasProps {
-  onStatsChange?: (stats: {
-    total: number;
-    withDiagrams: number;
-  }) => void;
+  onStatsChange?: (stats: GodModeStats) => void;
 }
 
 export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
@@ -164,15 +233,21 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState(0);
+  const [processes, setProcesses] = useState<ProcessSummary[]>([]);
+  const [viewMode, setViewMode] = useState<GodModeViewMode>("compact");
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const hasFitRef = useRef(false);
+  const processesRef = useRef<ProcessSummary[]>([]);
 
   const isDark = resolved === "dark";
+
+  useEffect(() => {
+    setViewMode(loadGodModeViewMode());
+  }, []);
 
   const fitToCanvas = useCallback((canvasW: number, canvasH: number) => {
     const viewport = viewportRef.current;
@@ -192,9 +267,80 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     setPan({ x: panX, y: panY });
   }, []);
 
+  const applyLayout = useCallback(
+    async (list: ProcessSummary[], mode: GodModeViewMode) => {
+      hasFitRef.current = false;
+      const withDiagrams = list.filter((p) => p.diagramMermaid?.trim());
+
+      onStatsChange?.({
+        total: list.length,
+        withDiagrams: withDiagrams.length,
+        viewMode: mode,
+      });
+
+      if (mode === "compact") {
+        if (list.length === 0) {
+          setLayout(null);
+          return;
+        }
+        setLayout(layoutCompactTiles(list));
+        return;
+      }
+
+      // diagrams mode
+      if (withDiagrams.length === 0) {
+        setLayout(null);
+        return;
+      }
+
+      setRendering(true);
+      try {
+        const grouped = groupByDepartment(withDiagrams);
+        const jobs = [...grouped.entries()].flatMap(([dept, procs]) =>
+          procs.map((proc) => ({ proc, dept })),
+        );
+
+        const renderJobs = await Promise.all(
+          jobs.map(async ({ proc, dept }) => {
+            const source = sanitizeMermaidSource(proc.diagramMermaid);
+            if (!source) {
+              return {
+                process: proc,
+                department: dept,
+                svg: null,
+                error: "No diagram source",
+                diagramWidth: 0,
+                diagramHeight: 0,
+              };
+            }
+
+            const result = await renderMermaidSvg(
+              source,
+              `godmode-${proc.id}-${Date.now()}`,
+              isDark,
+            );
+
+            return {
+              process: proc,
+              department: dept,
+              svg: result.ok ? result.svg : null,
+              error: result.ok ? null : result.error,
+              diagramWidth: result.ok ? result.width : 0,
+              diagramHeight: result.ok ? result.height : 0,
+            };
+          }),
+        );
+
+        setLayout(layoutDiagramTiles(renderJobs));
+      } finally {
+        setRendering(false);
+      }
+    },
+    [isDark, onStatsChange],
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
-    hasFitRef.current = false;
     try {
       const res = await fetch("/api/processes");
       if (res.status === 401) {
@@ -202,82 +348,46 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
         return;
       }
       const data = await res.json();
-      const processes: ProcessSummary[] = data.processes || [];
+      const list: ProcessSummary[] = data.processes || [];
       const biz = data.business;
+      const mode = loadGodModeViewMode();
+      setViewMode(mode);
 
       if (!biz) {
         setBusinessId(null);
-        setTotalCount(0);
+        setProcesses([]);
+        processesRef.current = [];
         setLayout(null);
-        onStatsChange?.({ total: 0, withDiagrams: 0 });
+        onStatsChange?.({ total: 0, withDiagrams: 0, viewMode: mode });
         return;
       }
 
       setBusinessId(biz.id);
-      setTotalCount(processes.length);
-
-      const withDiagrams = processes.filter((p) => p.diagramMermaid?.trim());
-      onStatsChange?.({
-        total: processes.length,
-        withDiagrams: withDiagrams.length,
-      });
-
-      if (withDiagrams.length === 0) {
-        setLayout(null);
-        return;
-      }
-
-      setRendering(true);
-      const grouped = groupByDepartment(withDiagrams);
-      const jobs = [...grouped.entries()].flatMap(([dept, procs]) =>
-        procs.map((proc) => ({ proc, dept })),
-      );
-
-      const renderJobs = await Promise.all(
-        jobs.map(async ({ proc, dept }) => {
-          const source = sanitizeMermaidSource(proc.diagramMermaid);
-          if (!source) {
-            return {
-              process: proc,
-              department: dept,
-              svg: null,
-              error: "No diagram source",
-              diagramWidth: 0,
-              diagramHeight: 0,
-            };
-          }
-
-          const result = await renderMermaidSvg(
-            source,
-            `godmode-${proc.id}-${Date.now()}`,
-            isDark,
-          );
-
-          return {
-            process: proc,
-            department: dept,
-            svg: result.ok ? result.svg : null,
-            error: result.ok ? null : result.error,
-            diagramWidth: result.ok ? result.width : 0,
-            diagramHeight: result.ok ? result.height : 0,
-          };
-        }),
-      );
-
-      const nextLayout = layoutTiles(renderJobs);
-      setLayout(nextLayout);
+      setProcesses(list);
+      processesRef.current = list;
     } catch {
       toast.error("Failed to load God Mode view");
+      setProcesses([]);
+      processesRef.current = [];
       setLayout(null);
     } finally {
       setLoading(false);
-      setRendering(false);
     }
-  }, [isDark, onStatsChange, router]);
+  }, [onStatsChange, router]);
 
   useEffect(() => {
     void load();
   }, [load, currentBusiness?.id]);
+
+  // Layout whenever data, view mode, or theme changes (no network)
+  useEffect(() => {
+    if (loading) return;
+    if (!businessId) {
+      setLayout(null);
+      return;
+    }
+    void applyLayout(processesRef.current, viewMode);
+  }, [loading, businessId, viewMode, isDark, processes, applyLayout]);
 
   useEffect(() => {
     if (!layout || hasFitRef.current) return;
@@ -292,6 +402,11 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       y: getDeptLabelY(dept, layout.tiles),
     }));
   }, [layout]);
+
+  function setMode(next: GodModeViewMode) {
+    setViewMode(next);
+    saveGodModeViewMode(next);
+  }
 
   function zoomIn() {
     setZoom((z) => Math.min(MAX_ZOOM, +(z + ZOOM_STEP).toFixed(3)));
@@ -379,10 +494,10 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           <Building2 className="w-10 h-10 text-text-soft mx-auto mb-4" />
           <h2 className="text-lg font-semibold mb-2">No active business</h2>
           <p className="text-sm text-text-muted mb-6">
-            Select or create a business to view all process maps.
+            Select or create a business to view the plant canvas.
           </p>
-          <Link href="/functions" className="btn-primary text-sm inline-flex items-center gap-2">
-            Go to Functions <ArrowRight className="w-4 h-4" />
+          <Link href="/foundation" className="btn-primary text-sm inline-flex items-center gap-2">
+            Go to Foundation <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>
@@ -390,29 +505,80 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   }
 
   if (!layout || layout.tiles.length === 0) {
+    const isDiagrams = viewMode === "diagrams";
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center card max-w-xl p-10">
-          <GitBranch className="w-10 h-10 text-text-soft mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">No diagrams yet</h2>
-          <p className="text-sm text-text-muted mb-2">
-            {totalCount === 0
-              ? "This business has no processes yet."
-              : `${totalCount} process${totalCount !== 1 ? "es" : ""} exist, but none have diagrams.`}
-          </p>
-          <p className="text-xs text-text-soft mb-6">
-            Map processes in the Workshop — their diagrams will appear here automatically.
-          </p>
-          <Link href="/workshop" className="btn-primary text-sm inline-flex items-center gap-2">
-            <Wrench className="w-4 h-4" /> Open Workshop
-          </Link>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center card max-w-xl p-10">
+            {isDiagrams ? (
+              <GitBranch className="w-10 h-10 text-text-soft mx-auto mb-4" />
+            ) : (
+              <Layers className="w-10 h-10 text-text-soft mx-auto mb-4" />
+            )}
+            <h2 className="text-lg font-semibold mb-2">
+              {isDiagrams ? "No diagrams yet" : "No processes yet"}
+            </h2>
+            <p className="text-sm text-text-muted mb-2">
+              {processes.length === 0
+                ? "This business has no processes yet."
+                : isDiagrams
+                  ? `${processes.length} process${processes.length !== 1 ? "es" : ""} exist, but none have diagrams.`
+                  : "Add draft processes in Foundation to sketch the plant."}
+            </p>
+            <p className="text-xs text-text-soft mb-6">
+              {isDiagrams
+                ? "Map processes in the Workshop — their diagrams will appear here."
+                : "Or open Foundation and seed drafts from chat."}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {isDiagrams && processes.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  onClick={() => setMode("compact")}
+                >
+                  Show compact shapes
+                </button>
+              ) : null}
+              <Link
+                href={processes.length === 0 ? "/foundation" : "/workshop"}
+                className="btn-primary text-sm inline-flex items-center gap-2"
+              >
+                {processes.length === 0 ? (
+                  <>
+                    <Layers className="w-4 h-4" /> Open Foundation
+                  </>
+                ) : (
+                  <>
+                    <Wrench className="w-4 h-4" /> Open Workshop
+                  </>
+                )}
+              </Link>
+            </div>
+          </div>
         </div>
+        <GodModeToolbar
+          viewMode={viewMode}
+          onViewModeChange={setMode}
+          tileCount={0}
+          totalCount={processes.length}
+          isDiagrams={isDiagrams}
+          zoom={zoom}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+          onFit={handleFit}
+          onRefresh={() => void load()}
+          disableZoom
+        />
       </div>
     );
   }
 
   const displayPercent = Math.round(zoom * 100);
-  const missingCount = totalCount - layout.tiles.length;
+  const isDiagrams = viewMode === "diagrams";
+  const missingCount = isDiagrams
+    ? processes.length - layout.tiles.length
+    : 0;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -455,134 +621,316 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
             </div>
           ))}
 
-          {layout.tiles.map((tile) => {
-            const scale =
-              tile.diagramWidth > 0
-                ? Math.min(1, MAX_DIAGRAM_WIDTH / tile.diagramWidth)
-                : 1;
-            const scaledW = tile.diagramWidth * scale;
-            const scaledH = tile.diagramHeight * scale;
-            const statusLabel =
-              PROCESS_STATUS_LABELS[
-                tile.process.status as keyof typeof PROCESS_STATUS_LABELS
-              ] ?? tile.process.status;
-
-            return (
-              <div
+          {layout.tiles.map((tile) =>
+            tile.mode === "compact" ? (
+              <CompactTile
                 key={tile.process.id}
-                data-godmode-tile
-                className="absolute card bg-bg-panel border border-border shadow-sm overflow-hidden group"
-                style={{
-                  left: tile.x,
-                  top: tile.y,
-                  width: tile.width,
-                  height: tile.height,
-                }}
-              >
-                <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 min-h-[52px]">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-sm truncate" title={tile.process.name}>
-                      {tile.process.name}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="pill text-[10px]">{statusLabel}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openInWorkshop(tile.process.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-accent hover:underline shrink-0"
-                  >
-                    Open in Workshop
-                  </button>
-                </div>
-
-                <div
-                  className="flex items-center justify-center p-5 overflow-hidden"
-                  style={{ height: tile.height - TILE_HEADER_HEIGHT }}
-                >
-                  {tile.error ? (
-                    <p className="text-xs text-amber-400 text-center px-2">
-                      Could not render diagram
-                    </p>
-                  ) : tile.svg ? (
-                    <div
-                      className="[&_svg]:max-w-none [&_svg]:block"
-                      style={{
-                        width: scaledW,
-                        height: scaledH,
-                      }}
-                      dangerouslySetInnerHTML={{ __html: tile.svg }}
-                    />
-                  ) : (
-                    <p className="text-xs text-text-soft">No diagram</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                tile={tile}
+                onOpenWorkshop={openInWorkshop}
+              />
+            ) : (
+              <DiagramTileView
+                key={tile.process.id}
+                tile={tile}
+                onOpenWorkshop={openInWorkshop}
+              />
+            ),
+          )}
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border bg-bg/90 px-4 py-2 flex items-center justify-between gap-4">
-        <div className="text-xs text-text-muted truncate">
-          {layout.tiles.length} diagram{layout.tiles.length !== 1 ? "s" : ""}
-          {missingCount > 0 && (
-            <span className="text-text-soft">
-              {" "}
-              · {missingCount} process{missingCount !== 1 ? "es" : ""} without diagrams
+      <GodModeToolbar
+        viewMode={viewMode}
+        onViewModeChange={setMode}
+        tileCount={layout.tiles.length}
+        totalCount={processes.length}
+        isDiagrams={isDiagrams}
+        missingCount={missingCount}
+        zoom={zoom}
+        displayPercent={displayPercent}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onFit={handleFit}
+        onRefresh={() => void load()}
+      />
+    </div>
+  );
+}
+
+function CompactTile({
+  tile,
+  onOpenWorkshop,
+}: {
+  tile: DiagramTile;
+  onOpenWorkshop: (id: string) => void;
+}) {
+  const shape = normalizeIoShape(tile.process.ioShape);
+  const meta = getIoShapeMeta(shape);
+  const statusLabel =
+    PROCESS_STATUS_LABELS[
+      tile.process.status as keyof typeof PROCESS_STATUS_LABELS
+    ] ?? tile.process.status;
+  const hasDiagram = Boolean(tile.process.diagramMermaid?.trim());
+
+  return (
+    <div
+      data-godmode-tile
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenWorkshop(tile.process.id)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenWorkshop(tile.process.id);
+        }
+      }}
+      className="absolute card bg-bg-panel border border-border shadow-sm overflow-hidden group cursor-pointer hover:border-border-strong transition-colors"
+      style={{
+        left: tile.x,
+        top: tile.y,
+        width: tile.width,
+        height: tile.height,
+      }}
+    >
+      <div className="flex flex-col h-full p-3">
+        <div className="flex items-center justify-center flex-1 text-text min-h-0">
+          <IoShapeGlyph shape={shape} size="lg" className="text-text" />
+        </div>
+        <div
+          className="text-sm font-medium text-center truncate"
+          title={tile.process.name}
+        >
+          {tile.process.name}
+        </div>
+        <div className="mt-1 flex items-center justify-center gap-1 flex-wrap">
+          <span className="pill text-[10px]">{statusLabel}</span>
+          <span
+            className="text-[10px] font-mono uppercase text-text-faint"
+            title={meta.label}
+          >
+            {shape}
+          </span>
+          {hasDiagram ? (
+            <span title="Has diagram" className="inline-flex">
+              <GitBranch className="w-3 h-3 text-green" aria-hidden />
             </span>
+          ) : null}
+        </div>
+        <div className="mt-1.5 text-[10px] text-center text-accent opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center gap-1">
+          <Hammer className="w-3 h-3" />
+          Workshop
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiagramTileView({
+  tile,
+  onOpenWorkshop,
+}: {
+  tile: DiagramTile;
+  onOpenWorkshop: (id: string) => void;
+}) {
+  const scale =
+    tile.diagramWidth > 0
+      ? Math.min(1, MAX_DIAGRAM_WIDTH / tile.diagramWidth)
+      : 1;
+  const scaledW = tile.diagramWidth * scale;
+  const scaledH = tile.diagramHeight * scale;
+  const statusLabel =
+    PROCESS_STATUS_LABELS[
+      tile.process.status as keyof typeof PROCESS_STATUS_LABELS
+    ] ?? tile.process.status;
+
+  return (
+    <div
+      data-godmode-tile
+      className="absolute card bg-bg-panel border border-border shadow-sm overflow-hidden group"
+      style={{
+        left: tile.x,
+        top: tile.y,
+        width: tile.width,
+        height: tile.height,
+      }}
+    >
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 min-h-[52px]">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-sm truncate" title={tile.process.name}>
+            {tile.process.name}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="pill text-[10px]">{statusLabel}</span>
+            <span className="text-[10px] font-mono uppercase text-text-faint">
+              {normalizeIoShape(tile.process.ioShape)}
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => onOpenWorkshop(tile.process.id)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-accent hover:underline shrink-0"
+        >
+          Open in Workshop
+        </button>
+      </div>
+
+      <div
+        className="flex items-center justify-center p-5 overflow-hidden"
+        style={{ height: tile.height - TILE_HEADER_HEIGHT }}
+      >
+        {tile.error ? (
+          <p className="text-xs text-amber-400 text-center px-2">
+            Could not render diagram
+          </p>
+        ) : tile.svg ? (
+          <div
+            className="[&_svg]:max-w-none [&_svg]:block"
+            style={{
+              width: scaledW,
+              height: scaledH,
+            }}
+            dangerouslySetInnerHTML={{ __html: tile.svg }}
+          />
+        ) : (
+          <p className="text-xs text-text-soft">No diagram</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GodModeToolbar({
+  viewMode,
+  onViewModeChange,
+  tileCount,
+  totalCount,
+  isDiagrams,
+  missingCount = 0,
+  zoom,
+  displayPercent,
+  onZoomIn,
+  onZoomOut,
+  onFit,
+  onRefresh,
+  disableZoom = false,
+}: {
+  viewMode: GodModeViewMode;
+  onViewModeChange: (m: GodModeViewMode) => void;
+  tileCount: number;
+  totalCount: number;
+  isDiagrams: boolean;
+  missingCount?: number;
+  zoom?: number;
+  displayPercent?: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFit: () => void;
+  onRefresh: () => void;
+  disableZoom?: boolean;
+}) {
+  const z = zoom ?? 1;
+  const pct = displayPercent ?? Math.round(z * 100);
+
+  return (
+    <div className="shrink-0 border-t border-border bg-bg/90 px-4 py-2 flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
+          <button
+            type="button"
+            onClick={() => onViewModeChange("compact")}
+            className={`px-2.5 py-1.5 inline-flex items-center gap-1 ${
+              viewMode === "compact"
+                ? "bg-bg-muted text-text-strong"
+                : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Compact
+          </button>
+          <button
+            type="button"
+            onClick={() => onViewModeChange("diagrams")}
+            className={`px-2.5 py-1.5 inline-flex items-center gap-1 border-l border-border ${
+              viewMode === "diagrams"
+                ? "bg-bg-muted text-text-strong"
+                : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
+            }`}
+          >
+            <GitBranch className="w-3.5 h-3.5" />
+            Diagrams
+          </button>
+        </div>
+        <div className="text-xs text-text-muted truncate">
+          {isDiagrams ? (
+            <>
+              {tileCount} diagram{tileCount !== 1 ? "s" : ""}
+              {missingCount > 0 && (
+                <span className="text-text-soft">
+                  {" "}
+                  · {missingCount} without diagrams
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              {tileCount} process block{tileCount !== 1 ? "s" : ""}
+              {totalCount > 0 && tileCount !== totalCount ? (
+                <span className="text-text-soft"> · {totalCount} total</span>
+              ) : null}
+            </>
           )}
         </div>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text transition-colors"
+          title="Refresh"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
 
-          <div className="w-px h-5 bg-bg-muted" />
+        <div className="w-px h-5 bg-bg-muted" />
 
-          <button
-            type="button"
-            onClick={zoomOut}
-            disabled={zoom <= MIN_ZOOM}
-            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
-            title="Zoom out"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
+        <button
+          type="button"
+          onClick={onZoomOut}
+          disabled={disableZoom || z <= MIN_ZOOM}
+          className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
+          title="Zoom out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
 
-          <span className="text-xs text-text-muted tabular-nums min-w-[3.5rem] text-center">
-            {displayPercent}%
-          </span>
+        <span className="text-xs text-text-muted tabular-nums min-w-[3.5rem] text-center">
+          {pct}%
+        </span>
 
-          <button
-            type="button"
-            onClick={zoomIn}
-            disabled={zoom >= MAX_ZOOM}
-            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
-            title="Zoom in"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
+        <button
+          type="button"
+          onClick={onZoomIn}
+          disabled={disableZoom || z >= MAX_ZOOM}
+          className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text disabled:opacity-40 transition-colors"
+          title="Zoom in"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
 
-          <div className="w-px h-5 bg-bg-muted mx-1" />
+        <div className="w-px h-5 bg-bg-muted mx-1" />
 
-          <button
-            type="button"
-            onClick={handleFit}
-            className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text transition-colors flex items-center gap-1.5 text-xs px-3"
-            title="Fit all"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-            Fit all
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onFit}
+          disabled={disableZoom}
+          className="p-2 rounded-lg border border-border-strong bg-bg-panel hover:bg-bg-muted text-text transition-colors flex items-center gap-1.5 text-xs px-3 disabled:opacity-40"
+          title="Fit all"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+          Fit all
+        </button>
       </div>
     </div>
   );
