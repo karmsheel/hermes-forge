@@ -269,19 +269,23 @@ export function WorkshopSession({
     try {
       const res = await apiFetch("/api/processes");
       if (res.status === 401) {
-        // Only the foreground workshop may navigate — background multi-tab
-        // sessions must not hard-redirect the whole app (foundation/functions loops).
+        // Never hard-redirect from workshop — multi-tab background sessions and
+        // racey session cookies were thrashing foundation ↔ workshop ↔ functions.
+        setProcesses([]);
+        setActiveProcess(null);
+        setActiveId(null);
         if (isActiveRef.current) {
-          window.location.href = "/";
+          toast.error("Session expired — sign in again to map processes.");
         }
         return;
       }
       const data = await res.json();
       if (!data.business) {
-        if (isActiveRef.current) {
-          // Soft land on Functions only when this workshop is visible
-          window.location.href = "/functions";
-        }
+        // Empty state only — do not window.location to /functions (full reload
+        // re-seeded desktop tabs and fought the current route).
+        setProcesses([]);
+        setActiveProcess(null);
+        setActiveId(null);
         return;
       }
 
@@ -1156,6 +1160,20 @@ export function WorkshopSession({
         />
 
         <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-bg">
+          {!loadingList && !businessId ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <div className="text-center max-w-sm space-y-3">
+                <h2 className="text-sm font-semibold text-text-strong">No active business</h2>
+                <p className="text-xs text-text-muted">
+                  Select or create a business in Business Manager, then return to Workshop
+                  to map processes.
+                </p>
+                <a href="/business-manager" className="btn-primary text-xs inline-flex">
+                  Business Manager
+                </a>
+              </div>
+            </div>
+          ) : null}
           <div className="px-5 py-3 border-b border-border flex items-center justify-between shrink-0">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-text-muted">

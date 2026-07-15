@@ -172,11 +172,13 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
     if (seededRef.current) return;
 
     seededRef.current = true;
-    const route = normalizeShellRoute(pathname || "/home");
+    // Always prefer the live URL + current shell business when seeding.
+    // Never router.replace() to a stored tab route here — that fought intentional
+    // nav (Foundation/Workshop) and, with workshop hard-redirects, caused loops.
+    const pathRoute = normalizeShellRoute(pathname || "/home");
     const stored = loadForgeTabsState();
 
     if (stored && stored.tabs.length > 0) {
-      // Enrich tabs for the current business with latest avatar (older storage had no avatar fields)
       let restored = stored.tabs.map((t) =>
         t.businessId === currentBusiness.id
           ? {
@@ -190,49 +192,30 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
       let activeId = stored.activeTabId;
       let active = restored.find((t) => t.id === activeId) ?? restored[0]!;
 
-      // Prefer the URL the user is already on over yanking them to a stored tab route.
-      // Forcing replace(active.route) caused foundation ↔ workshop ↔ functions loops when
-      // a background WorkshopSession also hard-redirected on missing business.
-      const pathRoute = normalizeShellRoute(pathname || "/home");
-      const activeRoute = normalizeShellRoute(active.route);
-      if (pathRoute !== activeRoute) {
-        const isGenericLanding =
-          pathRoute === "/home" || pathRoute === "/" || pathRoute === "";
-        if (isGenericLanding) {
-          // Cold start on home — restore last tab destination
-          switchingRef.current = true;
-          router.replace(active.route);
-          queueMicrotask(() => {
-            switchingRef.current = false;
-          });
-        } else {
-          // Deep link / intentional nav (e.g. /foundation) — adopt URL onto active tab
-          const idx = restored.findIndex((t) => t.id === active.id);
-          if (idx >= 0) {
-            restored = [...restored];
-            restored[idx] = applyTabPatch(active, {
-              route: pathRoute,
-              businessId: currentBusiness.id,
-              businessName: currentBusiness.name,
-              avatarEmoji: currentBusiness.avatarEmoji,
-              avatarIcon: currentBusiness.avatarIcon,
-            });
-            active = restored[idx]!;
-            activeId = active.id;
-          }
-        }
+      // Pin active tab to the route the user is already viewing + current business
+      const idx = restored.findIndex((t) => t.id === active.id);
+      if (idx >= 0) {
+        restored = [...restored];
+        restored[idx] = applyTabPatch(active, {
+          route: pathRoute,
+          businessId: currentBusiness.id,
+          businessName: currentBusiness.name,
+          avatarEmoji: currentBusiness.avatarEmoji,
+          avatarIcon: currentBusiness.avatarIcon,
+        });
+        active = restored[idx]!;
+        activeId = active.id;
       }
 
       setTabs(restored);
       setActiveTabId(activeId);
       touchActivation(active.id);
       persist(restored, active.id);
-      if (active.businessId !== currentBusiness.id) {
-        void switchBusiness(active.businessId);
-      }
+      // Do not switchBusiness() here — shell already has the correct active business.
+      // Switching to a stored tab's business while on another route caused thrash.
     } else {
       const seed = buildTab({
-        route,
+        route: pathRoute,
         businessId: currentBusiness.id,
         businessName: currentBusiness.name,
         avatarEmoji: currentBusiness.avatarEmoji,
@@ -245,7 +228,7 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
     }
 
     setHydrated(true);
-  }, [desktop, userLoading, currentBusiness, pathname, router, switchBusiness, persist, touchActivation]);
+  }, [desktop, userLoading, currentBusiness, pathname, persist, touchActivation]);
 
   // Keep active tab route in sync with Next navigation (in-page links, HireRequiredGate, etc.)
   // switchingRef skips the *immediate* sync during intentional tab navigation so intermediate
