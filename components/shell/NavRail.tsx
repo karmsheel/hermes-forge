@@ -17,6 +17,7 @@ import {
   Scale,
   ScanEye,
   ScrollText,
+  Target,
   Users,
   Zap,
 } from "lucide-react";
@@ -113,6 +114,13 @@ export function NavRail() {
       match: (path) => path.startsWith("/automations"),
     },
     {
+      id: "automation-analysis",
+      href: "/automation-analysis",
+      label: "Automation Analysis",
+      icon: Target,
+      match: (path) => path.startsWith("/automation-analysis"),
+    },
+    {
       id: "cronalytics",
       href: "/cronalytics",
       label: "Cronalytics",
@@ -124,18 +132,18 @@ export function NavRail() {
   /** Holistic: always visible across Map / Monitor / Automate (footer, above chat). */
   const holisticItems: NavItem[] = [
     {
-      id: "log",
-      href: "/log",
-      label: "Business log",
-      icon: ScrollText,
-      match: (path) => path.startsWith("/log"),
-    },
-    {
       id: "decisions",
       href: "/decisions",
       label: "Decisions",
       icon: Scale,
       match: (path) => path.startsWith("/decisions"),
+    },
+    {
+      id: "log",
+      href: "/log",
+      label: "Business log",
+      icon: ScrollText,
+      match: (path) => path.startsWith("/log"),
     },
   ];
 

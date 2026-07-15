@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
@@ -15,7 +15,7 @@ import { TemplateCards } from "./TemplateCards";
 
 const heroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
-export function HomeHero({ belowFold }: { belowFold?: ReactNode }) {
+export function HomeHero() {
   const router = useRouter();
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const { openHermesConnection } = useShell();
@@ -38,6 +38,15 @@ export function HomeHero({ belowFold }: { belowFold?: ReactNode }) {
       composerRef.current?.focus();
       composerRef.current?.setSelectionRange(0, template.seedPrompt.length);
     });
+  }
+
+  function handleTemplateClear() {
+    const seed = selectedTemplate?.seedPrompt?.trim() ?? "";
+    setSelectedTemplateId(null);
+    setSelectedTemplate(null);
+    if (seed && brief.trim() === seed) {
+      setBrief("");
+    }
   }
 
   function handleBriefChange(next: string) {
@@ -106,9 +115,12 @@ export function HomeHero({ belowFold }: { belowFold?: ReactNode }) {
 
       <div className="home-page__scroll">
         <div className="home-page__scroll-inner">
-          <TemplateCards selectedId={selectedTemplateId} onSelect={handleTemplateSelect} />
+          <TemplateCards
+            selectedId={selectedTemplateId}
+            onSelect={handleTemplateSelect}
+            onClear={handleTemplateClear}
+          />
 
-          {belowFold}
         </div>
       </div>
     </div>

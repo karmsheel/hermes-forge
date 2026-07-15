@@ -346,8 +346,11 @@ export const ironEmberSkin: ForgeSkin = {
     destructiveForeground: "#FFFFFF",
     sidebarBackground: "#EBE8E4",
     sidebarBorder: ironEmberLine(IRON_EMBER_LIGHT, 10),
-    userBubble: IRON_EMBER_LIGHT.text,
-    userBubbleBorder: ironEmberLine(IRON_EMBER_LIGHT, 28),
+    // Day composer / user bubble: paper white with a firm dark outline
+    userBubble: "#FFFFFF",
+    userBubbleBorder: IRON_EMBER_LIGHT.text,
+    composerForeground: IRON_EMBER_LIGHT.text,
+    composerPlaceholder: mix(IRON_EMBER_LIGHT.muted, "#FFFFFF", 0.22),
     success: "#2F7A4A",
     info: "#3D6F94",
   },

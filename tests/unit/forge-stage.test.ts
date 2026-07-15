@@ -24,6 +24,7 @@ describe("forge-stage", () => {
     assert.equal(stageFromPath("/metrics"), "monitor");
     assert.equal(stageFromPath("/cronalytics"), "monitor");
     assert.equal(stageFromPath("/automations/abc"), "automate");
+    assert.equal(stageFromPath("/automation-analysis"), "automate");
     assert.equal(stageFromPath("/content"), null);
     assert.equal(stageFromPath("/home"), null);
     assert.equal(stageFromPath("/decisions"), null);
@@ -40,11 +41,13 @@ describe("forge-stage", () => {
     assert.equal(isNavIdInStage("content", "monitor"), true);
     assert.equal(isNavIdInStage("content", "automate"), true);
     assert.equal(isNavIdInStage("automations", "automate"), true);
+    assert.equal(isNavIdInStage("automation-analysis", "automate"), true);
+    assert.equal(isNavIdInStage("automation-analysis", "map"), false);
     assert.equal(isNavIdInStage("documents", "monitor"), false);
     // log/decisions are holistic footer items, not stage-scoped
     assert.equal(isNavIdInStage("decisions", "map"), false);
     assert.equal(isNavIdInStage("log", "monitor"), false);
-    assert.deepEqual([...HOLISTIC_NAV_IDS], ["log", "decisions"]);
+    assert.deepEqual([...HOLISTIC_NAV_IDS], ["decisions", "log"]);
   });
 
   it("pathBelongsToStage for content and home", () => {

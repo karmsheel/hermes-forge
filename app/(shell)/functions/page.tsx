@@ -8,7 +8,6 @@ import { useShell } from "@/components/shell/ShellContext";
 import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import { FunctionsPageContext } from "@/components/chatbar/page-providers/FunctionsPageContext";
 import {
-  BusinessAnalyticsSection,
   type AnalyticsBusiness,
   type AnalyticsProcess,
 } from "@/components/functions/BusinessAnalyticsSection";
@@ -278,14 +277,6 @@ export default function FunctionsPage() {
               />
             )}
           </section>
-
-          <div className="border-t border-border pt-10">
-            <BusinessAnalyticsSection
-              business={business}
-              processes={processes}
-              onRefresh={() => void load()}
-            />
-          </div>
         </>
       )}
 

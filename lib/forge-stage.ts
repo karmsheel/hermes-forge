@@ -26,11 +26,11 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
   map: ["home", "functions", "workshop", "personnel", "documents", "god-mode"],
   monitor: ["home", "metrics", "content", "cronalytics"],
-  automate: ["home", "automations", "personnel", "content"],
+  automate: ["home", "automations", "automation-analysis", "personnel", "content"],
 };
 
 /** Nav ids always available regardless of stage (footer of NavRail). */
-export const HOLISTIC_NAV_IDS = ["log", "decisions"] as const;
+export const HOLISTIC_NAV_IDS = ["decisions", "log"] as const;
 
 const STORAGE_PREFIX = "forge:stage:";
 
@@ -90,7 +90,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
     return null;
   }
 
-  if (path.startsWith("/automations")) {
+  if (path.startsWith("/automations") || path.startsWith("/automation-analysis")) {
     return "automate";
   }
 

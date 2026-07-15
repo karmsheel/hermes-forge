@@ -68,7 +68,7 @@ export function BusinessAnalyticsSection({
     <section className="function-analytics">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
-          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Analytics</div>
+          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Analysis</div>
           <h2 className="text-xl font-semibold tracking-tight">Automation opportunities</h2>
           <p className="text-xs text-text-muted mt-1">
             Process scores and time-saved estimates across {business.name}.

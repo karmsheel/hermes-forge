@@ -72,6 +72,7 @@ export async function buildServerPageSnapshot(options: {
       status: true,
       updatedAt: true,
       automationScore: true,
+      estimatedTimeSaved: true,
     },
     orderBy: { updatedAt: "desc" },
     take: 40,
@@ -85,20 +86,12 @@ export async function buildServerPageSnapshot(options: {
 
   switch (blurb.routeKey) {
     case "home": {
-      const recent = processes.slice(0, 6);
-      if (recent.length) {
-        lines.push("Recent processes:");
-        for (const p of recent) {
-          lines.push(`- ${p.name} [${p.status}] (${p.department || "—"})`);
-        }
-      } else {
-        lines.push("Recent processes: none yet — user can start from a brief.");
-      }
       lines.push("Hint: Home composer creates a process and seeds workshop chat.");
+      lines.push("Hint: Template pills seed the composer with a starter brief.");
       break;
     }
     case "functions": {
-      lines.push("Functions view: org chart + analytics from process departments.");
+      lines.push("Functions view: org chart of business areas and workflows.");
       const byStatus = new Map<string, number>();
       for (const p of processes) {
         byStatus.set(p.status, (byStatus.get(p.status) || 0) + 1);
@@ -107,6 +100,28 @@ export async function buildServerPageSnapshot(options: {
         lines.push(
           `Status mix: ${[...byStatus.entries()].map(([s, n]) => `${s}=${n}`).join(", ")}`,
         );
+      }
+      break;
+    }
+    case "automation-analysis": {
+      lines.push("Automation Analysis: process scores and time-saved estimates.");
+      if (processes.length) {
+        const avg = Math.round(
+          processes.reduce((sum, p) => sum + (p.automationScore || 0), 0) / processes.length,
+        );
+        const high = processes.filter((p) => (p.automationScore || 0) >= 65).length;
+        lines.push(`Processes: ${processes.length}; avg score ${avg}; high potential (≥65): ${high}`);
+        const top = [...processes]
+          .sort((a, b) => (b.automationScore || 0) - (a.automationScore || 0))
+          .slice(0, 5);
+        for (const p of top) {
+          lines.push(
+            `- ${p.name} (${p.department}): score ${p.automationScore ?? 0}` +
+              (p.estimatedTimeSaved != null ? `, ~${p.estimatedTimeSaved} hrs/wk` : ""),
+          );
+        }
+      } else {
+        lines.push("No processes mapped yet.");
       }
       break;
     }

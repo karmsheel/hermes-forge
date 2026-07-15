@@ -16,10 +16,10 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     blurb: {
       routeKey: "home",
       title: "Home",
-      purpose: "Start a new process from a brief, pick a template, or jump back into recent work.",
+      purpose: "Start a new process from a brief or pick a workflow template.",
       uiHints: [
         "Type a brief in the home composer to create a process",
-        "Open a recent process to continue mapping in Workshop",
+        "Pick a template pill to seed the composer",
         "Ask me what to map next for this business",
       ],
     },
@@ -35,7 +35,6 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
         "Click a function block to list its workflows",
         "Use Move on a workflow to assign it to another function",
         "Add a new function to the map with New function",
-        "Use the analytics section for automation coverage",
       ],
     },
   },
@@ -138,6 +137,20 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p.startsWith("/automation-analysis"),
+    blurb: {
+      routeKey: "automation-analysis",
+      title: "Automation Analysis",
+      purpose:
+        "Automate stage: ranked automation opportunities, process scores, and time-saved estimates for this business.",
+      uiHints: [
+        "Scan high-potential processes (≥65) first",
+        "Export the knowledge graph if you need a backup",
+        "Open Automations to design a plan for a forged process",
+      ],
+    },
+  },
+  {
     match: (p) => /^\/automations\/[^/]+/.test(p),
     blurb: {
       routeKey: "automation-studio",
@@ -162,6 +175,7 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       uiHints: [
         "Open an approved process to enter Automation studio",
         "Design the plan in Hermes chat, then deploy from the studio panel",
+        "Open Automation Analysis to rank opportunities by score",
         "Open Content to manage drafts the agent produces",
       ],
     },

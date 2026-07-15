@@ -53,22 +53,11 @@ function getSubtleCardArtStyle(seed: string, skin: ForgeSkin, mode: "light" | "d
   };
 }
 
-/** Theme-aware art for recent-process card thumbs. */
+/** Theme-aware art for card thumbs (e.g. business tiles). */
 export function getProjectCardThumbStyle(
   name: string,
   skin: ForgeSkin,
   mode: "light" | "dark",
 ): CSSProperties {
   return getSubtleCardArtStyle(name, skin, mode);
-}
-
-/** Theme-aware art strip for home template cards. */
-export function getTemplateCardArtStyle(
-  seed: string,
-  skin: ForgeSkin,
-  mode: "light" | "dark",
-  _fallbackFrom?: string,
-  _fallbackTo?: string,
-): CSSProperties {
-  return getSubtleCardArtStyle(seed, skin, mode);
 }

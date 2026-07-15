@@ -78,7 +78,8 @@ export function SuggestionPopover({
 
   const safeIndex = items.length > 0 ? Math.min(activeIndex, items.length - 1) : -1;
 
-  const gap = 6;
+  // Breathing room between the caret line and the list (feels tight at 6px).
+  const gap = 12;
   const maxH = 256; // max-h-64
   const estimatedH = panelHeight || Math.min(maxH, Math.max(40, items.length * 44 + 8));
   const spaceAbove = anchor.y - gap;
@@ -133,17 +134,17 @@ export function SuggestionPopover({
                   active ? "bg-bg-subtle" : "hover:bg-bg-subtle"
                 }`}
               >
-                {item.badge && (
-                  <span className="text-[10px] uppercase font-mono tracking-wider text-accent shrink-0 w-12">
-                    {item.badge}
-                  </span>
-                )}
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-text">{item.label}</div>
                   {item.description && (
                     <div className="text-xs text-text-soft truncate">{item.description}</div>
                   )}
                 </div>
+                {item.badge && (
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-accent shrink-0 text-right">
+                    {item.badge}
+                  </span>
+                )}
               </li>
             );
           })}
