@@ -65,6 +65,8 @@ Core philosophy (inspired by Open Design):
 - Hermes does the heavy reasoning
 - The UI is a "studio" shell, not a traditional CRUD app
 
+**Long-horizon product thesis (Phase 6 — planned):** a business is a **designed plant**. Hermes sketches low-fidelity unit ops (I/O shapes + draft processes + documents) in a **Foundation** room as the user talks; the Workshop deepens one process at a time; God Mode evolves into a **linked process flow diagram** of the whole business. See `PRODUCT_BACKLOG.md` § Phase 6.
+
 See `docs/references/PRODUCT_BACKLOG.md`, `docs/references/audit.md`, and `docs/references/INDEX.md` for detailed priorities and known tech debt.
 
 ---

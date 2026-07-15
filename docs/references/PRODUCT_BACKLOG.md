@@ -836,6 +836,208 @@ Optional systems of record after Hermes-only loop is proven.
 
 ---
 
+## Phase 6 — Business as plant: Foundation → shapes → process network
+
+**North-star metaphor (chemical engineering / plant design):**  
+A business is a **designed plant**. The whole plant is one process system with many unit operations (mapped processes), multiple feeds (inputs), and finished products / outcomes (outputs). Hermes Forge’s long-horizon deliverable is a **process flow diagram (PFD) of the business** — not only deep maps of isolated unit ops, but the **overall plant topology** generated as the user talks.
+
+**Product shift from today:**  
+Phase 2 jumps Home composer → Workshop for a single process. That is right for *depth*, wrong as the *default first room* for a new business. New businesses should first land in a **Foundation** staging room where Hermes sketches the plant at low fidelity (documents + draft process blocks / I/O shapes). The Workshop remains the place to open one unit operation and refine it into a realistic map.
+
+**Relationship to existing surfaces:**
+
+| Surface | Role in Phase 6 |
+|---------|-----------------|
+| **Foundation room** (new) | Default entry for new / early businesses; chat-first plant sketch |
+| **Documents** | Business knowledge (basics, channels, market, etc.) appears as agent populates |
+| **Workshop** | Deep refine of a selected draft process (full Mermaid + chat) |
+| **Functions** | Org / department ownership view (unchanged job) |
+| **God Mode** | Evolves from full-diagram gallery → compact I/O-shape canvas → linked plant PFD |
+| **Global chatbar** | Can drive Foundation population (documents + draft processes) with page context |
+
+**Design principles for this phase:**
+1. **Low fidelity first, high fidelity on demand** — shapes and drafts before full diagrams.
+2. **I/O shape = external black-box interface**, not internal flowchart branching.
+3. **Derive and recompute** shape as the process grows; default `siso` on create.
+4. **Progressive chrome** — left nav / room sidebar reveals Documents, process list, etc. as the agent creates real artifacts (empty shells stay out of the way).
+5. **Plant PFD is the milestone** — process-to-process links are the end state, not a side experiment.
+
+---
+
+### 6.0 Phase vision & reference — **PLANNED** (docs)
+
+**Goal:** Capture the plant/PFD product thesis so agents and humans share one end state before code.
+
+**Deliverables:**
+- [ ] Optional dedicated reference `docs/references/BUSINESS_PLANT_PFD.md` (or keep vision only in this phase) — metaphor, room model, shape library, link model, non-goals
+- [ ] Update `docs/references/INDEX.md` when the reference exists
+- [ ] Concept diagram: Foundation chat → draft shapes → workshop refine → linked God Mode plant
+
+**Status:** Vision captured in this phase (2026-07-15 conversation). Detailed reference optional until 6.1 starts.
+
+**Do not:** Rewrite Phase 2 as deprecated — Workshop deep-map stays; Foundation is the new *entry* path for plant sketching.
+
+---
+
+### 6.1 Process I/O shape library — **PLANNED**
+
+**Goal:** Every process has a simple **I/O shape** (black-box topology) used for overview UI, agent language, and later plant layout.
+
+**Closed library (v1):**
+
+| ID | Name | Glyph idea | Meaning |
+|----|------|------------|---------|
+| `siso` | Single in, single out | `→ □ →` | Linear unit / pipeline step |
+| `simo` | Single in, multi out | `→ □ ⇉` | Split / fan-out / distribute |
+| `miso` | Multi in, single out | `⇉ □ →` | Merge / assemble / consolidate |
+| `mimo` | Multi in, multi out | `⇉ □ ⇉` | Hub / exchange / multi-feed multi-product |
+
+**Data model (sketch):**
+- `Process.ioShape` — enum string, default `"siso"`
+- Prefer name **`ioShape`** / UI **“Shape”** over overloaded “process type”
+- Optional later: `ioShapeOverride` if manual pin is needed; primary path is **recompute on change**
+
+**Behavior:**
+- [ ] Schema + Prisma migration + types (`lib/types.ts`, APIs, PROCESS.md list line)
+- [ ] Auto-assign on process create (default `siso`; light inference from brief optional)
+- [ ] Recompute when diagram / structured I/O updates (chat-driven evolution: siso → simo/mimo as boundaries grow)
+- [ ] Counting rule: **process-boundary** inputs/outputs only — not internal Mermaid branches
+- [ ] Small SVG glyph components (token-colored); badge in workshop details / process list
+- [ ] Teach Hermes the four shapes in process chat / Foundation prompts
+
+**Depends on:** Process model, workshop diagram updates (3.1)
+
+**Do not:** Expand the library with generator/sink/cycle variants in v1 unless a clear gap appears.
+
+---
+
+### 6.2 Foundation room (business staging) — **PLANNED**
+
+**Goal:** New default room for a business that is not “jump straight to Workshop.” User talks about the business; Hermes populates foundations (documents + draft process blocks). User later enters Workshop on a chosen process to refine.
+
+**Working name:** **Foundation** (UI may say “Business foundations” / “Foundation room”).
+
+**UX sketch:**
+- Left: progressive sidebar — starts with Home / business context; **Documents** appears when docs exist or are first written; **Processes** list grows as draft blocks are seeded
+- Center: plant-oriented canvas of **draft process shapes** (and later links) — not full Mermaid by default
+- Right: Hermes chat (shell chatbar or room-local; prefer one chat surface — align with 4.17)
+- Entry: create/select new business → land on Foundation, **not** auto-open Workshop
+- Existing “start from brief → workshop” path becomes optional / advanced, or: brief seeds Foundation drafts then user drills in
+
+**Agent behaviors:**
+- [ ] Discuss channels, offers, ops (“we have Twitter, YouTube, online services…”) → create/update **Documents** (business details, channels, etc.)
+- [ ] Same conversation → seed **draft Process** records with name, department/function guess, description, `ioShape`, status `draft`, minimal or empty `diagramMermaid`
+- [ ] Drafts are invitation to refine — not final maps
+- [ ] User opens a draft → Workshop with process-scoped chat and full diagram loop (existing Phase 3)
+
+**Deliverables:**
+- [ ] Route e.g. `/foundation` (name TBD) + nav placement under Map stage
+- [ ] Default landing for new / thin businesses (product rule: when to send Foundation vs Workshop vs Functions)
+- [ ] Progressive left sidebar (artifact-aware visibility)
+- [ ] Agent tools / structured actions to create draft processes + document patches from chat
+- [ ] Clear CTA: “Open in Workshop” / “Refine process” on each block
+
+**Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes (can stub shapes as siso until 6.1 lands)
+
+**Do not:** Duplicate a second permanent chat UI next to the shell chatbar; rebuild Documents or Workshop from scratch.
+
+---
+
+### 6.3 Draft process seeding from conversation — **PLANNED**
+
+**Goal:** Reliable, reviewable pipeline from Foundation chat → many lightweight process stubs.
+
+**Deliverables:**
+- [ ] Structured extraction or tool calls: `{ name, department, description, ioShape, trigger?, inputs?, outputs? }`
+- [ ] Idempotent upsert (avoid duplicate “Twitter posting” every turn)
+- [ ] Business log events: `process.created` (draft seed), optional `process.shape_updated`
+- [ ] User can rename / discard / merge stubs before deep mapping
+- [ ] Status semantics: seeded drafts stay `draft` until workshop refinement / forge path
+
+**Depends on:** 6.2 Foundation room, process APIs, business log (4.11)
+
+**Do not:** Auto-generate large Mermaid for every stub on first mention — shapes first, diagrams on refine.
+
+---
+
+### 6.4 God Mode → compact plant canvas — **PLANNED**
+
+**Goal:** Replace (or toggle away from) full-Mermaid tiles with **uniform I/O-shape cards** so the whole business is scannable on one pan/zoom canvas.
+
+**Deliverables:**
+- [ ] Compact tile: name, function, status, shape glyph (fixed size)
+- [ ] Toggle: Compact shapes | Full diagrams (migration path from 4.13)
+- [ ] Fit-to-view remains usable with dozens of processes
+- [ ] Click → Workshop (or Foundation focus)
+- [ ] Optional free-drag positions (persist layout later — 6.5/6.6)
+
+**Depends on:** 4.13 God Mode, 6.1 shapes
+
+**Note:** Still department-grouped is OK for v1; true flow layout waits for links (6.5).
+
+---
+
+### 6.5 Process-to-process links (plant edges) — **PLANNED** (milestone)
+
+**Goal:** First-class **connections between processes** so the plant has a flow network, not only a pile of boxes.
+
+**Data model (sketch):**
+- `ProcessLink` (or equivalent): `fromProcessId`, `toProcessId`, optional `label`, `fromPort` / `toPort`, `businessId`
+- Ports may align with named inputs/outputs later; v1 can be whole-box edges
+
+**Deliverables:**
+- [ ] Schema + API CRUD + business log
+- [ ] Hermes can propose links while mapping (“Fulfillment feeds Invoicing”)
+- [ ] User can draw / confirm / delete links on Foundation or God Mode canvas
+- [ ] Validation: same business; no silent cross-business edges
+- [ ] PROCESS.md / Git materialize mention of plant topology (optional snapshot file)
+
+**Depends on:** 6.1, 6.2 or 6.4 canvas host
+
+**End-state UX:** “Here is how work moves through the business” — the PFD, not only the unit-op SOPs.
+
+---
+
+### 6.6 Business plant PFD (end-state milestone) — **PLANNED**
+
+**Goal:** God Mode / Foundation canvas becomes a true **business process flow diagram**: shapes + edges + layout that reads like a plant drawing of the company.
+
+**Deliverables:**
+- [ ] Layout modes: by function (department bands) | by flow (graph layout) | manual positions
+- [ ] External plant feeds/products (business-level inputs/outputs) optional framing
+- [ ] Export plant view (PNG/SVG/PDF) as a first-class deliverable alongside per-process export (3.8)
+- [ ] Zoom from plant → unit op (Workshop) without losing context
+- [ ] Ungate or re-home God Mode as a primary Map-stage surface once PFD quality is product-grade (exit pure dev-gate if ready)
+
+**Depends on:** 6.1–6.5
+
+**Success criteria (product):**
+- A user describing their business in Foundation ends with a **visible plant of draft blocks**
+- Opening any block yields a workshop path to a **realistic process map**
+- Linked processes show **end-to-end flow** (e.g. lead → delivery → support) on one canvas
+- The metaphor holds: **business = plant; process = unit operation; link = stream**
+
+**Do not:** Require chemical-engineering literacy in UI copy — keep labels plain (“Shape”, “Flow”, “Connected processes”); metaphor is design guidance, not user jargon.
+
+---
+
+### 6.7 Entry-flow migration (Home → Foundation) — **PLANNED**
+
+**Goal:** Align acquisition UX with Phase 6 without stranding existing workshop-first habits.
+
+**Deliverables:**
+- [ ] Home composer / new business → Foundation (default)
+- [ ] Template starters seed Foundation drafts (and optional first workshop deep-link)
+- [ ] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
+- [ ] Empty/thin business heuristic: Foundation; mature business: Functions or last room
+- [ ] Docs + onboarding copy updated
+
+**Depends on:** 6.2
+
+**Do not:** Break desktop multi-tab session restore (4.15) or business isolation.
+
+---
+
 ## Item index (quick reference)
 
 | ID | Title | Phase | Status |
@@ -883,6 +1085,14 @@ Optional systems of record after Hermes-only loop is proven.
 | 5.4 | Content Ops template | 5 | **Done** |
 | 5.5 | n8n Automate expansion | 5 | Pending (M1) |
 | 5.6 | Notion / external connectors | 5 | Pending (M2) |
+| 6.0 | Phase vision & plant/PFD reference | 6 | Planned (vision in backlog) |
+| 6.1 | Process I/O shape library | 6 | Planned |
+| 6.2 | Foundation room (business staging) | 6 | Planned |
+| 6.3 | Draft process seeding from conversation | 6 | Planned |
+| 6.4 | God Mode compact plant canvas | 6 | Planned |
+| 6.5 | Process-to-process links (plant edges) | 6 | Planned (milestone) |
+| 6.6 | Business plant PFD (end-state) | 6 | Planned (milestone) |
+| 6.7 | Entry-flow migration (Home → Foundation) | 6 | Planned |
 
 ---
 
@@ -942,3 +1152,8 @@ When picking up a backlog item:
 - No HTTP/SSE integration tests yet (unit smoke via `npm test` only)
 - Optional theme export pruning (AUDIT-6 residual)
 - Optional 4.12: supersede/revoke UI; freeform policy decisions
+
+**Phase 6 (planned — do not implement unless explicitly picked up):**
+- Business-as-plant / PFD north star: Foundation room → I/O shapes → draft seeding → compact God Mode → process links → full plant canvas
+- Entry UX shifts from Home→Workshop-first to Home→Foundation-first for new businesses
+- Full item list: **6.0–6.7** in this file
