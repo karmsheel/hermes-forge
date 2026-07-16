@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { PlantPageContext } from "@/components/chatbar/page-providers/PlantPageContext";
 import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
 import { PlantEdges } from "@/components/plant/PlantEdges";
 import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
@@ -262,6 +263,12 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const [linkMode, setLinkMode] = useState(false);
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  /** Compact plant block selection (not workshop navigation). */
+  const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
+  const selectedProcess = useMemo(
+    () => processes.find((p) => p.id === selectedProcessId) ?? null,
+    [processes, selectedProcessId],
+  );
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const hasFitRef = useRef(false);
   const processesRef = useRef<ProcessSummary[]>([]);
@@ -532,7 +539,14 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   function handlePointerDown(e: ReactPointerEvent) {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
+    // Tiles and plant edges handle their own gestures
     if (target.closest("[data-godmode-tile]")) return;
+    if (target.closest("[data-plant-edge]")) return;
+
+    // Empty canvas: deselect process/link, then pan
+    setSelectedProcessId(null);
+    setSelectedLinkId(null);
+    setLinkFromId(null);
 
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
@@ -598,54 +612,71 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     await load();
   }
 
-  function handleCompactTileClick(processId: string) {
+  /** Select block (or complete link) — never navigates to Workshop. */
+  function handleCompactTileSelect(processId: string) {
     if (dragMovedRef.current) {
       dragMovedRef.current = false;
       return;
     }
+    setSelectedLinkId(null);
     if (linkMode && viewMode === "compact") {
       if (!linkFromId) {
         setLinkFromId(processId);
+        setSelectedProcessId(processId);
         return;
       }
       if (linkFromId === processId) {
         setLinkFromId(null);
+        setSelectedProcessId(processId);
         return;
       }
       void createLink(linkFromId, processId);
+      setSelectedProcessId(processId);
       return;
     }
-    openInWorkshop(processId);
+    setSelectedProcessId(processId);
   }
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
-      </div>
+      <>
+        <PlantPageContext process={null} links={[]} processCount={0} />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+        </div>
+      </>
     );
   }
 
   if (!businessId) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="text-center card max-w-lg p-10">
-          <Building2 className="w-10 h-10 text-text-soft mx-auto mb-4" />
-          <h2 className="text-lg font-semibold mb-2">No active business</h2>
-          <p className="text-sm text-text-muted mb-6">
-            Select or create a business to view the plant canvas.
-          </p>
-          <Link href="/foundation" className="btn-primary text-sm inline-flex items-center gap-2">
-            Go to Foundation <ArrowRight className="w-4 h-4" />
-          </Link>
+      <>
+        <PlantPageContext process={null} links={[]} processCount={0} />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center card max-w-lg p-10">
+            <Building2 className="w-10 h-10 text-text-soft mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-2">No active business</h2>
+            <p className="text-sm text-text-muted mb-6">
+              Select or create a business to view the plant canvas.
+            </p>
+            <Link href="/foundation" className="btn-primary text-sm inline-flex items-center gap-2">
+              Go to Foundation <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!layout || layout.tiles.length === 0) {
     const isDiagrams = viewMode === "diagrams";
     return (
+      <>
+        <PlantPageContext
+          process={selectedProcess}
+          links={links}
+          processCount={processes.length}
+        />
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="text-center card max-w-xl p-10">
@@ -712,6 +743,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           disableZoom
         />
       </div>
+      </>
     );
   }
 
@@ -724,6 +756,12 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     viewMode === "compact" && layoutMode === "function" && deptPositions.length > 0;
 
   return (
+    <>
+      <PlantPageContext
+        process={selectedProcess}
+        links={links}
+        processCount={processes.length}
+      />
     <div className="flex-1 min-h-0 flex flex-col">
       <div
         ref={viewportRef}
@@ -776,6 +814,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
               onSelectLink={(id) => {
                 setSelectedLinkId(id);
                 setLinkFromId(null);
+                setSelectedProcessId(null);
               }}
             />
           ) : null}
@@ -785,15 +824,17 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
               <CompactTile
                 key={tile.process.id}
                 tile={tile}
+                selected={selectedProcessId === tile.process.id}
                 isLinkFrom={linkMode && linkFromId === tile.process.id}
                 linkMode={linkMode}
-                draggable={layoutMode === "manual" && !linkMode}
+                draggable={!linkMode}
                 zoom={zoom}
                 onDragMoved={() => {
                   dragMovedRef.current = true;
                 }}
                 onDragEnd={(x, y) => handleTileDragEnd(tile.process.id, x, y)}
-                onClick={() => handleCompactTileClick(tile.process.id)}
+                onSelect={() => handleCompactTileSelect(tile.process.id)}
+                onOpenWorkshop={() => openInWorkshop(tile.process.id)}
               />
             ) : (
               <DiagramTileView
@@ -832,32 +873,38 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           setLinkMode(on);
           setLinkFromId(null);
           setSelectedLinkId(null);
+          setSelectedProcessId(null);
         }}
         selectedLinkId={selectedLinkId}
         onDeleteLink={() => void deleteSelectedLink()}
       />
     </div>
+    </>
   );
 }
 
 function CompactTile({
   tile,
-  onClick,
+  selected = false,
   isLinkFrom,
   linkMode,
-  draggable = false,
+  draggable = true,
   zoom = 1,
   onDragMoved,
   onDragEnd,
+  onSelect,
+  onOpenWorkshop,
 }: {
   tile: DiagramTile;
-  onClick: () => void;
+  selected?: boolean;
   isLinkFrom?: boolean;
   linkMode?: boolean;
   draggable?: boolean;
   zoom?: number;
   onDragMoved?: () => void;
   onDragEnd?: (x: number, y: number) => void;
+  onSelect: () => void;
+  onOpenWorkshop: () => void;
 }) {
   const shape = normalizeIoShape(tile.process.ioShape);
   const meta = getIoShapeMeta(shape);
@@ -880,16 +927,21 @@ function CompactTile({
   }, [tile.x, tile.y]);
 
   function onTilePointerDown(e: ReactPointerEvent) {
-    if (!draggable || e.button !== 0) return;
+    if (e.button !== 0) return;
+    // Workshop button handles its own clicks
+    if ((e.target as HTMLElement).closest("[data-workshop-btn]")) return;
+
     e.stopPropagation();
-    dragRef.current = {
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-      originX: pos.x,
-      originY: pos.y,
-      moved: false,
-    };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    if (draggable) {
+      dragRef.current = {
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        originX: pos.x,
+        originY: pos.y,
+        moved: false,
+      };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
   }
 
   function onTilePointerMove(e: ReactPointerEvent) {
@@ -926,31 +978,29 @@ function CompactTile({
       const finalY = Math.max(0, d.originY + dy);
       setPos({ x: finalX, y: finalY });
       onDragEnd?.(finalX, finalY);
+      onSelect(); // keep selected after move
+      return;
     }
+    // Click without drag = select only
+    onSelect();
   }
 
   return (
     <div
       data-godmode-tile
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
+      data-selected={selected ? "true" : undefined}
       onPointerDown={onTilePointerDown}
       onPointerMove={onTilePointerMove}
       onPointerUp={onTilePointerUp}
       onPointerCancel={onTilePointerUp}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={`absolute card bg-bg-panel border shadow-sm overflow-hidden group transition-colors ${
-        draggable ? "cursor-move" : "cursor-pointer"
+      className={`absolute card bg-bg-panel border shadow-sm overflow-hidden group select-none ${
+        draggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
       } ${
         isLinkFrom
-          ? "border-accent ring-2 ring-accent/40"
-          : "border-border hover:border-border-strong"
+          ? "z-10 plant-block--link-source"
+          : selected
+            ? "z-10 plant-block--selected"
+            : "border-border hover:border-border-strong"
       }`}
       style={{
         left: pos.x,
@@ -960,16 +1010,16 @@ function CompactTile({
       }}
     >
       <div className="flex flex-col h-full p-3">
-        <div className="flex items-center justify-center flex-1 text-text min-h-0">
+        <div className="flex items-center justify-center flex-1 text-text min-h-0 pointer-events-none">
           <IoShapeGlyph shape={shape} size="lg" className="text-text" />
         </div>
         <div
-          className="text-sm font-medium text-center truncate"
+          className="text-sm font-medium text-center truncate pointer-events-none"
           title={tile.process.name}
         >
           {tile.process.name}
         </div>
-        <div className="mt-1 flex items-center justify-center gap-1 flex-wrap">
+        <div className="mt-1 flex items-center justify-center gap-1 flex-wrap pointer-events-none">
           <span className="pill text-[10px]">{statusLabel}</span>
           <span
             className="text-[10px] font-mono uppercase text-text-faint"
@@ -983,20 +1033,25 @@ function CompactTile({
             </span>
           ) : null}
         </div>
-        <div className="mt-1.5 text-[10px] text-center text-accent opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center gap-1">
-          {linkMode ? (
-            isLinkFrom ? (
-              "Source"
-            ) : (
-              "Target"
-            )
-          ) : (
-            <>
-              <Hammer className="w-3 h-3" />
-              Workshop
-            </>
-          )}
-        </div>
+        {linkMode ? (
+          <p className="mt-1.5 text-[10px] text-center text-text-faint pointer-events-none">
+            {isLinkFrom ? "Source" : "Click as target"}
+          </p>
+        ) : (
+          <button
+            type="button"
+            data-workshop-btn
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenWorkshop();
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="mt-1.5 w-full text-[11px] text-accent hover:underline inline-flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <Hammer className="w-3 h-3" aria-hidden />
+            Open in workshop
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1201,7 +1256,8 @@ function GodModeToolbar({
           <button
             type="button"
             onClick={onDeleteLink}
-            className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-text-muted hover:bg-bg-subtle shrink-0"
+            className="text-xs inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-red/40 bg-red/10 text-red hover:bg-red/15 shrink-0 font-medium"
+            title="Delete selected plant link"
           >
             <Unlink className="w-3.5 h-3.5" />
             Delete link

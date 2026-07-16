@@ -8,14 +8,10 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import Link from "next/link";
-import { Copy, PanelLeftClose, Plus, Trash2, User, X } from "lucide-react";
-import { SettingsMenu } from "@/components/settings/SettingsMenu";
+import { Copy, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessAvatarMark } from "./BusinessAvatarMark";
-import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useForgeTabs } from "./ForgeTabProvider";
-import { useShell } from "./ShellContext";
 
 type ContextMenuState = {
   tabId: string;
@@ -37,7 +33,6 @@ export function ForgeTabBar() {
     unloadSession,
     isSessionUnloaded,
   } = useForgeTabs();
-  const { user, userLoading } = useShell();
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
@@ -174,23 +169,6 @@ export function ForgeTabBar() {
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
-      </div>
-
-      <div className="forge-tab-bar__actions">
-        <NavThemeModeToggle className="forge-tab-bar__theme-toggle" />
-        {!userLoading && user ? (
-          <Link
-            href="/profile"
-            className="forge-tab-bar__profile"
-            title={user.name || "Profile"}
-          >
-            <User className="w-3.5 h-3.5 shrink-0" />
-            <span className="forge-tab-bar__profile-name">{user.name || "Local"}</span>
-          </Link>
-        ) : null}
-        <div className="forge-tab-bar__settings-wrap">
-          <SettingsMenu className="forge-tab-bar__settings" />
-        </div>
       </div>
 
       {menu && menuTab ? (

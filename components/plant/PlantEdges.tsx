@@ -2,8 +2,9 @@
 
 import type { ProcessLinkDto } from "@/lib/process-links";
 import {
-  tileCenter,
-  tileEdgePoint,
+  orthogonalLinkPoints,
+  pointsToPathD,
+  polylineMidpoint,
   type PlantTilePosition,
 } from "@/lib/plant-layout";
 
@@ -66,40 +67,44 @@ export function PlantEdges({
         const to = byId.get(link.toProcessId);
         if (!from || !to) return null;
 
-        const fromC = tileCenter(from);
-        const toC = tileCenter(to);
-        const start = tileEdgePoint(from, toC);
-        const end = tileEdgePoint(to, fromC);
+        const points = orthogonalLinkPoints(from, to);
+        const d = pointsToPathD(points);
+        if (!d) return null;
+
         const selected = link.id === selectedLinkId;
-        const midX = (start.x + end.x) / 2;
-        const midY = (start.y + end.y) / 2;
+        const mid = polylineMidpoint(points);
 
         return (
-          <g key={link.id}>
-            {/* Wider hit target */}
+          <g key={link.id} data-plant-edge={link.id}>
+            {/* Wide orthogonal hit target */}
             {interactive ? (
-              <line
-                x1={start.x}
-                y1={start.y}
-                x2={end.x}
-                y2={end.y}
+              <path
+                d={d}
+                fill="none"
                 stroke="transparent"
-                strokeWidth={14}
+                strokeWidth={16}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                data-plant-edge={link.id}
                 className="pointer-events-auto cursor-pointer"
+                onPointerDown={(e) => {
+                  // Prevent canvas pan / deselect from stealing the gesture
+                  e.stopPropagation();
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectLink?.(link.id);
                 }}
               />
             ) : null}
-            <line
-              x1={start.x}
-              y1={start.y}
-              x2={end.x}
-              y2={end.y}
+            <path
+              d={d}
+              fill="none"
               stroke={selected ? "var(--accent)" : "var(--text-muted)"}
               strokeWidth={selected ? 2.5 : 1.75}
-              strokeOpacity={selected ? 1 : 0.75}
+              strokeOpacity={selected ? 1 : 0.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
               markerEnd={
                 selected ? "url(#plant-arrow-selected)" : "url(#plant-arrow)"
               }
@@ -107,8 +112,8 @@ export function PlantEdges({
             />
             {link.label ? (
               <text
-                x={midX}
-                y={midY - 6}
+                x={mid.x}
+                y={mid.y - 6}
                 textAnchor="middle"
                 className="fill-[var(--text-muted)] text-[10px] pointer-events-none"
                 style={{ fontSize: 10 }}

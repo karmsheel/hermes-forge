@@ -10,6 +10,8 @@ import {
 import { usePathname } from "next/navigation";
 import {
   ArrowLeftRight,
+  Crosshair,
+  Hammer,
   Info,
   ListPlus,
   Loader2,
@@ -1354,10 +1356,38 @@ export function ChatbarPanel() {
             </p>
           )}
           {contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&
-          pageRegistration?.selection?.summary ? (
-            <p className="chatbar-panel__selection">
-              Selection · {pageRegistration.selection.summary}
-            </p>
+          pageRegistration?.selection?.summary &&
+          pageRegistration.selection.type !== "plant" ? (
+            <div
+              className="chatbar-panel__selection-row"
+              role="status"
+              title="Included in Hermes context for this chat"
+            >
+              <span
+                className={`chatbar-panel__selection-pill${
+                  pageRegistration.selection.type === "process"
+                    ? " chatbar-panel__selection-pill--process"
+                    : ""
+                }`}
+              >
+                {pageRegistration.selection.type === "process" ? (
+                  <Hammer className="w-3 h-3 shrink-0" aria-hidden />
+                ) : (
+                  <Crosshair className="w-3 h-3 shrink-0" aria-hidden />
+                )}
+                <span className="chatbar-panel__selection-pill-label">
+                  {pageRegistration.selection.type === "process"
+                    ? "Process"
+                    : "Selection"}
+                </span>
+                <span className="chatbar-panel__selection-pill-value">
+                  {pageRegistration.selection.summary}
+                </span>
+              </span>
+              <span className="chatbar-panel__selection-hint">
+                In agent context
+              </span>
+            </div>
           ) : null}
         </section>
 
@@ -1484,12 +1514,27 @@ export function ChatbarPanel() {
             <label className="chatbar-panel__composer-label" htmlFor="chatbar-input">
               {activeAgent ? `Ask ${activeAgent.displayName}` : "Ask Hermes"}
             </label>
-            <ChatbarContextChip
-              mode={contextMode}
-              onChange={setContextMode}
-              pageTitle={blurb.title}
-              disabled={false}
-            />
+            <div className="chatbar-panel__composer-meta-end">
+              {contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&
+              pageRegistration?.selection?.type === "process" &&
+              pageRegistration.selection.summary ? (
+                <span
+                  className="chatbar-panel__selection-pill chatbar-panel__selection-pill--process chatbar-panel__selection-pill--compact"
+                  title={`Selected process in context: ${pageRegistration.selection.summary}`}
+                >
+                  <Hammer className="w-3 h-3 shrink-0" aria-hidden />
+                  <span className="chatbar-panel__selection-pill-value">
+                    {pageRegistration.selection.summary}
+                  </span>
+                </span>
+              ) : null}
+              <ChatbarContextChip
+                mode={contextMode}
+                onChange={setContextMode}
+                pageTitle={blurb.title}
+                disabled={false}
+              />
+            </div>
           </div>
           <div className="chatbar-panel__composer-row">
             <textarea

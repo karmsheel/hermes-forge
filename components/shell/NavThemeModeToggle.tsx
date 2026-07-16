@@ -18,7 +18,7 @@ const ICON_PROPS = {
 
 /**
  * Day/night mode toggle for dual-palette skins.
- * Renders in the top chrome (tab bar / top bar), left of profile.
+ * Lives in the nav rail footer, above settings.
  */
 export function NavThemeModeToggle({ className }: NavThemeModeToggleProps) {
   const { skin, resolved, setPreference } = useTheme();

@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { HermesConnectionDialog } from "@/components/hermes/HermesConnectionDialog";
 import { NewBusinessDialog } from "@/components/projects/NewBusinessDialog";
+import { ProfileOverlay } from "@/components/profile/ProfileOverlay";
 import { SettingsOverlay } from "@/components/settings/SettingsOverlay";
 import { DEFAULT_SETTINGS_VIEW, type SettingsViewId } from "@/lib/settings-views";
 
@@ -46,6 +47,7 @@ interface ShellContextValue {
   connectionOpen: boolean;
   settingsOpen: boolean;
   settingsTab: SettingsViewId;
+  profileOpen: boolean;
   creatingBusiness: boolean;
   openNewBusiness: () => void;
   closeNewBusiness: () => void;
@@ -58,6 +60,8 @@ interface ShellContextValue {
   openSettings: (tab?: SettingsViewId) => void;
   closeSettings: () => void;
   setSettingsTab: (tab: SettingsViewId) => void;
+  openProfile: () => void;
+  closeProfile: () => void;
   switchBusiness: (id: string) => Promise<boolean>;
   refreshCurrentBusiness: () => Promise<void>;
   createBusiness: (input: NewBusinessInput) => Promise<void>;
@@ -76,6 +80,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTabState] = useState<SettingsViewId>(DEFAULT_SETTINGS_VIEW);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [creatingBusiness, setCreatingBusiness] = useState(false);
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
 
@@ -190,6 +195,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       connectionOpen,
       settingsOpen,
       settingsTab,
+      profileOpen,
       creatingBusiness,
       openNewBusiness,
       closeNewBusiness,
@@ -198,18 +204,24 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       openHermesConnection: () => setConnectionOpen(true),
       closeHermesConnection: () => setConnectionOpen(false),
       openSettings: (tab?: SettingsViewId) => {
+        setProfileOpen(false);
         setSettingsTabState(tab ?? DEFAULT_SETTINGS_VIEW);
         setSettingsOpen(true);
       },
       closeSettings: () => setSettingsOpen(false),
       setSettingsTab: setSettingsTabState,
+      openProfile: () => {
+        setSettingsOpen(false);
+        setProfileOpen(true);
+      },
+      closeProfile: () => setProfileOpen(false),
       switchBusiness,
       refreshCurrentBusiness,
       createBusiness,
       requestNewProcess,
       registerWorkshopNewProcess,
     }),
-    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, creatingBusiness, openNewBusiness, closeNewBusiness, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, profileOpen, creatingBusiness, openNewBusiness, closeNewBusiness, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (
@@ -228,6 +240,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         onViewChange={setSettingsTabState}
         onClose={() => setSettingsOpen(false)}
       />
+      <ProfileOverlay open={profileOpen} onClose={() => setProfileOpen(false)} />
     </ShellContext.Provider>
   );
 }

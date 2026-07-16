@@ -377,3 +377,106 @@ export function getDeptLabelY(
     ? first.y - PLANT_TILE.deptHeaderHeight
     : PLANT_TILE.padding;
 }
+
+export type PlantPoint = { x: number; y: number };
+
+export type PlantSide = "left" | "right" | "top" | "bottom";
+
+/** Midpoint of a tile side (for orthogonal edge stubs). */
+export function tileSidePoint(
+  tile: PlantTilePosition,
+  side: PlantSide,
+): PlantPoint {
+  const cx = tile.x + tile.width / 2;
+  const cy = tile.y + tile.height / 2;
+  switch (side) {
+    case "left":
+      return { x: tile.x, y: cy };
+    case "right":
+      return { x: tile.x + tile.width, y: cy };
+    case "top":
+      return { x: cx, y: tile.y };
+    case "bottom":
+      return { x: cx, y: tile.y + tile.height };
+  }
+}
+
+/**
+ * Orthogonal (right-angle) polyline from source tile to target tile.
+ * Prefers horizontal-then-vertical when Δx dominates; otherwise vertical-then-horizontal.
+ * Returns points including start/end on tile borders.
+ */
+export function orthogonalLinkPoints(
+  from: PlantTilePosition,
+  to: PlantTilePosition,
+): PlantPoint[] {
+  const fromC = tileCenter(from);
+  const toC = tileCenter(to);
+  const dx = toC.x - fromC.x;
+  const dy = toC.y - fromC.y;
+
+  // Prefer HV when mostly side-by-side; VH when stacked
+  const preferHorizontal = Math.abs(dx) >= Math.abs(dy);
+
+  if (preferHorizontal) {
+    const fromSide: PlantSide = dx >= 0 ? "right" : "left";
+    const toSide: PlantSide = dx >= 0 ? "left" : "right";
+    const start = tileSidePoint(from, fromSide);
+    const end = tileSidePoint(to, toSide);
+    const midX = (start.x + end.x) / 2;
+    // Degenerate: already aligned horizontally
+    if (Math.abs(start.y - end.y) < 1) {
+      return [start, end];
+    }
+    return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end];
+  }
+
+  const fromSide: PlantSide = dy >= 0 ? "bottom" : "top";
+  const toSide: PlantSide = dy >= 0 ? "top" : "bottom";
+  const start = tileSidePoint(from, fromSide);
+  const end = tileSidePoint(to, toSide);
+  const midY = (start.y + end.y) / 2;
+  if (Math.abs(start.x - end.x) < 1) {
+    return [start, end];
+  }
+  return [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end];
+}
+
+/** SVG path `d` for a polyline of points. */
+export function pointsToPathD(points: PlantPoint[]): string {
+  if (points.length === 0) return "";
+  const [first, ...rest] = points;
+  let d = `M ${first.x} ${first.y}`;
+  for (const p of rest) {
+    d += ` L ${p.x} ${p.y}`;
+  }
+  return d;
+}
+
+/** Midpoint along a polyline (for labels). */
+export function polylineMidpoint(points: PlantPoint[]): PlantPoint {
+  if (points.length === 0) return { x: 0, y: 0 };
+  if (points.length === 1) return points[0]!;
+  let total = 0;
+  const segs: number[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    segs.push(len);
+    total += len;
+  }
+  if (total < 1e-6) return points[0]!;
+  let remain = total / 2;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    const len = segs[i - 1]!;
+    if (remain <= len) {
+      const t = len > 0 ? remain / len : 0;
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+    remain -= len;
+  }
+  return points[points.length - 1]!;
+}

@@ -61,7 +61,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
       <NavRail />
       {isLeft ? chat : null}
       <div className="app-shell-layout__main">
-        {/* Tabs + profile/settings at top; business switcher stays on AppTopBar below */}
+        {/* Tabs at top; profile/settings live on NavRail footer */}
         <ForgeTabBar />
         <AppTopBar />
         <div className="app-shell-layout__content">

@@ -36,7 +36,8 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
 
 /**
  * Soft-lock copy when a room is not ready yet.
- * Rooms stay selectable; empty states use these strings.
+ * Locked rooms are hidden from the center room switcher; these strings still
+ * power SoftRoomLock empty states if the user deep-links into a locked room.
  */
 export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
   foundation: null,

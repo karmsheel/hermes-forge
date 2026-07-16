@@ -23,6 +23,11 @@ describe("forge-room-readiness", () => {
   });
 
   it("soft-unlocks rooms by gate", () => {
+    // Loading / unknown readiness — only Foundation (no Map flash in nav)
+    assert.equal(isRoomSoftUnlocked("foundation", null), true);
+    assert.equal(isRoomSoftUnlocked("map", null), false);
+    assert.equal(isRoomSoftUnlocked("monitor", null), false);
+
     const empty = computeRoomReadiness({ processCount: 0, forgedCount: 0 });
     assert.equal(isRoomSoftUnlocked("foundation", empty), true);
     assert.equal(isRoomSoftUnlocked("map", empty), false);

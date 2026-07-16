@@ -6,6 +6,8 @@ import {
   layoutPlantByDepartment,
   layoutPlantByFlow,
   layoutPlantManual,
+  orthogonalLinkPoints,
+  pointsToPathD,
   tileCenter,
   tileEdgePoint,
 } from "../../lib/plant-layout.ts";
@@ -103,5 +105,23 @@ describe("plant layout modes", () => {
       }).mode,
       "manual",
     );
+  });
+
+  it("orthogonalLinkPoints uses right-angle segments", () => {
+    const from = { id: "a", department: "A", x: 0, y: 0, width: 100, height: 80 };
+    const to = { id: "b", department: "B", x: 200, y: 120, width: 100, height: 80 };
+    const pts = orthogonalLinkPoints(from, to);
+    assert.ok(pts.length >= 2);
+    // Every step is axis-aligned
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      const sameX = Math.abs(a.x - b.x) < 1e-6;
+      const sameY = Math.abs(a.y - b.y) < 1e-6;
+      assert.ok(sameX || sameY, `segment ${i} should be orthogonal`);
+    }
+    const d = pointsToPathD(pts);
+    assert.match(d, /^M /);
+    assert.match(d, / L /);
   });
 });

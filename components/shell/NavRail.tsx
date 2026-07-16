@@ -12,22 +12,23 @@ import {
   Hammer,
   Home,
   Layers,
-  MessageSquare,
   Newspaper,
   Plus,
   Scale,
   ScanEye,
   ScrollText,
   Target,
+  User,
   Users,
   Zap,
 } from "lucide-react";
-import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
+import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { isNavIdInStage } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
+import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 import { useForgeStage } from "./StageProvider";
 
@@ -42,13 +43,13 @@ type NavItem = {
 
 export function NavRail() {
   const pathname = usePathname();
-  const { requestNewProcess } = useShell();
+  const { requestNewProcess, user, userLoading, openProfile, profileOpen } = useShell();
   const { stage } = useForgeStage();
-  const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
   const { showCronalyticsPage } = useDeveloperSettings();
   const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
   /** Prefer active tab route for highlight so desktop tabs stay consistent */
   const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
+  const profileActive = profileOpen;
 
   const mainItems: NavItem[] = [
     {
@@ -137,7 +138,7 @@ export function NavRail() {
     },
   ];
 
-  /** Holistic: always visible across rooms (footer, above chat). */
+  /** Holistic: always visible across rooms (footer, above account controls). */
   const holisticItems: NavItem[] = [
     {
       id: "decisions",
@@ -253,16 +254,23 @@ export function NavRail() {
             </Link>
           );
         })}
-        <button
-          type="button"
-          className={`nav-rail__item${chatOpen ? " is-active" : ""}`}
-          onClick={toggleChat}
-          title={chatOpen ? "Hide Hermes chat (Alt+H)" : "Show Hermes chat (Alt+H)"}
-          aria-label={chatOpen ? "Hide Hermes chat" : "Show Hermes chat"}
-          aria-pressed={chatOpen}
-        >
-          <MessageSquare className="w-5 h-5" />
-        </button>
+        <div className="nav-rail__divider" role="separator" aria-hidden="true" />
+        <NavThemeModeToggle className="nav-rail__theme-toggle" />
+        <div className="nav-rail__settings-wrap">
+          <SettingsMenu className="nav-rail__settings" placement="right-end" />
+        </div>
+        {!userLoading && user ? (
+          <button
+            type="button"
+            className={`nav-rail__item${profileActive ? " is-active" : ""}`}
+            title={user.name || "Profile"}
+            aria-label={user.name || "Profile"}
+            aria-pressed={profileActive}
+            onClick={() => openProfile()}
+          >
+            <User className="w-5 h-5" />
+          </button>
+        ) : null}
         <div className="nav-rail__footer-meta">
           <DesktopUpdateIndicator />
           <NavRailVersion />

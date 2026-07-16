@@ -51,6 +51,15 @@ export function buildStudioChatSystemPrompt(options: {
     route.startsWith("/god-mode")
       ? processLinksPromptAddon()
       : "";
+  const mapPlantAddon =
+    page.routeKey === "god-mode" || route.startsWith("/god-mode")
+      ? [
+          "Map plant room: the user may select a process block on the canvas.",
+          "When selection.type is process (or selection.details.source is map-plant), treat that process as the focus of the conversation.",
+          "Use the untrusted snapshot for description, status, I/O shape, links, and diagram.",
+          "Answer questions about the selected process; only push Workshop when they need deep diagram editing.",
+        ].join("\n")
+      : "";
 
   return [
     identity,
@@ -67,8 +76,10 @@ export function buildStudioChatSystemPrompt(options: {
     `Context scope mode: ${mode}`,
     foundationAddon ? `\n${foundationAddon}` : "",
     plantLinksAddon ? `\n${plantLinksAddon}` : "",
+    mapPlantAddon ? `\n${mapPlantAddon}` : "",
     "",
     "When the user asks what is on this page or what they are looking at, ground your answer in the untrusted snapshot and selection if present.",
+    "When a process is selected (selection.summary / selection.details), prefer answering about that process first.",
     options.trainingPrompt ? `\n${options.trainingPrompt}` : "",
   ]
     .filter((line) => line !== "")

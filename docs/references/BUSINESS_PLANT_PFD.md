@@ -78,14 +78,14 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 
 ## 4. Progressive unlock (soft locks)
 
-Rooms stay **visible** so the user sees the building. Locks are **soft**: no hard 404s; deep links work; locked entry shows unlock criteria + CTA, not a full empty product pretending to work.
+**Center room switcher hides locked rooms** so new users only see **Foundation** (business picker + dotted bridge + single tab). Map appears once seeded; Monitor / Automate appear after forge. Locks remain **soft for routes**: no hard 404s; deep links still work and show unlock criteria + CTA (not a fake empty product).
 
-| Room | Soft-unlock when | Soft-locked behavior |
-|------|------------------|----------------------|
-| **Foundation** | Business exists | Always open; **default for new / thin businesses** |
-| **Map** | ≥1 process (draft stub counts) | If no processes: empty state → “Talk in Foundation to seed processes” (still openable) |
-| **Monitor** | ≥1 process with `lifecycleStatus === "forged"` | Room selectable; empty state + “Forge a process in Map / Workshop” |
-| **Automate** | ≥1 **forged** process | Same soft pattern; aligns with automation-on-forged |
+| Room | Soft-unlock when | Chrome + locked behavior |
+|------|------------------|--------------------------|
+| **Foundation** | Business exists | Always in switcher; **default for new / thin businesses** |
+| **Map** | ≥1 process (draft stub counts) | Hidden until ready; then appears after Foundation. Deep link: empty state → “Talk in Foundation to seed processes” |
+| **Monitor** | ≥1 process with `lifecycleStatus === "forged"` | Hidden until forged; then appears with Map. Deep link: SoftRoomLock + “Forge a process in Map / Workshop” |
+| **Automate** | ≥1 **forged** process | Same as Monitor for chrome + deep-link soft lock |
 
 **Footer tools (Log, Decisions) never lock.**
 
