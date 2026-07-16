@@ -38,9 +38,19 @@ import {
 } from "@/lib/god-mode-view";
 import {
   getDeptLabelY as plantDeptLabelY,
-  layoutPlantByDepartment,
+  layoutPlant,
+  PLANT_LAYOUT_MODE_LABELS,
+  PLANT_LAYOUT_MODES,
+  type PlantLayoutMode,
+  type PlantManualPositions,
   type PlantTilePosition,
 } from "@/lib/plant-layout";
+import {
+  loadPlantLayoutMode,
+  loadPlantPositions,
+  savePlantLayoutMode,
+  upsertPlantPosition,
+} from "@/lib/plant-layout-prefs";
 import type { ProcessLinkDto } from "@/lib/process-links";
 import { renderMermaidSvg } from "@/lib/mermaid-render";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
@@ -80,6 +90,7 @@ interface LayoutResult {
   canvasHeight: number;
   departments: string[];
   byId?: Map<string, PlantTilePosition>;
+  layoutMode?: PlantLayoutMode;
 }
 
 function groupByDepartment(processes: ProcessSummary[]): Map<string, ProcessSummary[]> {
@@ -93,9 +104,24 @@ function groupByDepartment(processes: ProcessSummary[]): Map<string, ProcessSumm
   return new Map([...groups.entries()].sort(([a], [b]) => a.localeCompare(b)));
 }
 
-function layoutCompactTiles(processes: ProcessSummary[]): LayoutResult {
-  const plant = layoutPlantByDepartment(
-    processes.map((p) => ({ id: p.id, department: p.department }))
+function layoutCompactTiles(
+  processes: ProcessSummary[],
+  opts: {
+    layoutMode: PlantLayoutMode;
+    links: ProcessLinkDto[];
+    positions: PlantManualPositions;
+  },
+): LayoutResult {
+  const plant = layoutPlant(
+    processes.map((p) => ({ id: p.id, department: p.department })),
+    {
+      mode: opts.layoutMode,
+      edges: opts.links.map((l) => ({
+        fromId: l.fromProcessId,
+        toId: l.toProcessId,
+      })),
+      positions: opts.positions,
+    },
   );
   const byProc = new Map(processes.map((p) => [p.id, p]));
   const tiles: DiagramTile[] = plant.tiles.map((pos) => ({
@@ -117,6 +143,7 @@ function layoutCompactTiles(processes: ProcessSummary[]): LayoutResult {
     canvasHeight: plant.canvasHeight,
     departments: plant.departments,
     byId: plant.byId,
+    layoutMode: plant.mode,
   };
 }
 
@@ -226,6 +253,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const [processes, setProcesses] = useState<ProcessSummary[]>([]);
   const [links, setLinks] = useState<ProcessLinkDto[]>([]);
   const [viewMode, setViewMode] = useState<GodModeViewMode>("compact");
+  const [layoutMode, setLayoutMode] = useState<PlantLayoutMode>("function");
+  const [manualPositions, setManualPositions] = useState<PlantManualPositions>({});
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -236,6 +265,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const hasFitRef = useRef(false);
   const processesRef = useRef<ProcessSummary[]>([]);
+  const linksRef = useRef<ProcessLinkDto[]>([]);
+  const dragMovedRef = useRef(false);
 
   const isDark = resolved === "dark";
 
@@ -262,7 +293,13 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   }, []);
 
   const applyLayout = useCallback(
-    async (list: ProcessSummary[], mode: GodModeViewMode) => {
+    async (
+      list: ProcessSummary[],
+      mode: GodModeViewMode,
+      plantMode: PlantLayoutMode,
+      plantLinks: ProcessLinkDto[],
+      positions: PlantManualPositions,
+    ) => {
       hasFitRef.current = false;
       const withDiagrams = list.filter((p) => p.diagramMermaid?.trim());
 
@@ -277,7 +314,13 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           setLayout(null);
           return;
         }
-        setLayout(layoutCompactTiles(list));
+        setLayout(
+          layoutCompactTiles(list, {
+            layoutMode: plantMode,
+            links: plantLinks,
+            positions,
+          }),
+        );
         return;
       }
 
@@ -350,16 +393,17 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       const mode = loadGodModeViewMode();
       setViewMode(mode);
 
+      let nextLinks: ProcessLinkDto[] = [];
       if (linkRes.ok) {
         try {
           const linkData = await linkRes.json();
-          setLinks(linkData.links || []);
+          nextLinks = linkData.links || [];
         } catch {
-          setLinks([]);
+          nextLinks = [];
         }
-      } else {
-        setLinks([]);
       }
+      setLinks(nextLinks);
+      linksRef.current = nextLinks;
 
       if (!biz) {
         setBusinessId(null);
@@ -371,6 +415,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       }
 
       setBusinessId(biz.id);
+      setLayoutMode(loadPlantLayoutMode(biz.id));
+      setManualPositions(loadPlantPositions(biz.id));
       setProcesses(list);
       processesRef.current = list;
     } catch {
@@ -388,15 +434,31 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     void load();
   }, [load, currentBusiness?.id]);
 
-  // Layout whenever data, view mode, or theme changes (no network)
+  // Layout whenever data, view mode, plant layout, or theme changes (no network)
   useEffect(() => {
     if (loading) return;
     if (!businessId) {
       setLayout(null);
       return;
     }
-    void applyLayout(processesRef.current, viewMode);
-  }, [loading, businessId, viewMode, isDark, processes, applyLayout]);
+    void applyLayout(
+      processesRef.current,
+      viewMode,
+      layoutMode,
+      linksRef.current,
+      manualPositions,
+    );
+  }, [
+    loading,
+    businessId,
+    viewMode,
+    layoutMode,
+    manualPositions,
+    isDark,
+    processes,
+    links,
+    applyLayout,
+  ]);
 
   useEffect(() => {
     if (!layout || hasFitRef.current) return;
@@ -415,6 +477,23 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   function setMode(next: GodModeViewMode) {
     setViewMode(next);
     saveGodModeViewMode(next);
+  }
+
+  function setPlantLayoutMode(next: PlantLayoutMode) {
+    setLayoutMode(next);
+    if (businessId) savePlantLayoutMode(businessId, next);
+    if (next === "manual" && businessId) {
+      setManualPositions(loadPlantPositions(businessId));
+    }
+  }
+
+  function handleTileDragEnd(processId: string, x: number, y: number) {
+    if (!businessId) return;
+    const next = upsertPlantPosition(businessId, processId, x, y);
+    setManualPositions(next);
+    if (layoutMode !== "manual") {
+      setPlantLayoutMode("manual");
+    }
   }
 
   function zoomIn() {
@@ -520,6 +599,10 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   }
 
   function handleCompactTileClick(processId: string) {
+    if (dragMovedRef.current) {
+      dragMovedRef.current = false;
+      return;
+    }
     if (linkMode && viewMode === "compact") {
       if (!linkFromId) {
         setLinkFromId(processId);
@@ -616,6 +699,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
         <GodModeToolbar
           viewMode={viewMode}
           onViewModeChange={setMode}
+          layoutMode={layoutMode}
+          onLayoutModeChange={setPlantLayoutMode}
           tileCount={0}
           totalCount={processes.length}
           isDiagrams={isDiagrams}
@@ -635,6 +720,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const missingCount = isDiagrams
     ? processes.length - layout.tiles.length
     : 0;
+  const showDeptLabels =
+    viewMode === "compact" && layoutMode === "function" && deptPositions.length > 0;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
@@ -663,19 +750,21 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           }}
         >
-          {deptPositions.map(({ dept, y }) => (
-            <div
-              key={dept}
-              className="absolute left-0 text-xs uppercase tracking-widest text-text-muted font-medium"
-              style={{
-                top: y,
-                left: CANVAS_PADDING,
-                width: layout.canvasWidth - CANVAS_PADDING * 2,
-              }}
-            >
-              {dept}
-            </div>
-          ))}
+          {showDeptLabels
+            ? deptPositions.map(({ dept, y }) => (
+                <div
+                  key={dept}
+                  className="absolute left-0 text-xs uppercase tracking-widest text-text-muted font-medium"
+                  style={{
+                    top: y,
+                    left: CANVAS_PADDING,
+                    width: layout.canvasWidth - CANVAS_PADDING * 2,
+                  }}
+                >
+                  {dept}
+                </div>
+              ))
+            : null}
 
           {viewMode === "compact" && layout.byId ? (
             <PlantEdges
@@ -698,6 +787,12 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
                 tile={tile}
                 isLinkFrom={linkMode && linkFromId === tile.process.id}
                 linkMode={linkMode}
+                draggable={layoutMode === "manual" && !linkMode}
+                zoom={zoom}
+                onDragMoved={() => {
+                  dragMovedRef.current = true;
+                }}
+                onDragEnd={(x, y) => handleTileDragEnd(tile.process.id, x, y)}
                 onClick={() => handleCompactTileClick(tile.process.id)}
               />
             ) : (
@@ -719,6 +814,8 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
           setLinkFromId(null);
           setSelectedLinkId(null);
         }}
+        layoutMode={layoutMode}
+        onLayoutModeChange={setPlantLayoutMode}
         tileCount={layout.tiles.length}
         totalCount={processes.length}
         linkCount={links.length}
@@ -748,11 +845,19 @@ function CompactTile({
   onClick,
   isLinkFrom,
   linkMode,
+  draggable = false,
+  zoom = 1,
+  onDragMoved,
+  onDragEnd,
 }: {
   tile: DiagramTile;
   onClick: () => void;
   isLinkFrom?: boolean;
   linkMode?: boolean;
+  draggable?: boolean;
+  zoom?: number;
+  onDragMoved?: () => void;
+  onDragEnd?: (x: number, y: number) => void;
 }) {
   const shape = normalizeIoShape(tile.process.ioShape);
   const meta = getIoShapeMeta(shape);
@@ -761,6 +866,68 @@ function CompactTile({
       tile.process.status as keyof typeof PROCESS_STATUS_LABELS
     ] ?? tile.process.status;
   const hasDiagram = Boolean(tile.process.diagramMermaid?.trim());
+  const [pos, setPos] = useState({ x: tile.x, y: tile.y });
+  const dragRef = useRef<{
+    startClientX: number;
+    startClientY: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    setPos({ x: tile.x, y: tile.y });
+  }, [tile.x, tile.y]);
+
+  function onTilePointerDown(e: ReactPointerEvent) {
+    if (!draggable || e.button !== 0) return;
+    e.stopPropagation();
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      originX: pos.x,
+      originY: pos.y,
+      moved: false,
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onTilePointerMove(e: ReactPointerEvent) {
+    const d = dragRef.current;
+    if (!d) return;
+    const z = zoom || 1;
+    const dx = (e.clientX - d.startClientX) / z;
+    const dy = (e.clientY - d.startClientY) / z;
+    if (!d.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+      d.moved = true;
+      onDragMoved?.();
+    }
+    if (d.moved) {
+      setPos({
+        x: Math.max(0, d.originX + dx),
+        y: Math.max(0, d.originY + dy),
+      });
+    }
+  }
+
+  function onTilePointerUp(e: ReactPointerEvent) {
+    const d = dragRef.current;
+    dragRef.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (d?.moved) {
+      const z = zoom || 1;
+      const dx = (e.clientX - d.startClientX) / z;
+      const dy = (e.clientY - d.startClientY) / z;
+      const finalX = Math.max(0, d.originX + dx);
+      const finalY = Math.max(0, d.originY + dy);
+      setPos({ x: finalX, y: finalY });
+      onDragEnd?.(finalX, finalY);
+    }
+  }
 
   return (
     <div
@@ -768,20 +935,26 @@ function CompactTile({
       role="button"
       tabIndex={0}
       onClick={onClick}
+      onPointerDown={onTilePointerDown}
+      onPointerMove={onTilePointerMove}
+      onPointerUp={onTilePointerUp}
+      onPointerCancel={onTilePointerUp}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick();
         }
       }}
-      className={`absolute card bg-bg-panel border shadow-sm overflow-hidden group cursor-pointer transition-colors ${
+      className={`absolute card bg-bg-panel border shadow-sm overflow-hidden group transition-colors ${
+        draggable ? "cursor-move" : "cursor-pointer"
+      } ${
         isLinkFrom
           ? "border-accent ring-2 ring-accent/40"
           : "border-border hover:border-border-strong"
       }`}
       style={{
-        left: tile.x,
-        top: tile.y,
+        left: pos.x,
+        top: pos.y,
         width: tile.width,
         height: tile.height,
       }}
@@ -907,6 +1080,8 @@ function DiagramTileView({
 function GodModeToolbar({
   viewMode,
   onViewModeChange,
+  layoutMode = "function",
+  onLayoutModeChange,
   tileCount,
   totalCount,
   linkCount = 0,
@@ -926,6 +1101,8 @@ function GodModeToolbar({
 }: {
   viewMode: GodModeViewMode;
   onViewModeChange: (m: GodModeViewMode) => void;
+  layoutMode?: PlantLayoutMode;
+  onLayoutModeChange?: (m: PlantLayoutMode) => void;
   tileCount: number;
   totalCount: number;
   linkCount?: number;
@@ -975,6 +1152,37 @@ function GodModeToolbar({
             Diagrams
           </button>
         </div>
+        {!isDiagrams && onLayoutModeChange ? (
+          <div
+            className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0"
+            role="group"
+            aria-label="Plant layout"
+          >
+            {PLANT_LAYOUT_MODES.map((m, i) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onLayoutModeChange(m)}
+                title={
+                  m === "function"
+                    ? "Group by function / department"
+                    : m === "flow"
+                      ? "Layer by process links (left → right)"
+                      : "Drag tiles freely; positions saved for this business"
+                }
+                className={`px-2.5 py-1.5 ${
+                  i > 0 ? "border-l border-border" : ""
+                } ${
+                  layoutMode === m
+                    ? "bg-bg-muted text-text-strong"
+                    : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
+                }`}
+              >
+                {PLANT_LAYOUT_MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {!isDiagrams && onLinkModeChange ? (
           <button
             type="button"

@@ -984,11 +984,9 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Empty states link Foundation when no processes; “Show compact shapes” when diagrams empty
 - [x] `lib/god-mode-view.ts` + unit smoke test
 
-**Deferred:** free-drag positions / persist layout (6.5–6.6)
+**Follow-up (6.6):** free-drag + layout modes shipped (`function` | `flow` | `manual`).
 
 **Depends on:** 4.13 God Mode, 6.1 shapes
-
-**Note:** Still department-grouped is OK for v1; true flow layout waits for links (6.5).
 
 ---
 
@@ -1033,7 +1031,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Unlock / empty-state copy + Foundation **Underlord** persona wiring in chat context
 
 **Trail deliverables (same milestone, can follow first wow):**
-- [ ] Layout modes: by function (department bands) | by flow (graph layout) | manual positions
+- [x] Layout modes: by function (department bands) | by flow (graph layout) | manual positions — `layoutPlant` / prefs; Map + Foundation toolbars; manual drag + localStorage
 - [ ] External plant feeds/products (business-level inputs/outputs) optional framing
 - [ ] Export plant view (PNG/SVG/PDF) as a first-class deliverable alongside per-process export (3.8)
 
@@ -1125,7 +1123,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
-| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **In progress** (first wow shipped; layout/export trail) |
+| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **In progress** (rooms + layout modes; export/feeds trail) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Mostly done** |
 
 ---

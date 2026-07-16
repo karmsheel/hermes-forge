@@ -406,6 +406,7 @@ export function FoundationRoom() {
         <FoundationCanvas
           processes={processes}
           links={overview.links ?? []}
+          businessId={overview.business?.id ?? currentBusiness?.id ?? null}
           selectedProcessId={selectedProcessId}
           onSelectProcess={setSelectedProcessId}
           onOpenWorkshop={openWorkshop}

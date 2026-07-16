@@ -62,6 +62,7 @@ describe("layoutPlantByDepartment", () => {
       { id: "2", department: "Ops" },
       { id: "3", department: "Sales" },
     ]);
+    assert.equal(layout.mode, "function");
     assert.equal(layout.tiles.length, 3);
     assert.ok(layout.byId.get("1"));
     assert.ok(layout.departments.includes("Ops"));
