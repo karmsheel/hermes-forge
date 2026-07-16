@@ -951,6 +951,23 @@ body {
   grid-template-columns: 13rem minmax(0, 1fr);
 }
 
+/* Profile: wider left pane for account form + sign-in options */
+.settings-overlay__layout--profile {
+  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+}
+
+.profile-overlay__account {
+  padding: 3rem 1rem 1.25rem;
+  overflow: hidden;
+}
+
+.profile-overlay__account-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0.25rem 0.5rem;
+}
+
 .settings-overlay__nav {
   display: flex;
   flex-direction: column;
@@ -1360,6 +1377,21 @@ body {
 
   .settings-overlay__nav {
     display: none;
+  }
+
+  /* Profile keeps both panes stacked (account is not a nav switcher) */
+  .settings-overlay__layout--profile {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 42vh) minmax(0, 1fr);
+  }
+
+  .settings-overlay__layout--profile .settings-overlay__nav,
+  .settings-overlay__layout--profile .profile-overlay__account {
+    display: flex;
+    border-right: none;
+    border-bottom: 1px solid var(--border-soft);
+    max-height: 42vh;
+    padding-top: 2.75rem;
   }
 
   .settings-overlay__mobile-nav {

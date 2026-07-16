@@ -122,6 +122,22 @@ export function ProfileContent() {
     loadBusinesses();
   }, []);
 
+  // Nested dialogs consume Escape so the profile overlay does not close first.
+  useEffect(() => {
+    if (!editTarget && !deleteConfirm) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (deleteConfirm && !deletingId) setDeleteConfirm(null);
+      else if (editTarget && !savingEdit) setEditTarget(null);
+    }
+
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [editTarget, deleteConfirm, deletingId, savingEdit]);
+
   async function loadBusinesses() {
     setBizLoading(true);
     try {
@@ -531,7 +547,7 @@ export function ProfileContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-text-muted w-full">
+      <div className="settings-overlay__layout flex items-center justify-center text-text-muted">
         <Loader2 className="w-6 h-6 animate-spin" />
       </div>
     );
@@ -542,567 +558,583 @@ export function ProfileContent() {
     : user?.email || "Signed in";
 
   return (
-    <div className="max-w-2xl mx-auto w-full">
-        <div className="mb-6">
+    <div className="settings-overlay__layout settings-overlay__layout--split settings-overlay__layout--profile">
+      {/* Left: account + sign-in only */}
+      <aside className="settings-overlay__nav profile-overlay__account" aria-label="Account">
+        <div className="settings-overlay__nav-header">
           <div className="text-xs uppercase tracking-widest text-text-muted">Account</div>
-          <h1 className="text-2xl font-semibold tracking-tight mt-1">Profile</h1>
+          <h2 className="text-lg font-semibold tracking-tight mt-1">Profile</h2>
         </div>
 
-        <form onSubmit={handleSave} className="card p-6 space-y-4 mb-8">
-          <div>
-            <label className="text-xs text-text-muted uppercase tracking-widest">Display name</label>
-            <input
-              className="input w-full mt-1"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your display name"
-            />
-          </div>
-
-          <div className="text-xs text-text-soft space-y-1">
+        <div className="profile-overlay__account-scroll">
+          <form onSubmit={handleSave} className="card p-4 space-y-4 mb-6">
             <div>
-              {user?._count?.businesses ?? 0} business
-              {(user?._count?.businesses ?? 0) !== 1 ? "es" : ""}
-            </div>
-            <div>
-              Sign-in: <span className="text-text-muted">{authLabel}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={saving} className="btn-primary">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              disabled={loggingOut}
-              className="btn-secondary"
-            >
-              {loggingOut ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <LogOut className="w-4 h-4" />
-                  Log out
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-
-        {/* Sign-in / upgrade options (same choices as first-run sign-in) */}
-        <div className="mb-8">
-          <div className="mb-3">
-            <div className="text-xs uppercase tracking-widest text-text-muted">Sign-in options</div>
-            <div className="text-sm text-text-muted">
-              Stay local, or add email / GitHub later for lock-down and backup once your business is
-              further along.
-            </div>
-          </div>
-          <SignInOptions
-            variant="profile"
-            currentEmail={user?.email}
-            redirectTo="/profile"
-            showBrand={false}
-          />
-        </div>
-
-        {/* Businesses management */}
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-text-muted">Your Businesses</div>
-            <div className="text-sm text-text-muted">Each business contains its workflows and diagrams.</div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".zip,application/zip"
-              className="hidden"
-              onChange={onFileChange}
-              disabled={importing || importingGit}
-            />
-            <button
-              onClick={triggerImport}
-              disabled={importing || importingGit}
-              className="btn-secondary text-sm flex items-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              {importing ? "Importing..." : "Import ZIP"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setGitImportOpen((v) => !v)}
-              disabled={importing || importingGit}
-              className="btn-secondary text-sm flex items-center gap-2"
-            >
-              <GitBranch className="w-4 h-4" />
-              Import from Git
-            </button>
-          </div>
-        </div>
-
-        {gitImportOpen && (
-          <form onSubmit={handleGitImport} className="card p-4 mb-4 space-y-3">
-            <div className="text-sm font-medium">Restore business from Git</div>
-            <p className="text-xs text-text-muted">
-              Creates a <span className="text-text">new</span> business from a Hermes Forge repo snapshot
-              (local path or remote clone). Uses system Git credentials for remotes.
-            </p>
-            <div className="flex gap-2 text-xs">
-              <button
-                type="button"
-                className={`px-2.5 py-1 rounded border ${
-                  gitImportMode === "remote"
-                    ? "border-accent text-accent"
-                    : "border-stroke text-text-muted"
-                }`}
-                onClick={() => setGitImportMode("remote")}
-              >
-                Remote URL
-              </button>
-              <button
-                type="button"
-                className={`px-2.5 py-1 rounded border ${
-                  gitImportMode === "path"
-                    ? "border-accent text-accent"
-                    : "border-stroke text-text-muted"
-                }`}
-                onClick={() => setGitImportMode("path")}
-              >
-                Local path
-              </button>
-            </div>
-            {gitImportMode === "remote" ? (
-              <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
-                <input
-                  className="input text-sm"
-                  placeholder="https://github.com/you/business-repo.git"
-                  value={gitImportRemote}
-                  onChange={(e) => setGitImportRemote(e.target.value)}
-                  disabled={importingGit}
-                />
-                <input
-                  className="input text-sm"
-                  placeholder="main"
-                  value={gitImportBranch}
-                  onChange={(e) => setGitImportBranch(e.target.value)}
-                  disabled={importingGit}
-                />
-              </div>
-            ) : (
+              <label className="text-xs text-text-muted uppercase tracking-widest">
+                Display name
+              </label>
               <input
-                className="input text-sm w-full"
-                placeholder="C:\Users\you\.hermes-forge\businesses\biz_abc"
-                value={gitImportPath}
-                onChange={(e) => setGitImportPath(e.target.value)}
-                disabled={importingGit}
+                className="input w-full mt-1"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your display name"
               />
-            )}
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-secondary text-sm"
-                onClick={() => setGitImportOpen(false)}
-                disabled={importingGit}
-              >
-                Cancel
+            </div>
+
+            <div className="text-xs text-text-soft space-y-1">
+              <div>
+                {user?._count?.businesses ?? 0} business
+                {(user?._count?.businesses ?? 0) !== 1 ? "es" : ""}
+              </div>
+              <div>
+                Sign-in: <span className="text-text-muted">{authLabel}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="submit" disabled={saving} className="btn-primary text-sm">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
               </button>
               <button
-                type="submit"
-                className="btn-primary text-sm disabled:opacity-50"
-                disabled={
-                  importingGit ||
-                  (gitImportMode === "remote"
-                    ? !gitImportRemote.trim()
-                    : !gitImportPath.trim())
-                }
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
+                className="btn-secondary text-sm"
               >
-                {importingGit ? (
+                {loggingOut ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  "Import business"
+                  <>
+                    <LogOut className="w-4 h-4" />
+                    Log out
+                  </>
                 )}
               </button>
             </div>
           </form>
-        )}
 
-        {bizLoading ? (
-          <div className="text-center py-8 text-text-muted">
-            <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+          <div className="mb-2">
+            <div className="text-xs uppercase tracking-widest text-text-muted">Sign-in options</div>
+            <p className="text-sm text-text-muted mt-1 mb-3">
+              Stay local, or add email / GitHub later for lock-down and backup once your business is
+              further along.
+            </p>
+            <SignInOptions
+              variant="profile"
+              currentEmail={user?.email}
+              redirectTo="/profile"
+              showBrand={false}
+            />
           </div>
-        ) : businesses.length === 0 ? (
-          <div className="card p-6 text-sm text-text-muted">No businesses yet. Create one from the header or + button.</div>
-        ) : (
-          <ul className="space-y-3 mb-8">
-            {businesses.map((b) => {
-              const gitStatus = gitStatusById[b.id];
-              const gitBusy =
-                syncingGitId === b.id ||
-                pushingGitId === b.id ||
-                savingRemoteId === b.id;
-              const draft = remoteDraftById[b.id] ?? {
-                url: gitStatus?.remoteUrl ?? "",
-                branch: gitStatus?.remoteBranch ?? "main",
-              };
-              const menuOpen = cardMenuId === b.id;
-              const cardBusy =
-                gitBusy || downloadingId === b.id || deletingId === b.id;
-              return (
-                <li key={b.id} className="card p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{b.name}</div>
-                      {b.description && (
-                        <div className="text-sm text-text-muted line-clamp-1 mt-0.5">
-                          {b.description}
-                        </div>
-                      )}
-                      <div className="text-xs text-text-soft mt-1">
-                        {b._count?.processes ?? 0} workflow
-                        {(b._count?.processes ?? 0) !== 1 ? "s" : ""}
-                        {gitStatus && (
-                          <>
-                            {" · "}
-                            {gitLabel(gitStatus)}
-                          </>
-                        )}
-                      </div>
-                      {gitStatus?.lastPushError && (
-                        <div className="text-xs text-red-400 mt-1 line-clamp-2">
-                          {gitStatus.lastPushError}
-                        </div>
-                      )}
-                    </div>
-                    <div className="workflow-menu shrink-0">
-                      <button
-                        ref={(el) => {
-                          cardMenuTriggerRefs.current[b.id] = el;
-                        }}
-                        type="button"
-                        onClick={(e) => toggleCardMenu(b.id, e)}
-                        className={`workflow-menu__trigger p-1.5 rounded-md hover:bg-bg-subtle text-text-muted hover:text-text ${
-                          menuOpen ? "is-open" : ""
-                        }`}
-                        title="Business options"
-                        aria-label={`Options for ${b.name}`}
-                        aria-haspopup="menu"
-                        aria-expanded={menuOpen}
-                      >
-                        {cardBusy ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+        </div>
+      </aside>
 
-                  {gitPanelId === b.id && (
-                    <div className="rounded-lg border border-stroke bg-bg/40 p-3 space-y-2">
-                      <div className="text-xs uppercase tracking-widest text-text-muted">
-                        Git backup
-                      </div>
-                      <p className="text-xs text-text-muted">
-                        Local path:{" "}
-                        <span className="text-text-soft break-all">
-                          {gitStatus?.repoPath || "—"}
-                        </span>
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
-                        <input
-                          className="input text-sm"
-                          placeholder="https://github.com/you/my-business.git"
-                          value={draft.url}
-                          onChange={(e) =>
-                            setRemoteDraftById((prev) => ({
-                              ...prev,
-                              [b.id]: { ...draft, url: e.target.value },
-                            }))
-                          }
-                          disabled={gitBusy}
-                        />
-                        <input
-                          className="input text-sm"
-                          placeholder="main"
-                          value={draft.branch}
-                          onChange={(e) =>
-                            setRemoteDraftById((prev) => ({
-                              ...prev,
-                              [b.id]: { ...draft, branch: e.target.value },
-                            }))
-                          }
-                          disabled={gitBusy}
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs px-3 py-1.5"
-                          disabled={gitBusy}
-                          onClick={() => void handleSaveRemote(b)}
-                        >
-                          {savingRemoteId === b.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            "Save remote"
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary text-xs px-3 py-1.5"
-                          disabled={
-                            gitBusy ||
-                            !gitStatus?.remoteUrl ||
-                            !gitStatus.initialized
-                          }
-                          onClick={() => void handleGitPush(b, false)}
-                          title="Push current HEAD without re-syncing"
-                        >
-                          Push only
-                        </button>
-                      </div>
-                      <p className="text-[11px] text-text-soft">
-                        Auth uses your system Git credentials (Credential Manager / SSH agent).
-                        Forge does not store tokens.
-                      </p>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {cardMenuId && cardMenuAnchor && (() => {
-          const menuBiz = businesses.find((b) => b.id === cardMenuId);
-          if (!menuBiz) return null;
-          const gitStatus = gitStatusById[menuBiz.id];
-          const gitBusy =
-            syncingGitId === menuBiz.id ||
-            pushingGitId === menuBiz.id ||
-            savingRemoteId === menuBiz.id;
-          const gitDisabled = gitBusy || gitStatus?.gitAvailable === false;
-          const pushDisabled = gitDisabled || !gitStatus?.remoteUrl;
-          return (
-            <div
-              ref={cardMenuRef}
-              className="workflow-menu__popover workflow-menu__popover--fixed"
-              role="menu"
-              aria-label={`Options for ${menuBiz.name}`}
-              style={{
-                top: cardMenuAnchor.top,
-                left: cardMenuAnchor.left,
-                width: CARD_MENU_WIDTH,
-                zIndex: 80,
-              }}
-            >
+      {/* Right: business settings & detail */}
+      <main className="settings-overlay__main">
+        <div className="settings-overlay__main-scroll">
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-widest text-text-muted">Businesses</div>
+              <h2 className="text-lg font-semibold tracking-tight mt-1">Your businesses</h2>
+              <p className="text-sm text-text-muted mt-1">
+                Each business contains its workflows, diagrams, and Git backup.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".zip,application/zip"
+                className="hidden"
+                onChange={onFileChange}
+                disabled={importing || importingGit}
+              />
               <button
                 type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  closeProfile();
-                  router.push("/functions");
-                }}
+                onClick={triggerImport}
+                disabled={importing || importingGit}
+                className="btn-secondary text-sm flex items-center gap-2"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Open
+                <Upload className="w-4 h-4" />
+                {importing ? "Importing..." : "Import ZIP"}
               </button>
               <button
                 type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  openEdit(menuBiz);
-                }}
+                onClick={() => setGitImportOpen((v) => !v)}
+                disabled={importing || importingGit}
+                className="btn-secondary text-sm flex items-center gap-2"
               >
-                <Pencil className="w-3.5 h-3.5" />
-                Rename
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                disabled={downloadingId === menuBiz.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  void handleDownload(menuBiz);
-                }}
-              >
-                {downloadingId === menuBiz.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Download className="w-3.5 h-3.5" />
-                )}
-                Download ZIP
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                disabled={gitDisabled}
-                title="Materialize and commit to local Git repo"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  void handleGitSync(menuBiz);
-                }}
-              >
-                {syncingGitId === menuBiz.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <GitBranch className="w-3.5 h-3.5" />
-                )}
-                Sync Git
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                disabled={pushDisabled}
-                title={
-                  gitStatus?.remoteUrl
-                    ? "Sync local repo then push to remote"
-                    : "Configure a remote first"
-                }
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  void handleGitPush(menuBiz, true);
-                }}
-              >
-                {pushingGitId === menuBiz.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <CloudUpload className="w-3.5 h-3.5" />
-                )}
-                Push to remote
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="workflow-menu__item"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  openGitPanel(menuBiz);
-                }}
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-                Git remote settings
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="workflow-menu__item workflow-menu__item--danger"
-                disabled={deletingId === menuBiz.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeCardMenu();
-                  setDeleteConfirm({ id: menuBiz.id, name: menuBiz.name });
-                }}
-              >
-                {deletingId === menuBiz.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                Delete
+                <GitBranch className="w-4 h-4" />
+                Import from Git
               </button>
             </div>
-          );
-        })()}
+          </div>
 
-        {/* Edit business dialog — above profile overlay (z-70) */}
-        {editTarget && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-            <button
-              type="button"
-              className="absolute inset-0 bg-black/70"
-              aria-label="Close edit dialog"
-              onClick={() => !savingEdit && setEditTarget(null)}
-              disabled={savingEdit}
-            />
-            <form onSubmit={confirmEdit} className="relative w-full max-w-md card p-6">
-              <h2 className="text-xl font-semibold tracking-tight">Rename Business</h2>
-              <p className="text-sm text-text-muted mt-2">
-                Change the display name for this business.
+          {gitImportOpen && (
+            <form onSubmit={handleGitImport} className="card p-4 mb-4 space-y-3">
+              <div className="text-sm font-medium">Restore business from Git</div>
+              <p className="text-xs text-text-muted">
+                Creates a <span className="text-text">new</span> business from a Hermes Forge repo
+                snapshot (local path or remote clone). Uses system Git credentials for remotes.
               </p>
-              <input
-                className="input w-full mt-4"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                placeholder="Business name"
-                maxLength={120}
-                autoFocus
-                disabled={savingEdit}
-              />
-              <div className="flex justify-end gap-3 mt-6">
+              <div className="flex gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => setEditTarget(null)}
-                  disabled={savingEdit}
-                  className="btn-secondary text-sm disabled:opacity-50"
+                  className={`px-2.5 py-1 rounded border ${
+                    gitImportMode === "remote"
+                      ? "border-accent text-accent"
+                      : "border-stroke text-text-muted"
+                  }`}
+                  onClick={() => setGitImportMode("remote")}
+                >
+                  Remote URL
+                </button>
+                <button
+                  type="button"
+                  className={`px-2.5 py-1 rounded border ${
+                    gitImportMode === "path"
+                      ? "border-accent text-accent"
+                      : "border-stroke text-text-muted"
+                  }`}
+                  onClick={() => setGitImportMode("path")}
+                >
+                  Local path
+                </button>
+              </div>
+              {gitImportMode === "remote" ? (
+                <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                  <input
+                    className="input text-sm"
+                    placeholder="https://github.com/you/business-repo.git"
+                    value={gitImportRemote}
+                    onChange={(e) => setGitImportRemote(e.target.value)}
+                    disabled={importingGit}
+                  />
+                  <input
+                    className="input text-sm"
+                    placeholder="main"
+                    value={gitImportBranch}
+                    onChange={(e) => setGitImportBranch(e.target.value)}
+                    disabled={importingGit}
+                  />
+                </div>
+              ) : (
+                <input
+                  className="input text-sm w-full"
+                  placeholder="C:\Users\you\.hermes-forge\businesses\biz_abc"
+                  value={gitImportPath}
+                  onChange={(e) => setGitImportPath(e.target.value)}
+                  disabled={importingGit}
+                />
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  onClick={() => setGitImportOpen(false)}
+                  disabled={importingGit}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={savingEdit || !editName.trim()}
                   className="btn-primary text-sm disabled:opacity-50"
+                  disabled={
+                    importingGit ||
+                    (gitImportMode === "remote"
+                      ? !gitImportRemote.trim()
+                      : !gitImportPath.trim())
+                  }
                 >
-                  {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                  {importingGit ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Import business"
+                  )}
                 </button>
               </div>
             </form>
-          </div>
-        )}
+          )}
 
-        {/* Delete confirmation dialog */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          {bizLoading ? (
+            <div className="text-center py-8 text-text-muted">
+              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+            </div>
+          ) : businesses.length === 0 ? (
+            <div className="card p-6 text-sm text-text-muted">
+              No businesses yet. Create one from the header or + button.
+            </div>
+          ) : (
+            <ul className="space-y-3">
+              {businesses.map((b) => {
+                const gitStatus = gitStatusById[b.id];
+                const gitBusy =
+                  syncingGitId === b.id ||
+                  pushingGitId === b.id ||
+                  savingRemoteId === b.id;
+                const draft = remoteDraftById[b.id] ?? {
+                  url: gitStatus?.remoteUrl ?? "",
+                  branch: gitStatus?.remoteBranch ?? "main",
+                };
+                const menuOpen = cardMenuId === b.id;
+                const cardBusy =
+                  gitBusy || downloadingId === b.id || deletingId === b.id;
+                return (
+                  <li key={b.id} className="card p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{b.name}</div>
+                        {b.description && (
+                          <div className="text-sm text-text-muted line-clamp-1 mt-0.5">
+                            {b.description}
+                          </div>
+                        )}
+                        <div className="text-xs text-text-soft mt-1">
+                          {b._count?.processes ?? 0} workflow
+                          {(b._count?.processes ?? 0) !== 1 ? "s" : ""}
+                          {gitStatus && (
+                            <>
+                              {" · "}
+                              {gitLabel(gitStatus)}
+                            </>
+                          )}
+                        </div>
+                        {gitStatus?.lastPushError && (
+                          <div className="text-xs text-red-400 mt-1 line-clamp-2">
+                            {gitStatus.lastPushError}
+                          </div>
+                        )}
+                      </div>
+                      <div className="workflow-menu shrink-0">
+                        <button
+                          ref={(el) => {
+                            cardMenuTriggerRefs.current[b.id] = el;
+                          }}
+                          type="button"
+                          onClick={(e) => toggleCardMenu(b.id, e)}
+                          className={`workflow-menu__trigger p-1.5 rounded-md hover:bg-bg-subtle text-text-muted hover:text-text ${
+                            menuOpen ? "is-open" : ""
+                          }`}
+                          title="Business options"
+                          aria-label={`Options for ${b.name}`}
+                          aria-haspopup="menu"
+                          aria-expanded={menuOpen}
+                        >
+                          {cardBusy ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {gitPanelId === b.id && (
+                      <div className="rounded-lg border border-stroke bg-bg/40 p-3 space-y-2">
+                        <div className="text-xs uppercase tracking-widest text-text-muted">
+                          Git backup
+                        </div>
+                        <p className="text-xs text-text-muted">
+                          Local path:{" "}
+                          <span className="text-text-soft break-all">
+                            {gitStatus?.repoPath || "—"}
+                          </span>
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                          <input
+                            className="input text-sm"
+                            placeholder="https://github.com/you/my-business.git"
+                            value={draft.url}
+                            onChange={(e) =>
+                              setRemoteDraftById((prev) => ({
+                                ...prev,
+                                [b.id]: { ...draft, url: e.target.value },
+                              }))
+                            }
+                            disabled={gitBusy}
+                          />
+                          <input
+                            className="input text-sm"
+                            placeholder="main"
+                            value={draft.branch}
+                            onChange={(e) =>
+                              setRemoteDraftById((prev) => ({
+                                ...prev,
+                                [b.id]: { ...draft, branch: e.target.value },
+                              }))
+                            }
+                            disabled={gitBusy}
+                          />
+                        </div>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs px-3 py-1.5"
+                            disabled={gitBusy}
+                            onClick={() => void handleSaveRemote(b)}
+                          >
+                            {savingRemoteId === b.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              "Save remote"
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs px-3 py-1.5"
+                            disabled={
+                              gitBusy ||
+                              !gitStatus?.remoteUrl ||
+                              !gitStatus.initialized
+                            }
+                            onClick={() => void handleGitPush(b, false)}
+                            title="Push current HEAD without re-syncing"
+                          >
+                            Push only
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-text-soft">
+                          Auth uses your system Git credentials (Credential Manager / SSH agent).
+                          Forge does not store tokens.
+                        </p>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </main>
+
+      {cardMenuId && cardMenuAnchor && (() => {
+        const menuBiz = businesses.find((b) => b.id === cardMenuId);
+        if (!menuBiz) return null;
+        const gitStatus = gitStatusById[menuBiz.id];
+        const gitBusy =
+          syncingGitId === menuBiz.id ||
+          pushingGitId === menuBiz.id ||
+          savingRemoteId === menuBiz.id;
+        const gitDisabled = gitBusy || gitStatus?.gitAvailable === false;
+        const pushDisabled = gitDisabled || !gitStatus?.remoteUrl;
+        return (
+          <div
+            ref={cardMenuRef}
+            className="workflow-menu__popover workflow-menu__popover--fixed"
+            role="menu"
+            aria-label={`Options for ${menuBiz.name}`}
+            style={{
+              top: cardMenuAnchor.top,
+              left: cardMenuAnchor.left,
+              width: CARD_MENU_WIDTH,
+              zIndex: 80,
+            }}
+          >
             <button
               type="button"
-              className="absolute inset-0 bg-black/70"
-              aria-label="Close delete confirmation"
-              onClick={() => !deletingId && setDeleteConfirm(null)}
-              disabled={!!deletingId}
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                closeProfile();
+                router.push("/functions");
+              }}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                openEdit(menuBiz);
+              }}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Rename
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={downloadingId === menuBiz.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                void handleDownload(menuBiz);
+              }}
+            >
+              {downloadingId === menuBiz.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Download ZIP
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={gitDisabled}
+              title="Materialize and commit to local Git repo"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                void handleGitSync(menuBiz);
+              }}
+            >
+              {syncingGitId === menuBiz.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <GitBranch className="w-3.5 h-3.5" />
+              )}
+              Sync Git
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={pushDisabled}
+              title={
+                gitStatus?.remoteUrl
+                  ? "Sync local repo then push to remote"
+                  : "Configure a remote first"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                void handleGitPush(menuBiz, true);
+              }}
+            >
+              {pushingGitId === menuBiz.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CloudUpload className="w-3.5 h-3.5" />
+              )}
+              Push to remote
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                openGitPanel(menuBiz);
+              }}
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Git remote settings
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item workflow-menu__item--danger"
+              disabled={deletingId === menuBiz.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeCardMenu();
+                setDeleteConfirm({ id: menuBiz.id, name: menuBiz.name });
+              }}
+            >
+              {deletingId === menuBiz.id ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Delete
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Edit business dialog — above profile overlay (z-70) */}
+      {editTarget && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70"
+            aria-label="Close edit dialog"
+            onClick={() => !savingEdit && setEditTarget(null)}
+            disabled={savingEdit}
+          />
+          <form onSubmit={confirmEdit} className="relative w-full max-w-md card p-6">
+            <h2 className="text-xl font-semibold tracking-tight">Rename Business</h2>
+            <p className="text-sm text-text-muted mt-2">
+              Change the display name for this business.
+            </p>
+            <input
+              className="input w-full mt-4"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Business name"
+              maxLength={120}
+              autoFocus
+              disabled={savingEdit}
             />
-            <div className="relative w-full max-w-md card p-6">
-              <h2 className="text-xl font-semibold tracking-tight">Delete Business?</h2>
-              <p className="text-sm text-text-muted mt-2">
-                This will permanently delete <span className="font-medium text-text">"{deleteConfirm.name}"</span> and all its workflows, diagrams, chats, and data.
-                A business log archive will be downloaded first. This action cannot be undone.
-              </p>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirm(null)}
-                  disabled={!!deletingId}
-                  className="btn-secondary text-sm disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDelete}
-                  disabled={!!deletingId}
-                  className="btn-primary text-sm bg-red-600 hover:bg-red-700 focus:bg-red-700 disabled:opacity-50"
-                >
-                  {deletingId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Business"}
-                </button>
-              </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                disabled={savingEdit}
+                className="btn-secondary text-sm disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit || !editName.trim()}
+                className="btn-primary text-sm disabled:opacity-50"
+              >
+                {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70"
+            aria-label="Close delete confirmation"
+            onClick={() => !deletingId && setDeleteConfirm(null)}
+            disabled={!!deletingId}
+          />
+          <div className="relative w-full max-w-md card p-6">
+            <h2 className="text-xl font-semibold tracking-tight">Delete Business?</h2>
+            <p className="text-sm text-text-muted mt-2">
+              This will permanently delete{" "}
+              <span className="font-medium text-text">&ldquo;{deleteConfirm.name}&rdquo;</span> and
+              all its workflows, diagrams, chats, and data. A business log archive will be downloaded
+              first. This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={!!deletingId}
+                className="btn-secondary text-sm disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={!!deletingId}
+                className="btn-primary text-sm bg-red-600 hover:bg-red-700 focus:bg-red-700 disabled:opacity-50"
+              >
+                {deletingId ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete Business"}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }

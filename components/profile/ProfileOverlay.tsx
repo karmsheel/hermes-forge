@@ -72,13 +72,7 @@ export function ProfileOverlay({
           </Button>
         </div>
 
-        <div className="settings-overlay__layout">
-          <main className="settings-overlay__main">
-            <div className="settings-overlay__main-scroll">
-              <ProfileContent />
-            </div>
-          </main>
-        </div>
+        <ProfileContent />
       </div>
     </div>
   );
