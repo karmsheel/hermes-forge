@@ -186,6 +186,21 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const openNewBusiness = useCallback(() => setNewBusinessOpen(true), []);
   const closeNewBusiness = useCallback(() => setNewBusinessOpen(false), []);
 
+  const openSettings = useCallback((tab?: SettingsViewId) => {
+    setProfileOpen(false);
+    setSettingsTabState(tab ?? DEFAULT_SETTINGS_VIEW);
+    setSettingsOpen(true);
+  }, []);
+
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
+
+  const openProfile = useCallback(() => {
+    setSettingsOpen(false);
+    setProfileOpen(true);
+  }, []);
+
+  const closeProfile = useCallback(() => setProfileOpen(false), []);
+
   const value = useMemo(
     () => ({
       user,
@@ -203,25 +218,18 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       closeNewProject: closeNewBusiness,
       openHermesConnection: () => setConnectionOpen(true),
       closeHermesConnection: () => setConnectionOpen(false),
-      openSettings: (tab?: SettingsViewId) => {
-        setProfileOpen(false);
-        setSettingsTabState(tab ?? DEFAULT_SETTINGS_VIEW);
-        setSettingsOpen(true);
-      },
-      closeSettings: () => setSettingsOpen(false),
+      openSettings,
+      closeSettings,
       setSettingsTab: setSettingsTabState,
-      openProfile: () => {
-        setSettingsOpen(false);
-        setProfileOpen(true);
-      },
-      closeProfile: () => setProfileOpen(false),
+      openProfile,
+      closeProfile,
       switchBusiness,
       refreshCurrentBusiness,
       createBusiness,
       requestNewProcess,
       registerWorkshopNewProcess,
     }),
-    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, profileOpen, creatingBusiness, openNewBusiness, closeNewBusiness, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, profileOpen, creatingBusiness, openNewBusiness, closeNewBusiness, openSettings, closeSettings, openProfile, closeProfile, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
   );
 
   return (
