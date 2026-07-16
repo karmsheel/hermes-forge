@@ -39,6 +39,7 @@ describe("studio prompts", () => {
       route: "/foundation",
     });
     assert.match(system, /Foundation/i);
+    assert.match(system, /Underlord/);
     assert.match(system, /plant sketch|I\/O shape|draft process/i);
   });
 

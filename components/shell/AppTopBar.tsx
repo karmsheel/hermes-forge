@@ -45,7 +45,7 @@ export function AppTopBar() {
           ) : null}
         </div>
 
-        {/* Column 2 — stage explorer (Map | Monitor | Automate) */}
+        {/* Column 2 — room switcher (Foundation | Map | Monitor | Automate) */}
         <div className="app-topbar__stages">
           <StageExplorer />
         </div>

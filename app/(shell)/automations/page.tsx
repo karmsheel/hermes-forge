@@ -12,6 +12,8 @@ import {
   RefreshCw,
   Wrench,
 } from "lucide-react";
+import { SoftRoomLock } from "@/components/shell/SoftRoomLock";
+import { useForgeStage } from "@/components/shell/StageProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { hermesApiBody } from "@/lib/hermes-models";
@@ -49,6 +51,8 @@ function automationCtaLabel(status: AutomationDeployStatus): string {
 export default function AutomationsPage() {
   const router = useRouter();
   const { currentBusiness } = useShell();
+  const { isRoomUnlocked } = useForgeStage();
+  const operateReady = isRoomUnlocked("automate");
   const { config: hermesConfig } = useHermesConnection();
   const [processes, setProcesses] = useState<ApprovedProcessSummary[]>([]);
   const [businessName, setBusinessName] = useState<string | null>(null);
@@ -103,12 +107,16 @@ export default function AutomationsPage() {
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
         <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
           <div>
+            <div className="text-[10px] uppercase tracking-widest text-text-muted">
+              Automate room
+            </div>
             <h1 className="font-semibold text-sm text-text-strong">Automations</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={load}
               className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+              disabled={!operateReady}
             >
               <RefreshCw className="w-3 h-3" /> Refresh
             </button>
@@ -116,16 +124,22 @@ export default function AutomationsPage() {
         </header>
 
       <main className="flex-1 overflow-y-auto max-w-6xl mx-auto px-6 py-10 w-full">
-        {loading ? (
+        {!operateReady ? (
+          <SoftRoomLock
+            room="automate"
+            title="Automate opens after you forge a process"
+            description="Refine a process in Workshop (Map room), forge it when the map is solid, then design automations here."
+          />
+        ) : loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
           </div>
         ) : !businessName ? (
           <div className="text-center py-16 card max-w-lg mx-auto">
             <Building2 className="w-10 h-10 text-text-soft mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No active function</h2>
+            <h2 className="text-lg font-semibold mb-2">No active business</h2>
             <p className="text-sm text-text-muted mb-6">
-              Select or create a function to see approved processes.
+              Select or create a business to see forged processes ready for automation.
             </p>
             <Link href="/functions" className="btn-primary text-sm inline-flex items-center gap-2">
               Go to Functions <ArrowRight className="w-4 h-4" />
@@ -134,10 +148,10 @@ export default function AutomationsPage() {
         ) : processes.length === 0 ? (
           <div className="text-center py-16 card max-w-xl mx-auto">
             <GitBranch className="w-10 h-10 text-text-soft mx-auto mb-4" />
-            <h2 className="text-lg font-semibold mb-2">No approved processes yet</h2>
+            <h2 className="text-lg font-semibold mb-2">No forged processes yet</h2>
             <p className="text-sm text-text-muted mb-6">
-              Map a process in the Workshop and approve it when the diagram accurately represents
-              how your business works. Approved maps appear here for automation design.
+              Map a process in Workshop and forge it when the diagram accurately represents
+              how your business works. Forged maps appear here for automation design.
             </p>
             <Link href="/workshop" className="btn-primary text-sm inline-flex items-center gap-2">
               <Wrench className="w-4 h-4" /> Open Workshop

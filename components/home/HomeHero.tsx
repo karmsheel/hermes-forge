@@ -93,7 +93,7 @@ export function HomeHero() {
             />
             <h1 className="home-hero__title">What will you FORGE today?</h1>
             <p className="home-hero__subtitle">
-              Map, monitor and automate your business with Hermes Agent
+              Start in Foundation with Underlord — sketch the plant, then map and forge
             </p>
           </div>
 

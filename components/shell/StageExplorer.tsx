@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   FORGE_STAGE_DESCRIPTIONS,
@@ -13,10 +14,11 @@ import { useForgeTabs } from "./ForgeTabProvider";
 import { useForgeStage } from "./StageProvider";
 
 /**
- * Segmented Map | Monitor | Automate control — sits next to the business picker.
+ * Room switcher: Foundation | Map | Monitor | Automate.
+ * Soft-locked rooms stay selectable with lock affordance + tooltip.
  */
 export function StageExplorer() {
-  const { stage, setStage } = useForgeStage();
+  const { stage, setStage, isRoomUnlocked, roomLockHint } = useForgeStage();
   const pathname = usePathname();
   const router = useRouter();
   const { enabled: tabsEnabled, navigateActiveTab } = useForgeTabs();
@@ -37,20 +39,36 @@ export function StageExplorer() {
     <div
       className="stage-explorer"
       role="tablist"
-      aria-label="Business stage"
+      aria-label="Forge room"
     >
       {FORGE_STAGES.map((id: ForgeStage) => {
         const active = stage === id;
+        const unlocked = isRoomUnlocked(id);
+        const hint = roomLockHint(id);
+        const title = unlocked
+          ? FORGE_STAGE_DESCRIPTIONS[id]
+          : `${FORGE_STAGE_DESCRIPTIONS[id]} — ${hint ?? "Not ready yet"}`;
+
         return (
           <button
             key={id}
             type="button"
             role="tab"
             aria-selected={active}
-            className={`stage-explorer__tab${active ? " is-active" : ""}`}
-            title={FORGE_STAGE_DESCRIPTIONS[id]}
+            aria-label={
+              unlocked
+                ? FORGE_STAGE_LABELS[id]
+                : `${FORGE_STAGE_LABELS[id]} (soft locked)`
+            }
+            className={`stage-explorer__tab${active ? " is-active" : ""}${
+              !unlocked ? " is-locked" : ""
+            }`}
+            title={title}
             onClick={() => handleSelect(id)}
           >
+            {!unlocked ? (
+              <Lock className="stage-explorer__lock" aria-hidden />
+            ) : null}
             {FORGE_STAGE_LABELS[id]}
           </button>
         );

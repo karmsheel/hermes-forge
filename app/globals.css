@@ -4395,11 +4395,40 @@ body {
   box-shadow: var(--shadow-xs);
 }
 
+.stage-explorer__tab.is-locked {
+  color: var(--text-faint);
+  opacity: 0.85;
+}
+
+.stage-explorer__tab.is-locked.is-active {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.stage-explorer__lock {
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.25rem;
+  display: inline-block;
+  vertical-align: -0.05em;
+  opacity: 0.75;
+}
+
+.stage-explorer__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 720px) {
   .stage-explorer__tab {
     padding: 0.35rem 0.55rem;
     font-size: 0.7rem;
   }
+}
+
+.soft-room-lock {
+  border-radius: var(--radius-md, 0.5rem);
 }
 
 .app-topbar__workspace .business-switcher {

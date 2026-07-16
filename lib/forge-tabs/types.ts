@@ -59,7 +59,7 @@ export function routePageLabel(route: string): string {
   if (path.startsWith("/automations/")) return "Automation";
   if (path.startsWith("/automations")) return "Automations";
   if (path.startsWith("/log")) return "Business log";
-  if (path.startsWith("/god-mode")) return "God Mode";
+  if (path.startsWith("/god-mode")) return "Plant";
   if (path.startsWith("/decisions")) return "Decisions";
   if (path.startsWith("/cronalytics")) return "Cronalytics";
   if (path.startsWith("/business-manager")) return "Businesses";

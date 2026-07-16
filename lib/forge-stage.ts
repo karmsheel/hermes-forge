@@ -1,42 +1,77 @@
 /**
- * Map | Monitor | Automate stage model (Phase 5 / M0).
- * Client-persisted per business; deep links auto-select stage from route.
+ * Forge rooms (Phase 6 / BUSINESS_PLANT_PFD).
+ * Baseline shipped as Map | Monitor | Automate “stages”; target IA is rooms with
+ * Foundation as a first-class room and soft progressive unlock.
+ *
+ * Code still uses ForgeStage as the type id; user-facing copy should say “room”.
  */
 
-export type ForgeStage = "map" | "monitor" | "automate";
+export type ForgeStage = "foundation" | "map" | "monitor" | "automate";
 
-export const FORGE_STAGES: readonly ForgeStage[] = ["map", "monitor", "automate"] as const;
+/** @deprecated Prefer “room” in UI; alias kept for call sites mid-migration. */
+export type ForgeRoom = ForgeStage;
+
+export const FORGE_STAGES: readonly ForgeStage[] = [
+  "foundation",
+  "map",
+  "monitor",
+  "automate",
+] as const;
+
+export const FORGE_ROOMS = FORGE_STAGES;
 
 export const FORGE_STAGE_LABELS: Record<ForgeStage, string> = {
+  foundation: "Foundation",
   map: "Map",
   monitor: "Monitor",
   automate: "Automate",
 };
 
 export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
-  map: "Understand how the business works",
-  monitor: "Track metrics and content health",
-  automate: "Assign agents and run jobs",
+  foundation: "Talk with Underlord — plant sketch, drafts, and documents",
+  map: "See the business as a plant; open processes in Workshop",
+  monitor: "Track metrics and content health (unlocks after a forged process)",
+  automate: "Assign agents and run jobs (unlocks after a forged process)",
 };
 
 /**
- * Stage-scoped nav item ids (see NavRail main section).
- * Holistic items (log, decisions) live in the rail footer and are always shown.
+ * Soft-lock copy when a room is not ready yet.
+ * Rooms stay selectable; empty states use these strings.
  */
-export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
-  map: ["home", "foundation", "functions", "workshop", "personnel", "documents", "god-mode"],
-  monitor: ["home", "metrics", "content", "cronalytics"],
-  automate: ["home", "automations", "automation-analysis", "personnel", "content"],
+export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
+  foundation: null,
+  map: "Seed at least one process in Foundation to fill the plant map.",
+  monitor: "Forge a process in Map / Workshop to open Monitor.",
+  automate: "Forge a process in Map / Workshop to open Automate.",
 };
 
-/** Nav ids always available regardless of stage (footer of NavRail). */
+/**
+ * Room-scoped nav item ids (see NavRail main section).
+ * Holistic items (log, decisions) live in the rail footer and are always shown.
+ * Workshop is a Map tool (nav under Map), not a peer room.
+ */
+export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
+  foundation: ["home", "foundation", "documents", "personnel"],
+  map: ["functions", "workshop", "god-mode", "documents", "personnel"],
+  monitor: ["metrics", "content", "cronalytics"],
+  automate: ["automations", "automation-analysis", "personnel", "content"],
+};
+
+/** Nav ids always available regardless of room (footer of NavRail). */
 export const HOLISTIC_NAV_IDS = ["decisions", "log"] as const;
 
 const STORAGE_PREFIX = "forge:stage:";
 
 export function isForgeStage(value: string | null | undefined): value is ForgeStage {
-  return value === "map" || value === "monitor" || value === "automate";
+  return (
+    value === "foundation" ||
+    value === "map" ||
+    value === "monitor" ||
+    value === "automate"
+  );
 }
+
+export const isForgeRoom = isForgeStage;
 
 export function stageStorageKey(businessId: string): string {
   return `${STORAGE_PREFIX}${businessId}`;
@@ -62,23 +97,29 @@ export function writeStoredStage(businessId: string, stage: ForgeStage): void {
 }
 
 /**
- * Infer stage from pathname so deep links land in the right mode.
- * Returns null for routes that are stage-neutral (settings, profile, business-manager).
+ * Infer room from pathname so deep links land in the right mode.
+ * Returns null for routes that are room-neutral (settings, profile, business-manager).
  */
 export function stageFromPath(pathname: string): ForgeStage | null {
   const path = pathname.split("?")[0] || "/";
 
+  if (path.startsWith("/foundation")) {
+    return "foundation";
+  }
+
   if (
     path.startsWith("/workshop") ||
     path.startsWith("/functions") ||
-    path.startsWith("/foundation") ||
-    path.startsWith("/documents") ||
     path.startsWith("/god-mode") ||
+    path.startsWith("/documents") ||
     path.startsWith("/personnel")
   ) {
-    // personnel appears in Map + Automate; prefer map for hire/academy discovery paths
+    // personnel appears in Foundation + Map + Automate; hire/academy lean Automate
     if (path.startsWith("/personnel") && path.includes("hire")) return "automate";
     if (path.startsWith("/personnel") && path.includes("academy")) return "automate";
+    // documents shared Foundation + Map — prefer foundation for thin entry paths
+    if (path.startsWith("/documents")) return null;
+    if (path.startsWith("/personnel")) return null;
     return "map";
   }
 
@@ -87,7 +128,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   }
 
   if (path.startsWith("/content")) {
-    // Content lives in Monitor + Automate; keep stored stage if set
+    // Content lives in Monitor + Automate; keep stored room if set
     return null;
   }
 
@@ -95,7 +136,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
     return "automate";
   }
 
-  // Stage-neutral: available in Map, Monitor, and Automate
+  // Room-neutral: available in every room
   if (path === "/home" || path === "/log" || path.startsWith("/decisions")) {
     return null;
   }
@@ -104,27 +145,32 @@ export function stageFromPath(pathname: string): ForgeStage | null {
 }
 
 export function defaultStageForPath(pathname: string): ForgeStage {
-  return stageFromPath(pathname) ?? "map";
+  return stageFromPath(pathname) ?? "foundation";
 }
 
 export function isNavIdInStage(navId: string, stage: ForgeStage): boolean {
   return STAGE_NAV_IDS[stage].includes(navId);
 }
 
-/** Default landing route when switching into a stage. */
+/** Default landing route when switching into a room. */
 export const STAGE_DEFAULT_ROUTES: Record<ForgeStage, string> = {
-  map: "/foundation",
+  foundation: "/foundation",
+  map: "/god-mode",
   monitor: "/metrics",
   automate: "/automations",
 };
 
-/** Whether the current path is a primary page for the given stage. */
+/** Whether the current path is a primary page for the given room. */
 export function pathBelongsToStage(pathname: string, stage: ForgeStage): boolean {
   const path = pathname.split("?")[0] || "/";
   const inferred = stageFromPath(path);
   if (inferred) return inferred === stage;
-  // Neutral routes (home, log, decisions) are valid in every stage
+  // Neutral routes (home, log, decisions) are valid in every room
   if (path === "/home" || path === "/log" || path.startsWith("/decisions")) return true;
   if (path.startsWith("/content")) return stage === "monitor" || stage === "automate";
+  if (path.startsWith("/documents")) return stage === "foundation" || stage === "map";
+  if (path.startsWith("/personnel") && !path.includes("hire") && !path.includes("academy")) {
+    return stage === "foundation" || stage === "map" || stage === "automate";
+  }
   return true;
 }

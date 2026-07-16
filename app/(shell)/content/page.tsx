@@ -1,10 +1,15 @@
 "use client";
 
 import { ContentStudio } from "@/components/content/ContentStudio";
+import { SoftRoomLock } from "@/components/shell/SoftRoomLock";
+import { useForgeStage } from "@/components/shell/StageProvider";
 import { useShell } from "@/components/shell/ShellContext";
 
 export default function ContentPage() {
   const { currentBusiness } = useShell();
+  const { isRoomUnlocked } = useForgeStage();
+  // Content lives under Monitor + Automate — same forged gate
+  const unlocked = isRoomUnlocked("monitor");
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-10">
@@ -20,7 +25,14 @@ export default function ContentPage() {
         </p>
       </div>
 
-      <ContentStudio businessId={currentBusiness?.id ?? null} />
+      {!unlocked ? (
+        <SoftRoomLock
+          room="monitor"
+          title="Content inventory opens after you forge a process"
+        />
+      ) : (
+        <ContentStudio businessId={currentBusiness?.id ?? null} />
+      )}
     </main>
   );
 }

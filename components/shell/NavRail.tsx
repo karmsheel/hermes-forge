@@ -45,7 +45,7 @@ export function NavRail() {
   const { requestNewProcess } = useShell();
   const { stage } = useForgeStage();
   const { isOpen: chatOpen, toggle: toggleChat } = useChatbar();
-  const { showCronalyticsPage, showGodModePage } = useDeveloperSettings();
+  const { showCronalyticsPage } = useDeveloperSettings();
   const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
   /** Prefer active tab route for highlight so desktop tabs stay consistent */
   const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
@@ -64,6 +64,13 @@ export function NavRail() {
       label: "Foundation",
       icon: Layers,
       match: (path) => path.startsWith("/foundation"),
+    },
+    {
+      id: "god-mode",
+      href: "/god-mode",
+      label: "Plant",
+      icon: ScanEye,
+      match: (path) => path.startsWith("/god-mode"),
     },
     {
       id: "functions",
@@ -108,13 +115,6 @@ export function NavRail() {
       match: (path) => path.startsWith("/content"),
     },
     {
-      id: "god-mode",
-      href: "/god-mode",
-      label: "God Mode",
-      icon: ScanEye,
-      match: (path) => path.startsWith("/god-mode"),
-    },
-    {
       id: "automations",
       href: "/automations",
       label: "Automations",
@@ -137,7 +137,7 @@ export function NavRail() {
     },
   ];
 
-  /** Holistic: always visible across Map / Monitor / Automate (footer, above chat). */
+  /** Holistic: always visible across rooms (footer, above chat). */
   const holisticItems: NavItem[] = [
     {
       id: "decisions",
@@ -198,7 +198,6 @@ export function NavRail() {
       <div className="nav-rail__section nav-rail__section--grow">
         {mainItems
           .filter((item) => isNavIdInStage(item.id, stage))
-          .filter((item) => item.id !== "god-mode" || showGodModePage)
           .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
           .map((item) => {
           const Icon = item.icon;

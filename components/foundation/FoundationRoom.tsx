@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useShell } from "@/components/shell/ShellContext";
+import { useForgeStage } from "@/components/shell/StageProvider";
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { setActiveProcessId } from "@/lib/workshop-storage";
 import type {
@@ -37,6 +38,7 @@ import {
 export function FoundationRoom() {
   const router = useRouter();
   const { currentBusiness, openNewBusiness } = useShell();
+  const { refreshReadiness } = useForgeStage();
   const { open: openChat } = useChatbar();
   const { config: hermesConfig, isConnected } = useHermesConnection();
   const [loading, setLoading] = useState(true);
@@ -68,13 +70,14 @@ export function FoundationRoom() {
         if (prev && data.processes.some((p) => p.id === prev)) return prev;
         return data.processes[0]?.id ?? null;
       });
+      void refreshReadiness();
     } catch {
       toast.error("Failed to load Foundation");
       setOverview(null);
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, refreshReadiness]);
 
   useEffect(() => {
     void load();
@@ -336,7 +339,7 @@ export function FoundationRoom() {
       <header className="shrink-0 border-b border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-text-muted">
-            Map · Foundation
+            Foundation room · Underlord
           </div>
           <h1 className="font-semibold text-sm text-text-strong truncate">
             Business foundations

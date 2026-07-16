@@ -1,40 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   GodModeCanvas,
   type GodModeStats,
 } from "@/components/god-mode/GodModeCanvas";
-import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
+import { SoftRoomLock } from "@/components/shell/SoftRoomLock";
+import { useForgeStage } from "@/components/shell/StageProvider";
 
+/**
+ * Map room primary surface — plant PFD (promoted from dev-gated God Mode).
+ * Route stays /god-mode for compatibility; chrome labels it Plant / Map.
+ */
 export default function GodModePage() {
-  const router = useRouter();
-  const { hydrated, showGodModePage } = useDeveloperSettings();
+  const { isRoomUnlocked } = useForgeStage();
   const [stats, setStats] = useState<GodModeStats>({
     total: 0,
     withDiagrams: 0,
     viewMode: "compact",
   });
 
-  useEffect(() => {
-    if (hydrated && !showGodModePage) {
-      router.replace("/home");
-    }
-  }, [hydrated, showGodModePage, router]);
-
-  if (!hydrated || !showGodModePage) {
-    return null;
-  }
+  const mapReady = isRoomUnlocked("map");
 
   return (
     <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
       <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
         <div>
           <div className="text-[10px] uppercase tracking-widest text-text-muted">
-            Overview
+            Map room
           </div>
-          <h1 className="font-semibold text-sm text-text-strong">God Mode</h1>
+          <h1 className="font-semibold text-sm text-text-strong">Plant</h1>
           {stats.total > 0 && (
             <p className="text-xs text-text-muted mt-0.5">
               {stats.total} process{stats.total !== 1 ? "es" : ""}
@@ -52,7 +47,17 @@ export default function GodModePage() {
         </div>
       </header>
 
-      <GodModeCanvas onStatsChange={setStats} />
+      {!mapReady ? (
+        <div className="p-6">
+          <SoftRoomLock
+            room="map"
+            title="Map fills as processes appear"
+            description="Talk with Underlord in Foundation to seed draft process shapes. The plant map soft-unlocks when the first process exists."
+          />
+        </div>
+      ) : (
+        <GodModeCanvas onStatsChange={setStats} />
+      )}
     </div>
   );
 }

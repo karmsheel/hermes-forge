@@ -30,11 +30,11 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       routeKey: "foundation",
       title: "Foundation",
       purpose:
-        "Plant sketch of the business: draft process blocks (I/O shapes), knowledge documents, and chat-first discovery before deep Workshop mapping.",
+        "Starting room of the Forge. Underlord co-pilots a plant sketch: draft process blocks (I/O shapes), knowledge documents, and chat-first discovery before Map / Workshop.",
       uiHints: [
+        "Talk with Underlord about how the business works",
         "Add draft process blocks for each unit of work",
-        "Open a block in Workshop to refine the full diagram",
-        "Describe channels and ops in chat so Hermes can propose drafts",
+        "Open a block in Workshop (Map tool) to refine the full diagram",
         "Open Documents for durable business knowledge",
       ],
     },
@@ -235,13 +235,14 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     match: (p) => p.startsWith("/god-mode"),
     blurb: {
       routeKey: "god-mode",
-      title: "God Mode",
+      title: "Map · Plant",
       purpose:
-        "Plant canvas of all processes by function (dev-gated). Compact I/O-shape cards by default; toggle Diagrams for full Mermaid tiles.",
+        "Map room primary surface: plant canvas of all processes (I/O shapes + links). Compact cards by default; toggle Diagrams for full Mermaid tiles. Workshop opens from a card.",
       uiHints: [
-        "Use Compact mode to scan the whole business",
-        "Toggle Diagrams for full process maps",
-        "Click a card to open Workshop",
+        "Use Compact mode to scan the whole business plant",
+        "Draw process-to-process links in Link mode",
+        "Click a card to open Workshop and forge a process",
+        "Monitor and Automate soft-unlock after at least one process is forged",
       ],
     },
   },

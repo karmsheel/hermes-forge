@@ -1018,19 +1018,19 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.6 Business plant PFD (end-state milestone) — **PLANNED** (priority)
+### 6.6 Business plant PFD (end-state milestone) — **IN PROGRESS** (priority)
 
 **Goal:** Map room becomes a true **business process flow diagram**: shapes + edges + layout that reads like a plant drawing of the company. Room model + soft unlock land here with the plant surface.
 
 **Reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) §§ 2, 4, 7, 10.
 
 **First-wow deliverables (implement first):**
-- [ ] **Room IA:** stage explorer → room switcher (Foundation | Map | Monitor | Automate); user-facing “room” copy
-- [ ] **Soft locks:** Monitor + Automate gated on ≥1 `lifecycleStatus === "forged"`; Map empty state when no processes; no hard 404s
-- [ ] **Promote God Mode plant into Map** as primary Map surface (exit pure dev-gate for product plant canvas)
-- [ ] Workshop treated as **Map tool** (drill-in from plant; not a peer room in the switcher)
-- [ ] Zoom from plant → unit op (Workshop) without losing business context
-- [ ] Unlock / empty-state copy + Foundation **Underlord** persona wiring in chat context
+- [x] **Room IA:** stage explorer → room switcher (Foundation | Map | Monitor | Automate); user-facing “room” copy (`lib/forge-stage.ts`, `StageExplorer`)
+- [x] **Soft locks:** Monitor + Automate gated on ≥1 forged process; Map empty state when no processes; no hard 404s (`forge-room-readiness`, `SoftRoomLock`)
+- [x] **Promote God Mode plant into Map** as primary Map surface (ungated product route; Map default `/god-mode`; nav label Plant)
+- [x] Workshop treated as **Map tool** (nav under Map only; not a peer room in the switcher)
+- [x] Zoom from plant → unit op (Workshop) without losing business context (existing plant click → workshop)
+- [x] Unlock / empty-state copy + Foundation **Underlord** persona wiring in chat context
 
 **Trail deliverables (same milestone, can follow first wow):**
 - [ ] Layout modes: by function (department bands) | by flow (graph layout) | manual positions
@@ -1050,21 +1050,21 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.7 Entry-flow migration (Home → Foundation) — **PLANNED** (priority)
+### 6.7 Entry-flow migration (Home → Foundation) — **MOSTLY DONE** (priority)
 
 **Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. **Home dissolves into Foundation** for new businesses.
 
 **Reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) § 6.
 
 **Deliverables:**
-- [ ] Home composer / new business → **Foundation** (default); no product Home lobby as first room for thin businesses
-- [ ] Template starters seed Foundation drafts (and optional first workshop deep-link)
-- [ ] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
-- [ ] Empty/thin business heuristic: Foundation; mature business: **Map** or last room
-- [ ] Underlord + Foundation onboarding copy
-- [ ] Docs / agent references already point here; keep in sync if entry routes change
+- [x] Home composer / new business → **Foundation** (start-from-brief + hire post-create → `/foundation`; room default Foundation)
+- [ ] Template starters seed Foundation drafts (and optional first workshop deep-link) — partial: templates still via Home composer then Foundation
+- [x] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
+- [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
+- [x] Underlord + Foundation onboarding copy (prompt addon + room chrome)
+- [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
 
-**Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later; do not block this item.
+**Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later; do not block this item. Hard redirect `/home` → Foundation for thin businesses deferred (templates still on Home).
 
 **Depends on:** 6.2, 6.0
 
@@ -1125,8 +1125,8 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
-| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Planned** (priority — first wow) |
-| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Planned** (priority) |
+| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **In progress** (first wow shipped; layout/export trail) |
+| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Mostly done** |
 
 ---
 
