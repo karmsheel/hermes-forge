@@ -79,7 +79,7 @@ export function HomeHero() {
 
   return (
     <div className="home-page">
-      <div className="home-page__head">
+      <div className="home-page__stack">
         <section className="home-hero">
           <div className="home-hero__intro">
             <div
@@ -111,16 +111,13 @@ export function HomeHero() {
             }
           />
         </section>
-      </div>
 
-      <div className="home-page__scroll">
-        <div className="home-page__scroll-inner">
+        <div className="home-page__templates">
           <TemplateCards
             selectedId={selectedTemplateId}
             onSelect={handleTemplateSelect}
             onClear={handleTemplateClear}
           />
-
         </div>
       </div>
     </div>

@@ -5564,41 +5564,36 @@ body {
 
 
 
-/* Home — hero head pinned to top; only lower sections scroll */
+/* Home — hero, composer, and templates as one vertically balanced stack */
 .home-page {
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: stretch;
-  width: 100%;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.home-page__head {
-  flex-shrink: 0;
-  display: flex;
+  align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 1rem 1.5rem 0;
-  overflow: visible;
-}
-
-.home-page__scroll {
-  flex: 1;
   min-height: 0;
-  width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Optical lift ~10vh above geometric center */
+  padding: clamp(1.25rem, 3vh, 2.5rem) 1.5rem calc(clamp(1.25rem, 3vh, 2.5rem) + 10vh);
 }
 
-.home-page__scroll-inner {
+.home-page__stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding: 0 1.5rem 2.5rem;
+  max-width: min(100%, 56rem);
+  gap: 1.25rem;
+}
+
+.home-page__templates {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .home-hero {
@@ -5859,7 +5854,7 @@ body {
 /* Home template starter pills */
 .home-templates {
   width: min(100vw - 7rem, 56rem);
-  margin-top: 1rem;
+  margin-top: 0;
   margin-inline: auto;
   text-align: center;
 }
