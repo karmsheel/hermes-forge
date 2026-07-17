@@ -168,9 +168,9 @@ God Mode–style **compact plant canvas** + **process-to-process links**, re-hom
 4. God Mode plant promoted into Map (exit pure dev-gate as Map primary)  
 
 **Trail (same milestone, can follow):**
-- Layout modes: by function (department bands) | by flow (graph layout) | manual positions  
-- External plant feeds/products (business-level I/O framing)  
-- Export plant view (PNG/SVG/PDF) alongside per-process export  
+- ~~Layout modes: by function | by flow | manual~~ **Done**  
+- ~~External plant feeds/products (business-level I/O framing)~~ **Done** — Map **Outside I/O** (entry inputs / exit outcomes)  
+- ~~Export plant view (PNG/SVG/PDF) alongside per-process export~~ **Done** — Map compact `PlantExportMenu` / `lib/export-plant.ts`
 - Preserve pan/zoom context when drilling into Workshop  
 
 ### Success criteria
@@ -237,7 +237,7 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 - Windows code signing (4.16)  
 - Per-room unique homepages  
 - Hard locks  
-- Full plant export / advanced layout modes (unless cheap after first wow)  
+- ~~Full plant export / outside I/O framing~~ shipped under 6.6 trail
 
 ---
 

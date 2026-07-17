@@ -68,6 +68,12 @@ export function SignInOptions({
     });
   }
 
+  const optionPad = isPage ? "p-4" : "p-2.5";
+  const iconBox = isPage
+    ? "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
+    : "flex h-7 w-7 shrink-0 items-center justify-center rounded-md";
+  const titleClass = isPage ? "font-medium text-text" : "text-sm font-medium text-text";
+
   return (
     <div className={isPage ? "w-full max-w-md" : "w-full"}>
       {brandVisible && (
@@ -94,24 +100,24 @@ export function SignInOptions({
         </div>
       )}
 
-      <div className="space-y-3">
+      <div className={isPage ? "space-y-3" : "space-y-1.5"}>
         <button
           type="button"
           onClick={() => void handleLocalSignIn()}
           disabled={localLoading}
-          className="card w-full p-4 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected disabled:opacity-60"
+          className={`card w-full ${optionPad} text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected disabled:opacity-60`}
         >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          <div className={`flex ${isPage ? "items-start gap-3" : "items-center gap-2.5"}`}>
+            <div className={`${iconBox} bg-accent-soft text-accent`}>
               {localLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Monitor className="h-4 w-4" />
+                <Monitor className={isPage ? "h-4 w-4" : "h-3.5 w-3.5"} />
               )}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-text">Use local or no sign-in</span>
+                <span className={titleClass}>{isPage ? "Use local or no sign-in" : "Local mode"}</span>
                 {localActive && (
                   <span className="rounded-full bg-green-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green">
                     Active
@@ -123,10 +129,12 @@ export function SignInOptions({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-text-muted mt-1 leading-relaxed">
-                Stay on this machine with no account. Best for a quick start — data stays local to
-                Hermes Forge on this device.
-              </p>
+              {isPage ? (
+                <p className="text-sm text-text-muted mt-1 leading-relaxed">
+                  Stay on this machine with no account. Best for a quick start — data stays local to
+                  Hermes Forge on this device.
+                </p>
+              ) : null}
             </div>
           </div>
         </button>
@@ -134,29 +142,31 @@ export function SignInOptions({
         <button
           type="button"
           onClick={() => handleComingSoon("Email sign-in")}
-          className="card w-full p-4 text-left opacity-90 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected"
+          className={`card w-full ${optionPad} text-left opacity-90 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected`}
         >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-muted text-text-muted">
-              <Lock className="h-4 w-4" />
+          <div className={`flex ${isPage ? "items-start gap-3" : "items-center gap-2.5"}`}>
+            <div className={`${iconBox} bg-bg-muted text-text-muted`}>
+              <Lock className={isPage ? "h-4 w-4" : "h-3.5 w-3.5"} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-text">Create email sign-in</span>
+                <span className={titleClass}>{isPage ? "Create email sign-in" : "Email"}</span>
                 {hasRemoteIdentity ? (
                   <span className="rounded-full bg-green-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green">
                     Active
                   </span>
                 ) : (
                   <span className="rounded-full bg-amber-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber">
-                    Coming soon
+                    Soon
                   </span>
                 )}
               </div>
-              <p className="text-sm text-text-muted mt-1 leading-relaxed">
-                Lock or encrypt access with an email and password when you want stronger protection
-                for your businesses.
-              </p>
+              {isPage ? (
+                <p className="text-sm text-text-muted mt-1 leading-relaxed">
+                  Lock or encrypt access with an email and password when you want stronger protection
+                  for your businesses.
+                </p>
+              ) : null}
             </div>
           </div>
         </button>
@@ -164,33 +174,37 @@ export function SignInOptions({
         <button
           type="button"
           onClick={() => handleComingSoon("GitHub sign-in")}
-          className="card w-full p-4 text-left opacity-90 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected"
+          className={`card w-full ${optionPad} text-left opacity-90 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected`}
         >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-bg-muted text-text-muted">
-              <GitBranch className="h-4 w-4" />
+          <div className={`flex ${isPage ? "items-start gap-3" : "items-center gap-2.5"}`}>
+            <div className={`${iconBox} bg-bg-muted text-text-muted`}>
+              <GitBranch className={isPage ? "h-4 w-4" : "h-3.5 w-3.5"} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-text">GitHub login</span>
+                <span className={titleClass}>GitHub</span>
                 <span className="rounded-full bg-amber-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber">
-                  Coming soon
+                  Soon
                 </span>
               </div>
-              <p className="text-sm text-text-muted mt-1 leading-relaxed">
-                Sign in with GitHub to back up and sync businesses to a repo — pick up work on other
-                machines, collaborate, and keep a full history over time.
-              </p>
+              {isPage ? (
+                <p className="text-sm text-text-muted mt-1 leading-relaxed">
+                  Sign in with GitHub to back up and sync businesses to a repo — pick up work on other
+                  machines, collaborate, and keep a full history over time.
+                </p>
+              ) : null}
             </div>
           </div>
         </button>
       </div>
 
-      <p className="text-xs text-text-soft mt-5 leading-relaxed text-center sm:text-left">
-        Email and GitHub are optional. You can come back and sign in with those credentials later
-        from Profile once your business is more developed — then lock data or push it to a GitHub
-        repo for backup and traceability.
-      </p>
+      {isPage ? (
+        <p className="text-xs text-text-soft mt-5 leading-relaxed text-center sm:text-left">
+          Email and GitHub are optional. You can come back and sign in with those credentials later
+          from Profile once your business is more developed — then lock data or push it to a GitHub
+          repo for backup and traceability.
+        </p>
+      ) : null}
     </div>
   );
 }

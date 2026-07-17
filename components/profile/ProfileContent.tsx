@@ -18,10 +18,12 @@ import {
 } from "lucide-react";
 import type { BusinessGitStatus } from "@/lib/business-git";
 import { SignInOptions } from "@/components/auth/SignInOptions";
+import { BusinessAvatarMark } from "@/components/shell/BusinessAvatarMark";
 import { useShell } from "@/components/shell/ShellContext";
 import { isLocalUserEmail } from "@/lib/local-user-email";
 import type { BusinessSummary, BusinessExportPayload, UserProfile } from "@/lib/types";
 import { buildBusinessExportPayload, createBusinessExportZip, downloadBlob, makeExportFilename } from "@/lib/business-export";
+import { timeAgo } from "@/lib/time-ago";
 
 const CARD_MENU_WIDTH = 13.5 * 16;
 
@@ -175,17 +177,6 @@ export function ProfileContent() {
       if (entry) next[entry[0]] = entry[1];
     }
     setGitStatusById(next);
-  }
-
-  function gitLabel(status: BusinessGitStatus | undefined): string {
-    if (!status) return "";
-    if (!status.gitAvailable) return "Git unavailable";
-    if (!status.initialized) return "Git not initialized";
-    if (status.dirty) return "Git out of date";
-    if (status.lastPushError) return "Push failed";
-    if (status.remoteUrl && status.lastPushedAt) return "Git synced · pushed";
-    if (status.remoteUrl) return "Git synced · not pushed";
-    return "Git synced (local)";
   }
 
   async function refreshGitStatus(businessId: string) {
@@ -561,50 +552,43 @@ export function ProfileContent() {
     <div className="settings-overlay__layout settings-overlay__layout--split settings-overlay__layout--profile">
       {/* Left: account + sign-in only */}
       <aside className="settings-overlay__nav profile-overlay__account" aria-label="Account">
-        <div className="settings-overlay__nav-header">
-          <div className="text-xs uppercase tracking-widest text-text-muted">Account</div>
-          <h2 className="text-lg font-semibold tracking-tight mt-1">Profile</h2>
+        <div className="settings-overlay__nav-header profile-overlay__account-header">
+          <h2 className="text-base font-semibold tracking-tight">Profile</h2>
+          <p className="text-[11px] text-text-soft mt-0.5 truncate" title={authLabel}>
+            {authLabel}
+            {user?._count?.businesses != null
+              ? ` · ${user._count.businesses} biz`
+              : ""}
+          </p>
         </div>
 
         <div className="profile-overlay__account-scroll">
-          <form onSubmit={handleSave} className="card p-4 space-y-4 mb-6">
+          <form onSubmit={handleSave} className="card p-3 space-y-2.5 mb-3">
             <div>
-              <label className="text-xs text-text-muted uppercase tracking-widest">
-                Display name
-              </label>
+              <label className="text-[10px] text-text-muted uppercase tracking-widest">Name</label>
               <input
-                className="input w-full mt-1"
+                className="input w-full mt-1 text-sm py-1.5"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your display name"
+                placeholder="Display name"
               />
             </div>
 
-            <div className="text-xs text-text-soft space-y-1">
-              <div>
-                {user?._count?.businesses ?? 0} business
-                {(user?._count?.businesses ?? 0) !== 1 ? "es" : ""}
-              </div>
-              <div>
-                Sign-in: <span className="text-text-muted">{authLabel}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="submit" disabled={saving} className="btn-primary text-sm">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save changes"}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button type="submit" disabled={saving} className="btn-primary text-xs px-2.5 py-1.5">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
               </button>
               <button
                 type="button"
                 onClick={() => void handleLogout()}
                 disabled={loggingOut}
-                className="btn-secondary text-sm"
+                className="btn-secondary text-xs px-2.5 py-1.5"
               >
                 {loggingOut ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <>
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-3.5 h-3.5" />
                     Log out
                   </>
                 )}
@@ -612,12 +596,10 @@ export function ProfileContent() {
             </div>
           </form>
 
-          <div className="mb-2">
-            <div className="text-xs uppercase tracking-widest text-text-muted">Sign-in options</div>
-            <p className="text-sm text-text-muted mt-1 mb-3">
-              Stay local, or add email / GitHub later for lock-down and backup once your business is
-              further along.
-            </p>
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1.5">
+              Sign-in
+            </div>
             <SignInOptions
               variant="profile"
               currentEmail={user?.email}
@@ -630,16 +612,10 @@ export function ProfileContent() {
 
       {/* Right: business settings & detail */}
       <main className="settings-overlay__main">
-        <div className="settings-overlay__main-scroll">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-xs uppercase tracking-widest text-text-muted">Businesses</div>
-              <h2 className="text-lg font-semibold tracking-tight mt-1">Your businesses</h2>
-              <p className="text-sm text-text-muted mt-1">
-                Each business contains its workflows, diagrams, and Git backup.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
+        <div className="settings-overlay__main-scroll profile-overlay__businesses-scroll">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold tracking-tight">Businesses</h2>
+            <div className="flex flex-wrap items-center gap-1.5">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -652,19 +628,19 @@ export function ProfileContent() {
                 type="button"
                 onClick={triggerImport}
                 disabled={importing || importingGit}
-                className="btn-secondary text-sm flex items-center gap-2"
+                className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1.5"
               >
-                <Upload className="w-4 h-4" />
-                {importing ? "Importing..." : "Import ZIP"}
+                <Upload className="w-3.5 h-3.5" />
+                {importing ? "…" : "ZIP"}
               </button>
               <button
                 type="button"
                 onClick={() => setGitImportOpen((v) => !v)}
                 disabled={importing || importingGit}
-                className="btn-secondary text-sm flex items-center gap-2"
+                className="btn-secondary text-xs px-2.5 py-1.5 flex items-center gap-1.5"
               >
-                <GitBranch className="w-4 h-4" />
-                Import from Git
+                <GitBranch className="w-3.5 h-3.5" />
+                Git
               </button>
             </div>
           </div>
@@ -756,15 +732,15 @@ export function ProfileContent() {
           )}
 
           {bizLoading ? (
-            <div className="text-center py-8 text-text-muted">
+            <div className="text-center py-6 text-text-muted">
               <Loader2 className="w-5 h-5 animate-spin mx-auto" />
             </div>
           ) : businesses.length === 0 ? (
-            <div className="card p-6 text-sm text-text-muted">
+            <div className="card p-4 text-sm text-text-muted">
               No businesses yet. Create one from the header or + button.
             </div>
           ) : (
-            <ul className="space-y-3">
+            <ul className="profile-overlay__biz-grid">
               {businesses.map((b) => {
                 const gitStatus = gitStatusById[b.id];
                 const gitBusy =
@@ -778,31 +754,65 @@ export function ProfileContent() {
                 const menuOpen = cardMenuId === b.id;
                 const cardBusy =
                   gitBusy || downloadingId === b.id || deletingId === b.id;
+                const wf = b._count?.processes ?? 0;
+                const gitShort = gitStatus
+                  ? !gitStatus.gitAvailable
+                    ? "No Git"
+                    : !gitStatus.initialized
+                      ? "Untracked"
+                      : gitStatus.dirty
+                        ? "Dirty"
+                        : gitStatus.remoteUrl
+                          ? gitStatus.lastPushedAt
+                            ? "Pushed"
+                            : "Remote"
+                          : "Local"
+                  : null;
+                const lastSaved = b.updatedAt ? timeAgo(b.updatedAt) : null;
+                const lastSavedExact = b.updatedAt
+                  ? new Date(b.updatedAt).toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                  : undefined;
                 return (
-                  <li key={b.id} className="card p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
+                  <li
+                    key={b.id}
+                    className={`profile-overlay__biz-card card${
+                      gitPanelId === b.id ? " is-expanded" : ""
+                    }`}
+                  >
+                    <div className="profile-overlay__biz-card-row">
+                      <BusinessAvatarMark
+                        name={b.name}
+                        avatarEmoji={b.avatarEmoji}
+                        avatarIcon={b.avatarIcon}
+                        className="profile-overlay__biz-avatar"
+                      />
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate">{b.name}</div>
-                        {b.description && (
-                          <div className="text-sm text-text-muted line-clamp-1 mt-0.5">
-                            {b.description}
-                          </div>
-                        )}
-                        <div className="text-xs text-text-soft mt-1">
-                          {b._count?.processes ?? 0} workflow
-                          {(b._count?.processes ?? 0) !== 1 ? "s" : ""}
-                          {gitStatus && (
-                            <>
-                              {" · "}
-                              {gitLabel(gitStatus)}
-                            </>
-                          )}
+                        <div className="text-sm font-medium truncate" title={b.name}>
+                          {b.name}
                         </div>
-                        {gitStatus?.lastPushError && (
-                          <div className="text-xs text-red-400 mt-1 line-clamp-2">
-                            {gitStatus.lastPushError}
+                        <div className="text-[11px] text-text-soft mt-0.5 truncate">
+                          {wf} workflow{wf !== 1 ? "s" : ""}
+                          {gitShort ? ` · ${gitShort}` : ""}
+                        </div>
+                        {lastSaved ? (
+                          <div
+                            className="text-[11px] text-text-muted mt-1 truncate"
+                            title={lastSavedExact}
+                          >
+                            Saved {lastSaved}
                           </div>
-                        )}
+                        ) : null}
+                        {gitStatus?.lastPushError ? (
+                          <div
+                            className="text-[10px] text-red-400 mt-0.5 truncate"
+                            title={gitStatus.lastPushError}
+                          >
+                            Push failed
+                          </div>
+                        ) : null}
                       </div>
                       <div className="workflow-menu shrink-0">
                         <button
@@ -811,7 +821,7 @@ export function ProfileContent() {
                           }}
                           type="button"
                           onClick={(e) => toggleCardMenu(b.id, e)}
-                          className={`workflow-menu__trigger p-1.5 rounded-md hover:bg-bg-subtle text-text-muted hover:text-text ${
+                          className={`workflow-menu__trigger p-1 rounded-md hover:bg-bg-subtle text-text-muted hover:text-text ${
                             menuOpen ? "is-open" : ""
                           }`}
                           title="Business options"
@@ -829,20 +839,14 @@ export function ProfileContent() {
                     </div>
 
                     {gitPanelId === b.id && (
-                      <div className="rounded-lg border border-stroke bg-bg/40 p-3 space-y-2">
-                        <div className="text-xs uppercase tracking-widest text-text-muted">
-                          Git backup
-                        </div>
-                        <p className="text-xs text-text-muted">
-                          Local path:{" "}
-                          <span className="text-text-soft break-all">
-                            {gitStatus?.repoPath || "—"}
-                          </span>
+                      <div className="profile-overlay__biz-git mt-2 pt-2 border-t border-stroke space-y-2">
+                        <p className="text-[10px] text-text-soft truncate" title={gitStatus?.repoPath || undefined}>
+                          {gitStatus?.repoPath || "No local repo path"}
                         </p>
-                        <div className="grid gap-2 sm:grid-cols-[1fr_120px]">
+                        <div className="grid gap-1.5 grid-cols-[1fr_4.5rem]">
                           <input
-                            className="input text-sm"
-                            placeholder="https://github.com/you/my-business.git"
+                            className="input text-xs py-1"
+                            placeholder="Remote URL"
                             value={draft.url}
                             onChange={(e) =>
                               setRemoteDraftById((prev) => ({
@@ -853,7 +857,7 @@ export function ProfileContent() {
                             disabled={gitBusy}
                           />
                           <input
-                            className="input text-sm"
+                            className="input text-xs py-1"
                             placeholder="main"
                             value={draft.branch}
                             onChange={(e) =>
@@ -865,22 +869,22 @@ export function ProfileContent() {
                             disabled={gitBusy}
                           />
                         </div>
-                        <div className="flex flex-wrap gap-2 justify-end">
+                        <div className="flex flex-wrap gap-1.5 justify-end">
                           <button
                             type="button"
-                            className="btn-secondary text-xs px-3 py-1.5"
+                            className="btn-secondary text-[11px] px-2 py-1"
                             disabled={gitBusy}
                             onClick={() => void handleSaveRemote(b)}
                           >
                             {savingRemoteId === b.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              "Save remote"
+                              "Save"
                             )}
                           </button>
                           <button
                             type="button"
-                            className="btn-secondary text-xs px-3 py-1.5"
+                            className="btn-secondary text-[11px] px-2 py-1"
                             disabled={
                               gitBusy ||
                               !gitStatus?.remoteUrl ||
@@ -889,13 +893,9 @@ export function ProfileContent() {
                             onClick={() => void handleGitPush(b, false)}
                             title="Push current HEAD without re-syncing"
                           >
-                            Push only
+                            Push
                           </button>
                         </div>
-                        <p className="text-[11px] text-text-soft">
-                          Auth uses your system Git credentials (Credential Manager / SSH agent).
-                          Forge does not store tokens.
-                        </p>
                       </div>
                     )}
                   </li>

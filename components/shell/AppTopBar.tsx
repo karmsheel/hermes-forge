@@ -8,46 +8,78 @@ import { BusinessSwitcher } from "./BusinessSwitcher";
 import { NotificationBell } from "./NotificationBell";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useShell } from "./ShellContext";
-import { StageExplorer } from "./StageExplorer";
+import { StageExplorerFoundation, StageExplorerOps } from "./StageExplorer";
+import { useForgeStage } from "./StageProvider";
+
+const OPS_ROOMS = ["map", "monitor", "automate"] as const;
 
 export function AppTopBar() {
   const { openHermesConnection } = useShell();
   const { showHermesModelSwitcher } = useDeveloperSettings();
   const { enabled: tabsEnabled, tabs, createTab } = useForgeTabs();
+  const { isRoomUnlocked } = useForgeStage();
 
   // When the tab strip is hidden, still allow opening a second tab from the top bar
   const showNewTab = tabsEnabled && tabs.length <= 1;
   const atMax = tabs.length >= FORGE_TABS_MAX;
+  // Right dotted bridge only when MMA exists — otherwise it terminates into a blank slot
+  const hasOpsRooms = OPS_ROOMS.some((room) => isRoomUnlocked(room));
 
   return (
     <header className="app-topbar shrink-0 bg-bg">
       <div className="app-topbar__inner">
-        {/* Business picker (+ optional new tab) */}
-        <div className="app-topbar__workspace">
-          <BusinessSwitcher />
-          {showNewTab ? (
-            <button
-              type="button"
-              className="app-topbar__new-tab"
-              onClick={() => createTab()}
-              disabled={atMax}
-              title={atMax ? `Maximum ${FORGE_TABS_MAX} tabs` : "New tab (Ctrl+T)"}
-              aria-label="New tab"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+        {/*
+          Leading half: [business picker] ··· [Foundation] ···
+          Foundation is always centered in the free space (equal flex on both sides).
+          Right side paints dots only when MMA rooms are unlocked — otherwise an
+          invisible spacer keeps balance without a line into blank space.
+        */}
+        <div className="app-topbar__leading">
+          <div className="app-topbar__workspace">
+            <BusinessSwitcher />
+            {showNewTab ? (
+              <button
+                type="button"
+                className="app-topbar__new-tab"
+                onClick={() => createTab()}
+                disabled={atMax}
+                title={atMax ? `Maximum ${FORGE_TABS_MAX} tabs` : "New tab (Ctrl+T)"}
+                aria-label="New tab"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="app-topbar__foundation-slot">
+            <div className="app-topbar__bridge" aria-hidden="true" />
+            <StageExplorerFoundation />
+            {/* Equal flex balance on the right; dotted only once MMA rooms exist */}
+            <div
+              className={
+                hasOpsRooms ? "app-topbar__bridge" : "app-topbar__bridge-spacer"
+              }
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+
+        {/*
+          MMA center track (fixed width). When ops rooms exist, equal flex on both
+          sides keeps the pill centered; the left side is a dotted bridge so the
+          line from Foundation continues all the way to the pill edge (no gap).
+        */}
+        <div className="app-topbar__stages">
+          {hasOpsRooms ? (
+            <div className="app-topbar__bridge" aria-hidden="true" />
+          ) : null}
+          <StageExplorerOps />
+          {hasOpsRooms ? (
+            <div className="app-topbar__bridge-spacer" aria-hidden="true" />
           ) : null}
         </div>
 
-        {/* Dotted connector: picker → room switcher (own grid track so it always has width) */}
-        <div className="app-topbar__bridge" aria-hidden="true" />
-
-        {/* Room switcher (Foundation | Map | Monitor | Automate) */}
-        <div className="app-topbar__stages">
-          <StageExplorer />
-        </div>
-
-        {/* Trailing actions */}
+        {/* Trailing actions — equal 1fr track balances the leading half */}
         <div className="app-topbar__actions">
           {showHermesModelSwitcher && (
             <HermesModelSwitcher onOpenConnection={openHermesConnection} />

@@ -11,6 +11,7 @@ import {
 
 const MODE_PREFIX = "forge:plant-layout-mode:";
 const POS_PREFIX = "forge:plant-positions:";
+const BOUNDARY_PREFIX = "forge:plant-show-boundary:";
 
 export function plantLayoutModeKey(businessId: string): string {
   return `${MODE_PREFIX}${businessId}`;
@@ -89,4 +90,34 @@ export function upsertPlantPosition(
   const next = { ...loadPlantPositions(businessId), [processId]: { x, y } };
   savePlantPositions(businessId, next);
   return next;
+}
+
+export function plantShowBoundaryKey(businessId: string): string {
+  return `${BOUNDARY_PREFIX}${businessId}`;
+}
+
+/** Outside I/O framing on the plant — default on. */
+export function loadPlantShowBoundary(
+  businessId: string | null | undefined,
+): boolean {
+  if (!businessId || typeof window === "undefined") return true;
+  try {
+    const raw = localStorage.getItem(plantShowBoundaryKey(businessId));
+    if (raw === null) return true;
+    return raw === "1" || raw === "true";
+  } catch {
+    return true;
+  }
+}
+
+export function savePlantShowBoundary(
+  businessId: string | null | undefined,
+  show: boolean,
+): void {
+  if (!businessId || typeof window === "undefined") return;
+  try {
+    localStorage.setItem(plantShowBoundaryKey(businessId), show ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
 }

@@ -36,6 +36,8 @@ export async function GET(request: NextRequest) {
         diagramMermaid: true,
         diagramUpdatedAt: true,
         ioShape: true,
+        inputs: true,
+        outputs: true,
         updatedAt: true,
         createdAt: true,
         _count: { select: { messages: true } },

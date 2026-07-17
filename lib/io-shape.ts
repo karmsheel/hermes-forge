@@ -63,23 +63,31 @@ export function getIoShapeMeta(id: unknown): IoShapeMeta {
 }
 
 /**
- * Split free-text inputs/outputs into boundary items.
+ * Split free-text inputs/outputs into ordered, de-duplicated labels.
  * Supports newlines, bullets, semicolons, " + ", and commas.
  */
-export function countBoundaryItems(text: string | null | undefined): number {
-  if (!text?.trim()) return 0;
+export function listBoundaryItems(text: string | null | undefined): string[] {
+  if (!text?.trim()) return [];
 
   const parts = text
     .split(/\r?\n|;|\s+\+\s+|,\s*|(?:^|\n)\s*[-*•]\s+/)
     .map((p) => p.replace(/^[-*•]\s+/, '').trim())
     .filter((p) => p.length > 0 && !/^(none|n\/a|na|-)$/i.test(p));
 
-  // Deduplicate case-insensitively
   const seen = new Set<string>();
+  const out: string[] = [];
   for (const p of parts) {
-    seen.add(p.toLowerCase());
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
   }
-  return seen.size;
+  return out;
+}
+
+/** Count unique boundary labels in free-text inputs/outputs. */
+export function countBoundaryItems(text: string | null | undefined): number {
+  return listBoundaryItems(text).length;
 }
 
 export function shapeFromCounts(inCount: number, outCount: number): IoShapeId {

@@ -1016,7 +1016,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.6 Business plant PFD (end-state milestone) — **IN PROGRESS** (priority)
+### 6.6 Business plant PFD (end-state milestone) — **DONE** (priority)
 
 **Goal:** Map room becomes a true **business process flow diagram**: shapes + edges + layout that reads like a plant drawing of the company. Room model + soft unlock land here with the plant surface.
 
@@ -1032,8 +1032,8 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 **Trail deliverables (same milestone, can follow first wow):**
 - [x] Layout modes: by function (department bands) | by flow (graph layout) | manual positions — `layoutPlant` / prefs; Map + Foundation toolbars; manual drag + localStorage
-- [ ] External plant feeds/products (business-level inputs/outputs) optional framing
-- [ ] Export plant view (PNG/SVG/PDF) as a first-class deliverable alongside per-process export (3.8)
+- [x] External plant feeds/products (business-level inputs/outputs) optional framing — Map **Outside I/O** toggle; `lib/plant-boundary.ts` derives inputs/outcomes from entry/exit process free-text + plant links; `PlantBoundaryLayer` + export
+- [x] Export plant view (PNG/SVG/PDF) as a first-class deliverable alongside per-process export (3.8) — Map compact toolbar `PlantExportMenu` + `lib/export-plant.ts`
 
 **Depends on:** 6.0–6.5
 
@@ -1123,7 +1123,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
-| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **In progress** (rooms + layout modes; export/feeds trail) |
+| 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Done** (rooms + layout + export + outside I/O framing) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Mostly done** |
 
 ---
@@ -1187,5 +1187,5 @@ When picking up a backlog item:
 
 **Phase 6:**
 - Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Underlord, Workshop-in-Map, God Mode→Map
-- **Next:** implement **6.6** + **6.7** (priority wow). Foundations 6.1–6.5 shipped; **6.0** docs done
+- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 mostly done** — remaining: template → Foundation seed; hard Home dissolve deferred
 - Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6), per-room homepages

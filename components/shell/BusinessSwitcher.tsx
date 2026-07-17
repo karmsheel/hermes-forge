@@ -212,7 +212,7 @@ export function BusinessSwitcher() {
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className={`business-switcher__trigger${open ? " is-open" : ""}`}
+        className={`shell-chrome business-switcher__trigger${open ? " is-open" : ""}`}
         title="Switch business"
         aria-haspopup="menu"
         aria-expanded={open}

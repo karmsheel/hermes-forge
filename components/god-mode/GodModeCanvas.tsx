@@ -22,6 +22,7 @@ import {
   Maximize2,
   RefreshCw,
   Unlink,
+  Waypoints,
   Wrench,
   ZoomIn,
   ZoomOut,
@@ -31,12 +32,19 @@ import { useShell } from "@/components/shell/ShellContext";
 import { PlantPageContext } from "@/components/chatbar/page-providers/PlantPageContext";
 import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
 import { PlantEdges } from "@/components/plant/PlantEdges";
+import { PlantBoundaryLayer } from "@/components/plant/PlantBoundaryLayer";
+import { PlantExportMenu } from "@/components/plant/PlantExportMenu";
 import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
+import type { PlantExportInput } from "@/lib/export-plant";
 import {
   loadGodModeViewMode,
   saveGodModeViewMode,
   type GodModeViewMode,
 } from "@/lib/god-mode-view";
+import {
+  layoutPlantBoundaryFraming,
+  type PlantBoundaryLayout,
+} from "@/lib/plant-boundary";
 import {
   getDeptLabelY as plantDeptLabelY,
   layoutPlant,
@@ -49,7 +57,9 @@ import {
 import {
   loadPlantLayoutMode,
   loadPlantPositions,
+  loadPlantShowBoundary,
   savePlantLayoutMode,
+  savePlantShowBoundary,
   upsertPlantPosition,
 } from "@/lib/plant-layout-prefs";
 import type { ProcessLinkDto } from "@/lib/process-links";
@@ -256,6 +266,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   const [viewMode, setViewMode] = useState<GodModeViewMode>("compact");
   const [layoutMode, setLayoutMode] = useState<PlantLayoutMode>("function");
   const [manualPositions, setManualPositions] = useState<PlantManualPositions>({});
+  const [showBoundary, setShowBoundary] = useState(true);
   const [layout, setLayout] = useState<LayoutResult | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -424,6 +435,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
       setBusinessId(biz.id);
       setLayoutMode(loadPlantLayoutMode(biz.id));
       setManualPositions(loadPlantPositions(biz.id));
+      setShowBoundary(loadPlantShowBoundary(biz.id));
       setProcesses(list);
       processesRef.current = list;
     } catch {
@@ -467,12 +479,6 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     applyLayout,
   ]);
 
-  useEffect(() => {
-    if (!layout || hasFitRef.current) return;
-    hasFitRef.current = true;
-    fitToCanvas(layout.canvasWidth, layout.canvasHeight);
-  }, [layout, fitToCanvas]);
-
   const deptPositions = useMemo(() => {
     if (!layout) return [];
     return layout.departments.map((dept) => ({
@@ -481,9 +487,66 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     }));
   }, [layout]);
 
+  const boundaryLayout: PlantBoundaryLayout | null = useMemo(() => {
+    if (!layout || viewMode !== "compact" || layout.tiles.length === 0) {
+      return null;
+    }
+    return layoutPlantBoundaryFraming({
+      tiles: layout.tiles.map((t) => ({
+        id: t.process.id,
+        department: t.department,
+        x: t.x,
+        y: t.y,
+        width: t.width,
+        height: t.height,
+      })),
+      baseCanvasWidth: layout.canvasWidth,
+      baseCanvasHeight: layout.canvasHeight,
+      processes: processes.map((p) => ({
+        id: p.id,
+        name: p.name,
+        inputs: p.inputs,
+        outputs: p.outputs,
+      })),
+      links: links.map((l) => ({
+        fromId: l.fromProcessId,
+        toId: l.toProcessId,
+      })),
+    });
+  }, [layout, viewMode, processes, links]);
+
+  const framingActive =
+    showBoundary &&
+    viewMode === "compact" &&
+    Boolean(boundaryLayout?.hasItems);
+
+  const plantCanvasWidth =
+    framingActive && boundaryLayout
+      ? boundaryLayout.canvasWidth
+      : layout?.canvasWidth ?? 800;
+  const plantCanvasHeight =
+    framingActive && boundaryLayout
+      ? boundaryLayout.canvasHeight
+      : layout?.canvasHeight ?? 600;
+  const tileOffset =
+    framingActive && boundaryLayout
+      ? boundaryLayout.tileOffset
+      : { x: 0, y: 0 };
+
+  useEffect(() => {
+    if (!layout || hasFitRef.current) return;
+    hasFitRef.current = true;
+    fitToCanvas(plantCanvasWidth, plantCanvasHeight);
+  }, [layout, fitToCanvas, plantCanvasWidth, plantCanvasHeight]);
+
   function setMode(next: GodModeViewMode) {
     setViewMode(next);
     saveGodModeViewMode(next);
+  }
+
+  function setPlantShowBoundary(on: boolean) {
+    setShowBoundary(on);
+    savePlantShowBoundary(businessId, on);
   }
 
   function setPlantLayoutMode(next: PlantLayoutMode) {
@@ -496,6 +559,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
 
   function handleTileDragEnd(processId: string, x: number, y: number) {
     if (!businessId) return;
+    // Tile coords are in unframed plant space (offset applied via CSS wrapper).
     const next = upsertPlantPosition(businessId, processId, x, y);
     setManualPositions(next);
     if (layoutMode !== "manual") {
@@ -513,7 +577,7 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
 
   function handleFit() {
     if (layout) {
-      fitToCanvas(layout.canvasWidth, layout.canvasHeight);
+      fitToCanvas(plantCanvasWidth, plantCanvasHeight);
     }
   }
 
@@ -636,6 +700,70 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
     }
     setSelectedProcessId(processId);
   }
+
+  /** Compact plant only — diagram tiles are Mermaid HTML, not vectorized for plant export. */
+  const plantExportInput: PlantExportInput | null = useMemo(() => {
+    if (viewMode !== "compact" || !layout || layout.tiles.length === 0) return null;
+    const ox = framingActive ? tileOffset.x : 0;
+    const oy = framingActive ? tileOffset.y : 0;
+    return {
+      businessName: currentBusiness?.name ?? "Business",
+      blocks: layout.tiles.map((t) => ({
+        id: t.process.id,
+        name: t.process.name,
+        department: t.department,
+        status: t.process.status,
+        ioShape: t.process.ioShape,
+        x: t.x + ox,
+        y: t.y + oy,
+        width: t.width,
+        height: t.height,
+      })),
+      links: links.map((l) => ({
+        fromId: l.fromProcessId,
+        toId: l.toProcessId,
+      })),
+      canvasWidth: plantCanvasWidth,
+      canvasHeight: plantCanvasHeight,
+      layoutMode,
+      boundaryFeeds:
+        framingActive && boundaryLayout
+          ? boundaryLayout.feeds.map((c) => ({
+              label: c.label,
+              x: c.x,
+              y: c.y,
+              width: c.width,
+              height: c.height,
+              attachX: c.attachX,
+              attachY: c.attachY,
+            }))
+          : undefined,
+      boundaryProducts:
+        framingActive && boundaryLayout
+          ? boundaryLayout.products.map((c) => ({
+              label: c.label,
+              x: c.x,
+              y: c.y,
+              width: c.width,
+              height: c.height,
+              attachX: c.attachX,
+              attachY: c.attachY,
+            }))
+          : undefined,
+    };
+  }, [
+    viewMode,
+    layout,
+    links,
+    layoutMode,
+    currentBusiness?.name,
+    framingActive,
+    tileOffset.x,
+    tileOffset.y,
+    plantCanvasWidth,
+    plantCanvasHeight,
+    boundaryLayout,
+  ]);
 
   if (loading) {
     return (
@@ -783,67 +911,88 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
         <div
           className="absolute top-0 left-0 origin-top-left"
           style={{
-            width: layout.canvasWidth,
-            height: layout.canvasHeight,
+            width: plantCanvasWidth,
+            height: plantCanvasHeight,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           }}
         >
-          {showDeptLabels
-            ? deptPositions.map(({ dept, y }) => (
-                <div
-                  key={dept}
-                  className="absolute left-0 text-xs uppercase tracking-widest text-text-muted font-medium"
-                  style={{
-                    top: y,
-                    left: CANVAS_PADDING,
-                    width: layout.canvasWidth - CANVAS_PADDING * 2,
-                  }}
-                >
-                  {dept}
-                </div>
-              ))
-            : null}
-
-          {viewMode === "compact" && layout.byId ? (
-            <PlantEdges
-              links={links}
-              byId={layout.byId}
-              canvasWidth={layout.canvasWidth}
-              canvasHeight={layout.canvasHeight}
-              selectedLinkId={selectedLinkId}
-              onSelectLink={(id) => {
-                setSelectedLinkId(id);
-                setLinkFromId(null);
-                setSelectedProcessId(null);
-              }}
+          {framingActive && boundaryLayout ? (
+            <PlantBoundaryLayer
+              feeds={boundaryLayout.feeds}
+              products={boundaryLayout.products}
+              canvasWidth={plantCanvasWidth}
+              canvasHeight={plantCanvasHeight}
             />
           ) : null}
 
-          {layout.tiles.map((tile) =>
-            tile.mode === "compact" ? (
-              <CompactTile
-                key={tile.process.id}
-                tile={tile}
-                selected={selectedProcessId === tile.process.id}
-                isLinkFrom={linkMode && linkFromId === tile.process.id}
-                linkMode={linkMode}
-                draggable={!linkMode}
-                zoom={zoom}
-                onDragMoved={() => {
-                  dragMovedRef.current = true;
+          <div
+            className="absolute top-0 left-0"
+            style={{
+              width: layout.canvasWidth,
+              height: layout.canvasHeight,
+              transform:
+                tileOffset.x || tileOffset.y
+                  ? `translate(${tileOffset.x}px, ${tileOffset.y}px)`
+                  : undefined,
+            }}
+          >
+            {showDeptLabels
+              ? deptPositions.map(({ dept, y }) => (
+                  <div
+                    key={dept}
+                    className="absolute left-0 text-xs uppercase tracking-widest text-text-muted font-medium"
+                    style={{
+                      top: y,
+                      left: CANVAS_PADDING,
+                      width: layout.canvasWidth - CANVAS_PADDING * 2,
+                    }}
+                  >
+                    {dept}
+                  </div>
+                ))
+              : null}
+
+            {viewMode === "compact" && layout.byId ? (
+              <PlantEdges
+                links={links}
+                byId={layout.byId}
+                canvasWidth={layout.canvasWidth}
+                canvasHeight={layout.canvasHeight}
+                selectedLinkId={selectedLinkId}
+                onSelectLink={(id) => {
+                  setSelectedLinkId(id);
+                  setLinkFromId(null);
+                  setSelectedProcessId(null);
                 }}
-                onDragEnd={(x, y) => handleTileDragEnd(tile.process.id, x, y)}
-                onSelect={() => handleCompactTileSelect(tile.process.id)}
-                onOpenWorkshop={() => openInWorkshop(tile.process.id)}
               />
-            ) : (
-              <DiagramTileView
-                key={tile.process.id}
-                tile={tile}
-                onOpenWorkshop={openInWorkshop}
-              />
-            ),
-          )}
+            ) : null}
+
+            {layout.tiles.map((tile) =>
+              tile.mode === "compact" ? (
+                <CompactTile
+                  key={tile.process.id}
+                  tile={tile}
+                  selected={selectedProcessId === tile.process.id}
+                  isLinkFrom={linkMode && linkFromId === tile.process.id}
+                  linkMode={linkMode}
+                  draggable={!linkMode}
+                  zoom={zoom}
+                  onDragMoved={() => {
+                    dragMovedRef.current = true;
+                  }}
+                  onDragEnd={(x, y) => handleTileDragEnd(tile.process.id, x, y)}
+                  onSelect={() => handleCompactTileSelect(tile.process.id)}
+                  onOpenWorkshop={() => openInWorkshop(tile.process.id)}
+                />
+              ) : (
+                <DiagramTileView
+                  key={tile.process.id}
+                  tile={tile}
+                  onOpenWorkshop={openInWorkshop}
+                />
+              ),
+            )}
+          </div>
         </div>
       </div>
 
@@ -877,6 +1026,10 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
         }}
         selectedLinkId={selectedLinkId}
         onDeleteLink={() => void deleteSelectedLink()}
+        plantExportInput={plantExportInput}
+        showBoundary={showBoundary}
+        onShowBoundaryChange={setPlantShowBoundary}
+        boundaryAvailable={Boolean(boundaryLayout?.hasItems)}
       />
     </div>
     </>
@@ -1153,6 +1306,10 @@ function GodModeToolbar({
   onLinkModeChange,
   selectedLinkId,
   onDeleteLink,
+  plantExportInput = null,
+  showBoundary = true,
+  onShowBoundaryChange,
+  boundaryAvailable = false,
 }: {
   viewMode: GodModeViewMode;
   onViewModeChange: (m: GodModeViewMode) => void;
@@ -1174,6 +1331,11 @@ function GodModeToolbar({
   onLinkModeChange?: (on: boolean) => void;
   selectedLinkId?: string | null;
   onDeleteLink?: () => void;
+  plantExportInput?: PlantExportInput | null;
+  showBoundary?: boolean;
+  onShowBoundaryChange?: (on: boolean) => void;
+  /** True when entry/exit processes have inputs/outputs to frame. */
+  boundaryAvailable?: boolean;
 }) {
   const z = zoom ?? 1;
   const pct = displayPercent ?? Math.round(z * 100);
@@ -1252,6 +1414,26 @@ function GodModeToolbar({
             {linkMode ? "Linking…" : "Link mode"}
           </button>
         ) : null}
+        {!isDiagrams && onShowBoundaryChange ? (
+          <button
+            type="button"
+            onClick={() => onShowBoundaryChange(!showBoundary)}
+            disabled={!boundaryAvailable && !showBoundary}
+            className={`text-xs inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border shrink-0 ${
+              showBoundary && boundaryAvailable
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border bg-bg-panel text-text-muted hover:bg-bg-subtle"
+            } disabled:opacity-40`}
+            title={
+              boundaryAvailable
+                ? "Show inputs into the plant and outcomes leaving it (from entry/exit process I/O)"
+                : "Add inputs on entry processes and outputs on exit processes to frame outside I/O"
+            }
+          >
+            <Waypoints className="w-3.5 h-3.5" />
+            Outside I/O
+          </button>
+        ) : null}
         {selectedLinkId && onDeleteLink ? (
           <button
             type="button"
@@ -1292,6 +1474,11 @@ function GodModeToolbar({
       </div>
 
       <div className="flex items-center gap-2">
+        <PlantExportMenu
+          input={plantExportInput}
+          disabled={isDiagrams}
+        />
+
         <button
           type="button"
           onClick={onRefresh}

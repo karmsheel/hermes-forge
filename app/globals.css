@@ -951,21 +951,88 @@ body {
   grid-template-columns: 13rem minmax(0, 1fr);
 }
 
-/* Profile: wider left pane for account form + sign-in options */
+/* Profile: compact left account + dense business grid */
 .settings-overlay__layout--profile {
-  grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+  grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
 }
 
 .profile-overlay__account {
-  padding: 3rem 1rem 1.25rem;
+  padding: 2.75rem 0.75rem 0.75rem;
   overflow: hidden;
+}
+
+.profile-overlay__account-header {
+  padding: 0 0.25rem 0.5rem;
 }
 
 .profile-overlay__account-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 0.25rem 0.5rem;
+  padding: 0 0.15rem 0.25rem;
+}
+
+.profile-overlay__businesses-scroll {
+  padding-top: 2.75rem;
+}
+
+.profile-overlay__biz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 0.65rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.profile-overlay__biz-card {
+  padding: 0.75rem 0.8rem;
+  min-width: 0;
+  min-height: 4.75rem;
+}
+
+.profile-overlay__biz-card.is-expanded {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+.profile-overlay__biz-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.profile-overlay__biz-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.profile-overlay__biz-avatar.business-avatar-mark--emoji {
+  font-size: 1rem;
+  background: transparent;
+}
+
+.profile-overlay__biz-avatar.business-avatar-mark--icon {
+  color: var(--text-muted);
+}
+
+.profile-overlay__biz-avatar.business-avatar-mark--icon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.profile-overlay__biz-git {
+  max-width: 28rem;
 }
 
 .settings-overlay__nav {
@@ -1382,7 +1449,7 @@ body {
   /* Profile keeps both panes stacked (account is not a nav switcher) */
   .settings-overlay__layout--profile {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 42vh) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .settings-overlay__layout--profile .settings-overlay__nav,
@@ -1390,8 +1457,12 @@ body {
     display: flex;
     border-right: none;
     border-bottom: 1px solid var(--border-soft);
-    max-height: 42vh;
+    max-height: none;
     padding-top: 2.75rem;
+  }
+
+  .profile-overlay__biz-grid {
+    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
   }
 
   .settings-overlay__mobile-nav {
@@ -2030,6 +2101,29 @@ body {
   }
 }
 
+/*
+ * Shared chrome for topbar control group:
+ * business picker trigger, Foundation pill, Map|Monitor|Automate pill.
+ * Square corners + thicker border so the trio reads as one design family.
+ */
+.shell-chrome {
+  --shell-chrome-radius: 0;
+  --shell-chrome-border-width: 2px;
+  --shell-chrome-height: 2rem;
+  border-radius: var(--shell-chrome-radius);
+  border: var(--shell-chrome-border-width) solid var(--border);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-xs);
+  box-sizing: border-box;
+  height: var(--shell-chrome-height);
+  max-height: var(--shell-chrome-height);
+  color: var(--text);
+  transition:
+    border-color var(--dur-quick) var(--ease-out),
+    background-color var(--dur-quick) var(--ease-out),
+    box-shadow var(--dur-quick) var(--ease-out);
+}
+
 .business-switcher {
   position: relative;
   display: block;
@@ -2045,18 +2139,10 @@ body {
   /* Fixed cap — avoid width:100% so flex parents don't expand full bar width */
   width: 15rem;
   max-width: 100%;
-  height: 2rem;
   padding: 0 0.5rem 0 0.375rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
-  color: var(--text);
-  box-shadow: var(--shadow-xs);
+  /* radius / border / bg / height from .shell-chrome */
   text-align: left;
-  transition:
-    border-color var(--dur-quick) var(--ease-out),
-    background-color var(--dur-quick) var(--ease-out),
-    box-shadow var(--dur-quick) var(--ease-out);
+  cursor: pointer;
 }
 
 .business-switcher__trigger:hover {
@@ -4428,13 +4514,22 @@ body {
 }
 
 /*
- * Top bar: [workspace] [bridge 1fr] [rooms] [actions 1fr]
- * Bridge is its own track so free space always sits between picker and rooms
- * (and the line can touch both borders with column-gap: 0).
+ * Top bar layout (stable whether rooms are locked or not):
+ *
+ *   [picker] ··· [Foundation] ··· [ Map | Monitor | Automate ] ··· [actions]
+ *   <──── leading 1fr ────>       <── center (fixed) ──>         <── 1fr ──>
+ *
+ * - MMA sits in a fixed-width center track so it stays over the hero and does
+ *   not shift Foundation when Map/Monitor/Automate unlock.
+ * - Foundation is centered in the leading free space (equal flex bridges).
+ * - When MMA exists, the center track is [dots 1fr | pill | spacer 1fr] so the
+ *   dotted line continues from the leading track all the way to the pill edge.
  */
 .app-topbar__inner {
+  /* Fixed center track ≈ full Map|Monitor|Automate pill so unlock state is stable */
+  --app-topbar-stages-width: 15rem;
   display: grid;
-  grid-template-columns: auto minmax(1.5rem, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) var(--app-topbar-stages-width) minmax(0, 1fr);
   align-items: center;
   column-gap: 0;
   width: 100%;
@@ -4446,10 +4541,21 @@ body {
   box-sizing: border-box;
 }
 
+/* Leading half: business picker + foundation slot (bridges + Foundation pill) */
+.app-topbar__leading {
+  grid-column: 1;
+  justify-self: stretch;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
 /* Business picker + optional single-tab "new tab" */
 .app-topbar__workspace {
-  grid-column: 1;
-  justify-self: start;
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -4458,53 +4564,91 @@ body {
   width: max-content;
   max-width: 100%;
   min-width: 0;
+  flex: 0 1 auto;
   position: relative;
   z-index: 1;
 }
 
-/* Dotted connector: business picker → room switcher (full width of col 2) */
+/*
+ * Foundation zone fills space after the picker up to the MMA column.
+ * Two equal flex bridges sandwich Foundation so the dotted segments match.
+ */
+.app-topbar__foundation-slot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+  width: auto;
+}
+
+/* Equal dotted segments: picker → Foundation → MMA (same color as shell-chrome borders) */
 .app-topbar__bridge {
-  grid-column: 2;
-  justify-self: stretch;
+  flex: 1 1 0;
   align-self: center;
-  width: 100%;
-  min-width: 1.5rem;
-  height: 1px;
+  width: auto;
+  min-width: 0.75rem;
+  height: 2px;
   margin: 0;
   padding: 0;
   border: 0;
   /* Explicit paint (not border) — more reliable than sub-pixel radial dots */
   background-image: repeating-linear-gradient(
     to right,
-    var(--text-muted) 0 1.5px,
+    var(--border) 0 1.5px,
     transparent 1.5px 5px
   );
-  background-size: 5px 1px;
+  background-size: 5px 2px;
   background-repeat: repeat-x;
   background-position: center;
-  opacity: 0.9;
+  opacity: 1;
   pointer-events: none;
 }
 
-/* Room switcher — sits between the two free-space tracks */
+/* Same flex weight as .app-topbar__bridge, no paint — foundation-only balance */
+.app-topbar__bridge-spacer {
+  flex: 1 1 0;
+  align-self: stretch;
+  width: auto;
+  min-width: 0.75rem;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  pointer-events: none;
+}
+
+/*
+ * MMA center track — fixed width (always reserved) so unlock state cannot
+ * shift Foundation. With ops: [bridge 1fr | pill | spacer 1fr] keeps the pill
+ * centered and extends the dotted line to the pill’s left edge.
+ */
 .app-topbar__stages {
-  grid-column: 3;
-  justify-self: center;
+  grid-column: 2;
+  justify-self: stretch;
+  width: 100%;
   min-width: 0;
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   position: relative;
   z-index: 1;
 }
 
-/* Two-pill cluster: [Foundation] ··· [Map | Monitor | Automate] */
-.stage-explorer-cluster {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0;
-  max-width: 100%;
+/* Empty ops anchor when all Map/Monitor/Automate rooms are still locked */
+.stage-explorer-ops-anchor {
+  flex: 1 1 auto;
+  width: 100%;
+  height: var(--shell-chrome-height, 2rem);
+  pointer-events: none;
+}
+
+/* Ops pill must not shrink; bridges/spacers absorb free space in the center track */
+.app-topbar__stages .stage-explorer--ops {
+  flex: 0 0 auto;
 }
 
 .stage-explorer {
@@ -4512,36 +4656,16 @@ body {
   flex-direction: row;
   align-items: center;
   gap: 0;
-  height: 1.75rem;
-  max-height: 1.75rem;
+  /* radius / border / bg / height from .shell-chrome */
   padding: 2px;
-  border-radius: var(--radius-md, 0.5rem);
-  border: 1px solid var(--border);
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-xs);
-  box-sizing: border-box;
   position: relative;
   z-index: 1;
+  flex: 0 0 auto;
 }
 
-/* Short dotted link between Foundation pill and ops pill */
-.stage-explorer__bridge {
-  flex: 0 0 1.25rem;
-  width: 1.25rem;
-  height: 1px;
-  margin: 0;
+/* MMA: no inner padding so room separators span full pill height */
+.stage-explorer--ops {
   padding: 0;
-  border: 0;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--text-muted) 0 1.5px,
-    transparent 1.5px 5px
-  );
-  background-size: 5px 1px;
-  background-repeat: repeat-x;
-  background-position: center;
-  opacity: 0.9;
-  pointer-events: none;
 }
 
 .stage-explorer__tab {
@@ -4557,7 +4681,7 @@ body {
   min-height: 0;
   max-height: 100%;
   padding: 0 0.85rem;
-  border-radius: calc(var(--radius-md, 0.5rem) - 2px);
+  border-radius: var(--shell-chrome-radius, 0);
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
@@ -4569,6 +4693,11 @@ body {
   transition:
     color var(--dur-quick, 120ms) var(--ease-out, ease),
     background-color var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+/* MMA: vertical separators between Map | Monitor | Automate (match shell-chrome border) */
+.stage-explorer--ops .stage-explorer__tab:not(:first-child) {
+  border-left: var(--shell-chrome-border-width, 2px) solid var(--border);
 }
 
 .stage-explorer__tab:hover {
@@ -4587,15 +4716,14 @@ body {
 }
 
 @media (max-width: 720px) {
+  .app-topbar__inner {
+    --app-topbar-stages-width: 12.5rem;
+  }
+
   .stage-explorer__tab {
     padding: 0 0.55rem;
     font-size: 0.7rem;
     gap: 0.25rem;
-  }
-
-  .stage-explorer__bridge {
-    flex-basis: 0.9rem;
-    width: 0.9rem;
   }
 }
 
@@ -4663,7 +4791,7 @@ body {
 }
 
 .app-topbar__actions {
-  grid-column: 4;
+  grid-column: 3;
   justify-self: end;
   display: flex;
   flex-direction: row;
@@ -4674,7 +4802,7 @@ body {
   margin: 0;
   max-width: 100%;
   min-width: 0;
-  /* Balance free space so rooms sit near visual center */
+  /* Equal 1fr track to leading side keeps rooms on true page center */
   width: 100%;
 }
 

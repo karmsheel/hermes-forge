@@ -126,6 +126,9 @@ export interface ProcessSummary {
   diagramUpdatedAt: string | null;
   /** Phase 6.1 — siso | simo | miso | mimo */
   ioShape: string;
+  /** Process-boundary free text — used for plant outside I/O framing (6.6). */
+  inputs?: string | null;
+  outputs?: string | null;
   updatedAt: string;
   createdAt: string;
   _count: { messages: number };

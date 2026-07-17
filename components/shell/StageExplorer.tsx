@@ -12,21 +12,13 @@ import {
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useForgeStage } from "./StageProvider";
 
-/**
- * Room switcher as two pills:
- *   [Foundation] ····· [Map | Monitor | Automate]
- * Locked rooms stay hidden. New businesses only see the Foundation pill.
- */
-export function StageExplorer() {
+const OPS_ROOMS = FORGE_STAGES.filter((id): id is ForgeStage => id !== "foundation");
+
+function useRoomNavigation() {
   const { stage, setStage, isRoomUnlocked } = useForgeStage();
   const pathname = usePathname();
   const router = useRouter();
   const { enabled: tabsEnabled, navigateActiveTab } = useForgeTabs();
-
-  const visibleRooms = FORGE_STAGES.filter((id) => isRoomUnlocked(id));
-  const foundationVisible = visibleRooms.includes("foundation");
-  const opsRooms = visibleRooms.filter((id): id is ForgeStage => id !== "foundation");
-  const showOpsBridge = foundationVisible && opsRooms.length > 0;
 
   function handleSelect(id: ForgeStage) {
     setStage(id);
@@ -59,23 +51,50 @@ export function StageExplorer() {
     );
   }
 
+  return { isRoomUnlocked, renderTab };
+}
+
+/**
+ * Foundation room pill — sits between the business picker and the MMA cluster
+ * with equal dotted bridges on either side (layout owned by AppTopBar).
+ */
+export function StageExplorerFoundation() {
+  const { isRoomUnlocked, renderTab } = useRoomNavigation();
+
+  if (!isRoomUnlocked("foundation")) return null;
+
   return (
-    <div className="stage-explorer-cluster" role="tablist" aria-label="Forge room">
-      {foundationVisible ? (
-        <div className="stage-explorer stage-explorer--foundation">
-          {renderTab("foundation")}
-        </div>
-      ) : null}
+    <div
+      className="shell-chrome stage-explorer stage-explorer--foundation"
+      role="tablist"
+      aria-label="Foundation room"
+    >
+      {renderTab("foundation")}
+    </div>
+  );
+}
 
-      {showOpsBridge ? (
-        <div className="stage-explorer__bridge" aria-hidden="true" />
-      ) : null}
+/**
+ * Map | Monitor | Automate pill — page-centered over the hero.
+ * Locked rooms stay hidden; the topbar reserves a fixed center slot so
+ * Foundation does not jump when rooms unlock.
+ */
+export function StageExplorerOps() {
+  const { isRoomUnlocked, renderTab } = useRoomNavigation();
+  const opsRooms = OPS_ROOMS.filter((id) => isRoomUnlocked(id));
 
-      {opsRooms.length > 0 ? (
-        <div className="stage-explorer stage-explorer--ops">
-          {opsRooms.map((id) => renderTab(id))}
-        </div>
-      ) : null}
+  if (opsRooms.length === 0) {
+    // Keep the center anchor in the accessibility tree empty but present for layout.
+    return <div className="stage-explorer-ops-anchor" aria-hidden="true" />;
+  }
+
+  return (
+    <div
+      className="shell-chrome stage-explorer stage-explorer--ops"
+      role="tablist"
+      aria-label="Operating rooms"
+    >
+      {opsRooms.map((id) => renderTab(id))}
     </div>
   );
 }
