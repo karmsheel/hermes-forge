@@ -281,6 +281,8 @@ Monitor + Automate soft-unlock
 | 2026-07-16 | Promote God Mode into Map as primary plant surface |
 | 2026-07-16 | Prioritize 6.6 + 6.7 wow; defer integrations and code signing |
 | 2026-07-18 | Foundation co-pilot renamed **Underlord → Overlord** (Forge Overlord) |
+| 2026-07-18 | App-wide Forge Overlord setup (spawn or existing Hermes profile) before Business Manager; remove forced per-business first hire; changeable later via profile |
+
 
 ---
 

@@ -602,6 +602,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Swimlane / auto notation: prefer roster lanes in diagram system prompt
 - [x] Hire dialog + page copy aligned with workshop wiring
 - [x] Human edit PATCH (name, role, `roleDescription`); display description on cards
+- [x] App-wide Forge Overlord setup before Business Manager (spawn or existing profile); remove forced per-business first hire; Underlord renamed Overlord
 
 **Remaining:**
 - [x] `Automation` → `hermesAgentProfileId` for hired agents (studio picker + cron prompt + deploy gate)
@@ -609,6 +610,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Explicit `@system` mentionables (beyond roster roles) — see 3.5 / `lib/systems.ts`
 
 **Shipped (agent bind):** Deploy panel agent picker; `PATCH /api/processes/[id]/automation`; Hermes cron deploy requires hired agent; cron prompt injects agent identity; list shows assigned agent; git meta includes agent profile key.
+
 
 ---
 
@@ -1061,6 +1063,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
 - [x] Overlord + Foundation onboarding copy (prompt addon + room chrome)
 - [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
+- [x] App-wide Forge Overlord setup before Business Manager (spawn or existing profile); remove forced per-business first hire; Underlord renamed Overlord
 
 **Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later; do not block this item. Hard redirect `/home` → Foundation for thin businesses deferred (templates still on Home).
 
