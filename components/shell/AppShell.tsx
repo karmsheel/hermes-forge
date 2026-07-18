@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { ChatbarCollapsedTab } from "@/components/chatbar/ChatbarCollapsedTab";
 import { ChatbarPanel } from "@/components/chatbar/ChatbarPanel";
 import { ChatbarProvider, useChatbar } from "@/components/chatbar/ChatbarProvider";
-import { HireRequiredGate } from "@/components/personnel/HireRequiredGate";
+import { OverlordRequiredGate } from "@/components/overlord/OverlordRequiredGate";
 import { AppTopBar } from "./AppTopBar";
 import { ForgeTabBar } from "./ForgeTabBar";
 import { ForgeTabOutlet } from "./ForgeTabOutlet";
@@ -80,8 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <StageProvider>
         <ChatbarProvider>
           <ForgeTabProvider>
-            {/* WIP: hire gate from personnel work — keep alongside multi-tab provider */}
-            <HireRequiredGate />
+            <OverlordRequiredGate />
             <AppShellFrame>{children}</AppShellFrame>
           </ForgeTabProvider>
         </ChatbarProvider>

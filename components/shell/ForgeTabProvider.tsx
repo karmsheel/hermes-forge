@@ -230,7 +230,7 @@ export function ForgeTabProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, [desktop, userLoading, currentBusiness, pathname, persist, touchActivation]);
 
-  // Keep active tab route in sync with Next navigation (in-page links, HireRequiredGate, etc.)
+  // Keep active tab route in sync with Next navigation (in-page links, OverlordRequiredGate, etc.)
   // switchingRef skips the *immediate* sync during intentional tab navigation so intermediate
   // pathnames do not clobber the target, then we re-sync after the switch settles.
   useEffect(() => {

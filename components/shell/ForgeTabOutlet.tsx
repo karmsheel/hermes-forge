@@ -151,7 +151,7 @@ export function ForgeTabOutlet({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // Paint from the live Next.js URL only. Tab.route can lag (HireRequiredGate
+  // Paint from the live Next.js URL only. Tab.route can lag (OverlordRequiredGate
   // redirects, switchingRef suppressing pathname→tab sync) and was causing
   // WorkshopSession to stay "active" on /home — bleed-through of workshop UI.
   const activeIsWorkshop = pathname.startsWith("/workshop");
