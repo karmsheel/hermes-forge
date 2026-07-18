@@ -1,11 +1,12 @@
 "use client";
 
-import { MessageSquare } from "lucide-react";
+import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { useChatbar } from "./ChatbarProvider";
 
 /**
  * Edge restore control when the chatbar is collapsed.
  * Sits on the same side as the dock (right or left of the content).
+ * Brand mark matches Business Manager / nav rail (HermesForgeMark).
  */
 export function ChatbarCollapsedTab() {
   const { isOpen, open, isLeft } = useChatbar();
@@ -19,11 +20,7 @@ export function ChatbarCollapsedTab() {
       title="Open Hermes chat (Alt+H)"
       aria-label="Open Hermes chat"
     >
-      <MessageSquare className="chatbar-collapsed-tab__icon" aria-hidden />
-      <span className="chatbar-collapsed-tab__label">
-        <span>Ask</span>
-        <span>Hermes</span>
-      </span>
+      <HermesForgeMark className="hermes-forge-mark chatbar-collapsed-tab__icon" />
     </button>
   );
 }

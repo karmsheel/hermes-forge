@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import {
   Check,
@@ -48,6 +49,8 @@ interface FoundationCanvasProps {
   onSelectProcess: (id: string | null) => void;
   onOpenWorkshop: (id: string) => void;
   onAddDraft: () => void;
+  /** Optional empty-state extras (e.g. template starters, 6.7). */
+  emptyExtra?: ReactNode;
   onRename?: (id: string, name: string) => Promise<void>;
   onDelete?: (id: string, name: string) => Promise<void>;
   linkMode: boolean;
@@ -68,6 +71,7 @@ export function FoundationCanvas({
   onSelectProcess,
   onOpenWorkshop,
   onAddDraft,
+  emptyExtra,
   onRename,
   onDelete,
   linkMode,
@@ -132,7 +136,7 @@ export function FoundationCanvas({
   if (processes.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-8 min-h-[280px]">
-        <div className="max-w-md text-center space-y-4">
+        <div className="max-w-lg text-center space-y-4">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-bg-elevated border border-border text-text-muted">
             <IoShapeGlyph shape="siso" size="lg" className="text-text-muted" />
           </div>
@@ -141,18 +145,19 @@ export function FoundationCanvas({
               Sketch the plant
             </h2>
             <p className="text-sm text-text-muted mt-2 leading-relaxed">
-              Talk with Hermes about how the business works — channels, services,
-              handoffs. Add draft process blocks here as lightweight unit ops,
-              then open Workshop to refine each map.
+              Talk with Overlord about how the business works — channels, services,
+              handoffs. Seed a template draft, add a blank block, then open Workshop
+              to refine each map.
             </p>
           </div>
+          {emptyExtra}
           <button
             type="button"
             onClick={onAddDraft}
             className="btn-primary text-sm inline-flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add first draft
+            Add blank draft
           </button>
         </div>
       </div>

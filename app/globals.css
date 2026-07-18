@@ -951,88 +951,37 @@ body {
   grid-template-columns: 13rem minmax(0, 1fr);
 }
 
-/* Profile: compact left account + dense business grid */
-.settings-overlay__layout--profile {
-  grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
-}
-
-.profile-overlay__account {
-  padding: 2.75rem 0.75rem 0.75rem;
-  overflow: hidden;
-}
-
-.profile-overlay__account-header {
-  padding: 0 0.25rem 0.5rem;
-}
-
-.profile-overlay__account-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 0.15rem 0.25rem;
-}
-
-.profile-overlay__businesses-scroll {
-  padding-top: 2.75rem;
-}
-
-.profile-overlay__biz-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
-  gap: 0.65rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.profile-overlay__biz-card {
-  padding: 0.75rem 0.8rem;
-  min-width: 0;
-  min-height: 4.75rem;
-}
-
-.profile-overlay__biz-card.is-expanded {
-  grid-column: 1 / -1;
-  min-height: 0;
-}
-
-.profile-overlay__biz-card-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.profile-overlay__biz-avatar {
-  display: inline-flex;
+/* Profile: thin centered account panel (not full-bleed settings) */
+.settings-overlay--profile {
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1;
+  padding: clamp(1.5rem, 8vmin, 3rem);
 }
 
-.profile-overlay__biz-avatar.business-avatar-mark--emoji {
-  font-size: 1rem;
-  background: transparent;
+.settings-overlay__panel--profile {
+  flex: 0 1 auto;
+  width: min(22rem, 100%);
+  max-height: min(36rem, 90vh);
+  height: auto;
 }
 
-.profile-overlay__biz-avatar.business-avatar-mark--icon {
-  color: var(--text-muted);
+.profile-overlay__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(36rem, 90vh);
+  overflow-y: auto;
+  padding: 2.75rem 1.25rem 1.25rem;
 }
 
-.profile-overlay__biz-avatar.business-avatar-mark--icon svg {
-  width: 0.95rem;
-  height: 0.95rem;
+.profile-overlay__body--loading {
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
 }
 
-.profile-overlay__biz-git {
-  max-width: 28rem;
+.profile-overlay__header {
+  margin-bottom: 1rem;
 }
 
 .settings-overlay__nav {
@@ -1446,23 +1395,13 @@ body {
     display: none;
   }
 
-  /* Profile keeps both panes stacked (account is not a nav switcher) */
-  .settings-overlay__layout--profile {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
+  .settings-overlay--profile {
+    padding: clamp(1rem, 6vmin, 1.5rem);
   }
 
-  .settings-overlay__layout--profile .settings-overlay__nav,
-  .settings-overlay__layout--profile .profile-overlay__account {
-    display: flex;
-    border-right: none;
-    border-bottom: 1px solid var(--border-soft);
-    max-height: none;
-    padding-top: 2.75rem;
-  }
-
-  .profile-overlay__biz-grid {
-    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  .settings-overlay__panel--profile {
+    width: min(22rem, 100%);
+    max-height: 92vh;
   }
 
   .settings-overlay__mobile-nav {
@@ -3836,10 +3775,19 @@ body {
 }
 
 /*
- * Collapse controls at top-left and bottom-left.
- * Header, studio footer, and process dock all use 0.75rem horizontal
- * padding so the two hide buttons share one vertical axis.
+ * Edge controls (collapse + dock swap) sit on the content-adjacent edge:
+ * right dock → left edge; left dock → right edge.
+ * Collapse is outermost toward the main page; swap stays beside it.
+ * Header, studio footer, and process dock share 0.75rem horizontal
+ * padding so the top/bottom hide buttons share one vertical axis.
  */
+.chatbar-panel__edge-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
 .chatbar-panel__bottom-row {
   display: flex;
   align-items: center;
@@ -3869,32 +3817,51 @@ body {
   height: 1.75rem;
 }
 
+/* Pin edge controls to the margin facing the main page when docked left */
+.chatbar-panel--side-left .chatbar-panel__header > .chatbar-panel__edge-controls,
+.chatbar-panel--side-left .chatbar-panel__header-row > .chatbar-panel__edge-controls {
+  order: 10;
+  /* Keep collapse outermost (rightmost) toward main content */
+  flex-direction: row-reverse;
+}
+
+.chatbar-panel--side-left .chatbar-panel__bottom-row > .chatbar-panel__collapse-btn {
+  order: 10;
+}
+
+/* Composer help sits next to collapse on the content edge when left-docked */
+.chatbar-panel--side-left .chatbar-panel__bottom-row > .chatbar-panel__composer-help {
+  order: 5;
+  text-align: right;
+}
+
 .chatbar-collapsed-tab {
   position: fixed;
   top: 50%;
   z-index: 40;
   transform: translateY(-50%);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
   width: 3.25rem;
+  height: 3.25rem;
   min-height: 3.25rem;
-  padding: 0.55rem 0.35rem;
-  /* Raised face: lit top, shaded bottom (classic bevel) */
+  /* Near edge-to-edge mark; tiny inset keeps bevel readable */
+  padding: 1px;
+  overflow: hidden;
+  /* Soft raised face — lighter bevel than the old hard 3D ledge */
   border-style: solid;
   border-width: 1px;
-  border-top-color: color-mix(in srgb, #fff 28%, var(--border));
-  border-right-color: color-mix(in srgb, #000 22%, var(--border));
-  border-bottom-color: color-mix(in srgb, #000 35%, var(--border));
-  border-left-color: color-mix(in srgb, #000 30%, var(--border));
+  border-top-color: color-mix(in srgb, #fff 14%, var(--border));
+  border-right-color: color-mix(in srgb, #000 10%, var(--border));
+  border-bottom-color: color-mix(in srgb, #000 14%, var(--border));
+  border-left-color: color-mix(in srgb, #000 12%, var(--border));
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--bg-panel) 82%, #fff 18%) 0%,
-      var(--bg-panel) 42%,
-      color-mix(in srgb, var(--bg-panel) 88%, #000 12%) 100%
+      color-mix(in srgb, var(--bg-panel) 92%, #fff 8%) 0%,
+      var(--bg-panel) 50%,
+      color-mix(in srgb, var(--bg-panel) 94%, #000 6%) 100%
     );
   color: var(--text-muted);
   cursor: pointer;
@@ -3910,22 +3877,12 @@ body {
   left: auto;
   border-right: none;
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  /*
-   * Raised 3D (light from top-right):
-   * - Outer drop: casts left + down onto the page
-   * - Inset: dark left/bottom edges, lit top face
-   */
+  /* Soft cast in theme primary (Nous blue / Iron·Ember orange, etc.) */
   box-shadow:
-    /* hard "thickness" ledge left + bottom */
-    -2px 3px 0 color-mix(in srgb, #000 22%, transparent),
-    /* soft cast into the page */
-    -5px 7px 10px color-mix(in srgb, #000 24%, transparent),
-    -10px 12px 22px color-mix(in srgb, #000 20%, transparent),
-    /* face bevel: shade left + bottom */
-    inset 2px 0 3px color-mix(in srgb, #000 18%, transparent),
-    inset 0 -2px 3px color-mix(in srgb, #000 16%, transparent),
-    /* lit top */
-    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+    -2px 2px 6px color-mix(in srgb, var(--accent) 28%, transparent),
+    -4px 6px 14px color-mix(in srgb, var(--accent) 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .chatbar-collapsed-tab--left {
@@ -3934,16 +3891,13 @@ body {
   right: auto;
   border-left: none;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  /* Mirror: shade right + bottom (cast into the page) */
-  border-left-color: color-mix(in srgb, #fff 22%, var(--border));
-  border-right-color: color-mix(in srgb, #000 30%, var(--border));
+  border-left-color: color-mix(in srgb, #fff 12%, var(--border));
+  border-right-color: color-mix(in srgb, #000 12%, var(--border));
   box-shadow:
-    2px 3px 0 color-mix(in srgb, #000 22%, transparent),
-    5px 7px 10px color-mix(in srgb, #000 24%, transparent),
-    10px 12px 22px color-mix(in srgb, #000 20%, transparent),
-    inset -2px 0 3px color-mix(in srgb, #000 18%, transparent),
-    inset 0 -2px 3px color-mix(in srgb, #000 16%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent);
+    2px 2px 6px color-mix(in srgb, var(--accent) 28%, transparent),
+    4px 6px 14px color-mix(in srgb, var(--accent) 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .app-shell-layout--business-manager .chatbar-collapsed-tab--left {
@@ -3952,44 +3906,46 @@ body {
 
 .chatbar-collapsed-tab:hover {
   color: var(--accent);
-  filter: brightness(1.05);
-  border-top-color: color-mix(in srgb, var(--accent-soft) 50%, #fff 30%);
-  border-bottom-color: color-mix(in srgb, #000 40%, var(--accent-soft));
-  border-left-color: color-mix(in srgb, #000 35%, var(--accent-soft));
-  border-right-color: color-mix(in srgb, #000 25%, var(--accent-soft));
+  filter: brightness(1.03);
+  border-top-color: color-mix(in srgb, var(--accent-soft) 35%, #fff 15%);
+  border-bottom-color: color-mix(in srgb, #000 18%, var(--accent-soft));
+  border-left-color: color-mix(in srgb, #000 14%, var(--accent-soft));
+  border-right-color: color-mix(in srgb, #000 12%, var(--accent-soft));
   background:
     linear-gradient(
       145deg,
-      color-mix(in srgb, var(--accent-tint) 70%, #fff 18%) 0%,
-      var(--accent-tint) 48%,
-      color-mix(in srgb, var(--accent-tint) 86%, #000 14%) 100%
+      color-mix(in srgb, var(--accent-tint) 85%, #fff 10%) 0%,
+      var(--accent-tint) 50%,
+      color-mix(in srgb, var(--accent-tint) 92%, #000 8%) 100%
     );
 }
 
 .chatbar-collapsed-tab--right:hover {
   box-shadow:
-    -2px 3px 0 color-mix(in srgb, #000 26%, transparent),
-    -6px 8px 12px color-mix(in srgb, #000 28%, transparent),
-    -12px 14px 26px color-mix(in srgb, #000 24%, transparent),
-    inset 2px 0 3px color-mix(in srgb, #000 20%, transparent),
-    inset 0 -2px 3px color-mix(in srgb, #000 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+    -2px 3px 8px color-mix(in srgb, var(--accent) 36%, transparent),
+    -5px 8px 18px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .chatbar-collapsed-tab--left:hover {
   box-shadow:
-    2px 3px 0 color-mix(in srgb, #000 26%, transparent),
-    6px 8px 12px color-mix(in srgb, #000 28%, transparent),
-    12px 14px 26px color-mix(in srgb, #000 24%, transparent),
-    inset -2px 0 3px color-mix(in srgb, #000 20%, transparent),
-    inset 0 -2px 3px color-mix(in srgb, #000 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent);
+    2px 3px 8px color-mix(in srgb, var(--accent) 36%, transparent),
+    5px 8px 18px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 14%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+/* Same HermesForgeMark as BM / nav — fill the tab (art has built-in whitespace) */
 .chatbar-collapsed-tab__icon {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* Scale past the SVG's empty margin so the girl sits close to the tab edges */
+  -webkit-mask-size: 130%;
+  mask-size: 130%;
+  -webkit-mask-position: center 55%;
+  mask-position: center 55%;
 }
 
 /* —— PR-3: context chip, receipt, intro —— */
@@ -4425,19 +4381,6 @@ body {
   word-break: break-word;
   max-height: 12rem;
   overflow: auto;
-}
-
-.chatbar-collapsed-tab__label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.05rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1.15;
-  text-align: center;
 }
 
 @media (max-width: 1100px) {
@@ -5917,6 +5860,29 @@ body {
   .home-templates {
     width: calc(100vw - 5rem);
   }
+}
+
+/* Foundation empty-state reuses home template pills (6.7) */
+.foundation-template-starters {
+  width: 100%;
+  max-width: 28rem;
+  margin-inline: auto;
+}
+
+.foundation-template-starters .home-templates {
+  width: 100%;
+}
+
+.foundation-template-starters .home-templates__label {
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.foundation-template-starters.is-busy {
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 @keyframes forge-connect-cursor {

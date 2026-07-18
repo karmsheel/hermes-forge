@@ -54,6 +54,8 @@ export type SeedDraftInput = {
   trigger?: string | null;
   inputs?: string | null;
   outputs?: string | null;
+  /** Optional starter Mermaid when seeding from a workflow template (6.7). */
+  diagramMermaid?: string | null;
 };
 
 /** Early businesses: few processes and none forged yet. */
@@ -111,6 +113,7 @@ export function normalizeSeedDrafts(
     const key = name.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
+    const diagram = d.diagramMermaid?.trim() || null;
     out.push({
       name: name.slice(0, 200),
       description: d.description?.trim() || "",
@@ -119,6 +122,7 @@ export function normalizeSeedDrafts(
       trigger: d.trigger?.trim() || null,
       inputs: d.inputs?.trim() || null,
       outputs: d.outputs?.trim() || null,
+      diagramMermaid: diagram ? diagram.slice(0, 20000) : null,
     });
   }
   return out;

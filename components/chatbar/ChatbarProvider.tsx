@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { PageContextRegistration } from "@/lib/chatbar/context-protocol";
 import {
   CHATBAR_CONTEXT_MODES,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/chatbar/context-scope";
 import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
+import { isChatbarHiddenPath } from "@/lib/chatbar/agent-label";
 import {
   CHATBAR_RESIDENCY_MODES,
   CHATBAR_SIDES,
@@ -103,6 +105,8 @@ interface ChatbarContextValue {
 const ChatbarContext = createContext<ChatbarContextValue | null>(null);
 
 export function ChatbarProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || "";
+  const chatbarHidden = isChatbarHiddenPath(pathname);
   const [residency, setResidencyState] = useState<ChatbarResidency>(DEFAULT_CHATBAR_RESIDENCY);
   const [side, setSideState] = useState<ChatbarSide>(DEFAULT_CHATBAR_SIDE);
   const [contextMode, setContextModeState] = useState<ChatbarContextMode>(
@@ -151,8 +155,9 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     saveChatbarContextMode(contextMode);
   }, [contextMode, hydrated]);
 
-  // Alt+H — match hermes-browser-extension default shortcut
+  // Alt+H — match hermes-browser-extension default shortcut (disabled on setup)
   useEffect(() => {
+    if (chatbarHidden) return;
     function onKeyDown(event: KeyboardEvent) {
       if (!(event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey)) return;
       if (event.key.toLowerCase() !== "h") return;
@@ -164,7 +169,7 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [chatbarHidden]);
 
   const setResidency = useCallback((next: ChatbarResidency) => {
     setResidencyState(normalizeChatbarResidency(next));

@@ -37,6 +37,10 @@ import {
   saveActiveChatbarAgentId,
 } from "@/lib/chatbar/active-agent";
 import {
+  formatChatbarAgentLabel,
+  isChatbarOverlordOnlyPath,
+} from "@/lib/chatbar/agent-label";
+import {
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
@@ -142,6 +146,8 @@ export function ChatbarPanel() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [hiredAgents, setHiredAgents] = useState<ChatbarAgentOption[]>([]);
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
+  /** User-level Forge Overlord profileKey (for labels + BM lock). */
+  const [overlordProfileKey, setOverlordProfileKey] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [loadingList, setLoadingList] = useState(false);
@@ -181,8 +187,20 @@ export function ChatbarPanel() {
 
   const businessId = currentBusiness?.id ?? null;
   const businessName = currentBusiness?.name ?? "this business";
+  const overlordOnly = isChatbarOverlordOnlyPath(pathname);
+  const overlordAgent =
+    hiredAgents.find((a) => a.profileKey === overlordProfileKey) || null;
+  /** On Business Manager only the Overlord is available; inside a business all hired agents. */
+  const pickerAgents =
+    overlordOnly && overlordAgent ? [overlordAgent] : hiredAgents;
   const activeAgent =
-    hiredAgents.find((a) => a.id === activeAgentId) || hiredAgents[0] || null;
+    hiredAgents.find((a) => a.id === activeAgentId) ||
+    (overlordOnly ? overlordAgent : null) ||
+    hiredAgents[0] ||
+    null;
+  const activeAgentLabel = activeAgent
+    ? formatChatbarAgentLabel(activeAgent, overlordProfileKey)
+    : null;
 
   const activeTitle =
     conversations.find((c) => c.id === activeConversationId)?.title || "Studio chat";
@@ -400,18 +418,54 @@ export function ChatbarPanel() {
 
   const loadConversations = useCallback(
     async (agentIdOverride?: string | null) => {
+      // Always resolve Overlord identity for picker labels (even with no business yet)
+      let overlordKey: string | null = null;
+      let overlordDisplayName: string | null = null;
+      try {
+        const overlordRes = await fetch("/api/overlord");
+        if (overlordRes.ok) {
+          const overlordData = await overlordRes.json();
+          overlordKey =
+            typeof overlordData.overlord?.profileKey === "string"
+              ? overlordData.overlord.profileKey
+              : null;
+          overlordDisplayName =
+            typeof overlordData.overlord?.displayName === "string"
+              ? overlordData.overlord.displayName
+              : null;
+        }
+      } catch {
+        /* non-fatal */
+      }
+      setOverlordProfileKey(overlordKey);
+
       if (!businessId) {
         setConversations([]);
         setActiveConversationId(null);
-        setHiredAgents([]);
-        setActiveAgentId(null);
+        // Synthetic Overlord option so BM can show the locked picker before a business exists
+        if (overlordKey) {
+          setHiredAgents([
+            {
+              id: "__overlord__",
+              displayName: overlordDisplayName || overlordKey,
+              profileKey: overlordKey,
+            },
+          ]);
+          setActiveAgentId("__overlord__");
+        } else {
+          setHiredAgents([]);
+          setActiveAgentId(null);
+        }
         setMessages([]);
         return;
       }
 
       setLoadingList(true);
       try {
-        // Resolve agent first (saved → first hired)
+
+        // Always ensure Overlord is hired so it stays in the picker
+        await fetch("/api/overlord/ensure-hired", { method: "POST" });
+
         const agentsRes = await fetch("/api/personnel/agents");
         const agentsData = agentsRes.ok ? await agentsRes.json() : {};
         const hired: ChatbarAgentOption[] = (agentsData.hired || []).map(
@@ -427,34 +481,30 @@ export function ChatbarPanel() {
           }),
         );
 
-        // Lazy-hire Forge Overlord when business has no hired agents yet
-        if (hired.length === 0) {
-          const ensureRes = await fetch("/api/overlord/ensure-hired", { method: "POST" });
-          if (ensureRes.ok) {
-            const { agent } = await ensureRes.json();
-            if (agent) {
-              hired.push({
-                id: agent.id,
-                displayName: agent.displayName,
-                description: agent.description,
-                model: agent.model,
-                profileKey: agent.profileKey,
-                iconKey: agent.iconKey,
-                isDefault: agent.isDefault,
-                hiredAt: agent.hiredAt,
-              });
-            }
-          }
-        }
-
         setHiredAgents(hired);
 
+        const overlordHired =
+          (overlordKey && hired.find((a) => a.profileKey === overlordKey)) || null;
+        const lockToOverlord = isChatbarOverlordOnlyPath(pathname);
         const savedAgent = loadActiveChatbarAgentId(businessId);
-        const preferred =
-          agentIdOverride ||
-          (savedAgent && hired.some((a) => a.id === savedAgent) ? savedAgent : null) ||
-          hired[0]?.id ||
-          null;
+
+        let preferred: string | null = null;
+        if (lockToOverlord && overlordHired) {
+          preferred = overlordHired.id;
+        } else if (
+          agentIdOverride &&
+          agentIdOverride !== "__overlord__" &&
+          hired.some((a) => a.id === agentIdOverride)
+        ) {
+          preferred = agentIdOverride;
+        } else if (savedAgent && hired.some((a) => a.id === savedAgent)) {
+          preferred = savedAgent;
+        } else if (overlordHired) {
+          preferred = overlordHired.id;
+        } else {
+          preferred = hired[0]?.id || null;
+        }
+
         setActiveAgentId(preferred);
         if (preferred) saveActiveChatbarAgentId(businessId, preferred);
 
@@ -490,7 +540,7 @@ export function ChatbarPanel() {
         setLoadingList(false);
       }
     },
-    [businessId, loadConversationMessages],
+    [businessId, loadConversationMessages, pathname],
   );
 
   useEffect(() => {
@@ -529,6 +579,14 @@ export function ChatbarPanel() {
     },
     [businessId, activeAgentId, loadConversations, clearMessageQueue],
   );
+
+  // Returning to Business Manager always selects the Overlord
+  useEffect(() => {
+    if (!isChatbarOverlordOnlyPath(pathname)) return;
+    if (!overlordAgent || !businessId) return;
+    if (activeAgentId === overlordAgent.id) return;
+    void selectAgent(overlordAgent.id);
+  }, [pathname, overlordAgent, businessId, activeAgentId, selectAgent]);
 
   const selectConversation = useCallback(
     async (id: string) => {
@@ -1009,7 +1067,7 @@ export function ChatbarPanel() {
         inert={!isOpen ? true : undefined}
       >
         <header className="chatbar-panel__header">
-          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+          <div className="chatbar-panel__edge-controls">
             <button
               type="button"
               className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
@@ -1019,6 +1077,17 @@ export function ChatbarPanel() {
             >
               <CollapseIcon className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn chatbar-panel__swap-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
             <div className="chatbar-panel__brand-copy min-w-0">
               <p className="chatbar-panel__eyebrow">Automation</p>
@@ -1051,15 +1120,6 @@ export function ChatbarPanel() {
               aria-label="Hermes connection"
             >
               <PlugZap className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={swapSide}
-              title={swapLabel}
-              aria-label={swapLabel}
-            >
-              <ArrowLeftRight className="w-4 h-4" />
             </button>
           </div>
         </header>
@@ -1106,7 +1166,7 @@ export function ChatbarPanel() {
         inert={!isOpen ? true : undefined}
       >
         <header className="chatbar-panel__header">
-          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+          <div className="chatbar-panel__edge-controls">
             <button
               type="button"
               className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
@@ -1116,6 +1176,17 @@ export function ChatbarPanel() {
             >
               <CollapseIcon className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn chatbar-panel__swap-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
             <div className="chatbar-panel__brand-copy min-w-0">
               <p className="chatbar-panel__eyebrow">Process</p>
@@ -1140,15 +1211,6 @@ export function ChatbarPanel() {
               aria-label="Hermes connection"
             >
               <PlugZap className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={swapSide}
-              title={swapLabel}
-              aria-label={swapLabel}
-            >
-              <ArrowLeftRight className="w-4 h-4" />
             </button>
           </div>
         </header>
@@ -1228,7 +1290,7 @@ export function ChatbarPanel() {
     >
       <header className="chatbar-panel__header chatbar-panel__header--stack">
         <div className="chatbar-panel__header-row">
-          <div className="chatbar-panel__brand chatbar-panel__brand--session">
+          <div className="chatbar-panel__edge-controls">
             <button
               type="button"
               className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
@@ -1238,6 +1300,17 @@ export function ChatbarPanel() {
             >
               <CollapseIcon className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn chatbar-panel__swap-btn"
+              onClick={swapSide}
+              title={swapLabel}
+              aria-label={swapLabel}
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="chatbar-panel__brand chatbar-panel__brand--session">
             <button
               type="button"
               className="chatbar-panel__session-btn"
@@ -1280,48 +1353,47 @@ export function ChatbarPanel() {
             >
               <PlugZap className="w-4 h-4" />
             </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={swapSide}
-              title={swapLabel}
-              aria-label={swapLabel}
-            >
-              <ArrowLeftRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
-        {businessId ? (
-          <div className="chatbar-panel__agent-row">
-            <label className="chatbar-panel__agent-label" htmlFor="chatbar-agent">
-              Agent
-            </label>
-            {loadingList && hiredAgents.length === 0 ? (
-              <span className="chatbar-panel__agent-empty" aria-live="polite">
-                Loading agents…
-              </span>
-            ) : !loadingList && hiredAgents.length === 0 ? (
-              <a href="/setup/overlord" className="chatbar-panel__agent-empty">
-                Choose your Forge Overlord
-              </a>
-            ) : (
-              <select
-                id="chatbar-agent"
-                className="chatbar-panel__agent-select"
-                value={activeAgentId || hiredAgents[0]?.id || ""}
-                onChange={(e) => void selectAgent(e.target.value)}
-                disabled={sending || loadingList}
-                title="Talk to a hired Hermes agent — each agent has its own conversation threads"
-              >
-                {hiredAgents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.displayName}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        ) : null}
+        <div className="chatbar-panel__agent-row">
+          <label className="chatbar-panel__agent-label" htmlFor="chatbar-agent">
+            Agent
+          </label>
+          {loadingList && pickerAgents.length === 0 ? (
+            <span className="chatbar-panel__agent-empty" aria-live="polite">
+              Loading agents…
+            </span>
+          ) : !loadingList && pickerAgents.length === 0 ? (
+            <a href="/setup/overlord" className="chatbar-panel__agent-empty">
+              Choose your Forge Overlord
+            </a>
+          ) : (
+            <select
+              id="chatbar-agent"
+              className="chatbar-panel__agent-select"
+              value={activeAgentId || pickerAgents[0]?.id || ""}
+              onChange={(e) => void selectAgent(e.target.value)}
+              disabled={
+                sending ||
+                loadingList ||
+                overlordOnly ||
+                !businessId ||
+                pickerAgents.length <= 1
+              }
+              title={
+                overlordOnly
+                  ? "On Business Manager you talk to your Forge Overlord. Hire other agents inside a business to switch."
+                  : "Talk to a hired Hermes agent — each agent has its own conversation threads"
+              }
+            >
+              {pickerAgents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {formatChatbarAgentLabel(a, overlordProfileKey)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </header>
 
       {sessionMenuOpen ? (
@@ -1456,10 +1528,10 @@ export function ChatbarPanel() {
               <h3 className="chatbar-panel__empty-title">Ask Hermes about this page</h3>
               <p className="chatbar-panel__empty-copy">
                 Studio chat is saved per hired agent
-                {activeAgent ? (
+                {activeAgentLabel ? (
                   <>
                     {" "}
-                    · talking to <strong>{activeAgent.displayName}</strong>
+                    · talking to <strong>{activeAgentLabel}</strong>
                   </>
                 ) : null}
                 . With{" "}
@@ -1534,7 +1606,7 @@ export function ChatbarPanel() {
           />
           <div className="chatbar-panel__composer-meta">
             <label className="chatbar-panel__composer-label" htmlFor="chatbar-input">
-              {activeAgent ? `Ask ${activeAgent.displayName}` : "Ask Hermes"}
+              {activeAgentLabel ? `Ask ${activeAgentLabel}` : "Ask Hermes"}
             </label>
             <div className="chatbar-panel__composer-meta-end">
               {contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&

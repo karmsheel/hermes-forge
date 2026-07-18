@@ -21,16 +21,19 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const tabStripVisible = tabsEnabled && tabs.length > 1;
   const isBusinessManager = pathname.startsWith("/business-manager");
   const isSetup = pathname.startsWith("/setup");
+  /** Overlord / first-run setup: introduce the product without the chat surface. */
+  const hideChatbar = isSetup;
   const isFullBleed = isBusinessManager || isSetup;
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
   const isGodMode = pathname.startsWith("/god-mode");
   const isFoundation = pathname.startsWith("/foundation");
   const isHome = pathname === "/home";
+  const chatOpen = isOpen && !hideChatbar;
   const layoutClass = [
     "app-shell-layout",
-    isOpen && "app-shell-layout--chat-open",
-    !isOpen && "app-shell-layout--chat-collapsed",
+    chatOpen && "app-shell-layout--chat-open",
+    !chatOpen && "app-shell-layout--chat-collapsed",
     `app-shell-layout--chat-side-${side}`,
     isFullBleed && "app-shell-layout--business-manager",
     (isWorkshop || isAutomation || isGodMode || isFoundation) &&
@@ -42,8 +45,8 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     .filter(Boolean)
     .join(" ");
 
-  const chat = <ChatbarPanel key="chatbar" />;
-  const edgeTab = <ChatbarCollapsedTab key="chatbar-tab" />;
+  const chat = hideChatbar ? null : <ChatbarPanel key="chatbar" />;
+  const edgeTab = hideChatbar ? null : <ChatbarCollapsedTab key="chatbar-tab" />;
 
   if (isFullBleed) {
     return (

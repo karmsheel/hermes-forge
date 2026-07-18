@@ -11,6 +11,7 @@ const DraftSchema = z.object({
   trigger: z.string().max(2000).optional().nullable(),
   inputs: z.string().max(5000).optional().nullable(),
   outputs: z.string().max(5000).optional().nullable(),
+  diagramMermaid: z.string().max(20000).optional().nullable(),
 });
 
 const BodySchema = z.object({

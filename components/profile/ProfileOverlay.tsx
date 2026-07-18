@@ -6,8 +6,8 @@ import { Button } from "@/components/ui";
 import { ProfileContent } from "./ProfileContent";
 
 /**
- * Full-screen profile modal — same chrome as {@link SettingsOverlay}
- * (opaque backdrop, large inset panel, Escape / backdrop dismiss).
+ * Compact profile modal — account name + sign-in only.
+ * Same dismiss pattern as Settings (backdrop / Escape / close).
  */
 export function ProfileOverlay({
   open,
@@ -47,12 +47,12 @@ export function ProfileOverlay({
 
   return (
     <div
-      className="settings-overlay"
+      className="settings-overlay settings-overlay--profile"
       onClick={handleBackdropClick}
       role="presentation"
     >
       <div
-        className="settings-overlay__panel"
+        className="settings-overlay__panel settings-overlay__panel--profile"
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-overlay-title"

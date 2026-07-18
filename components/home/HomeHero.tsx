@@ -59,6 +59,7 @@ export function HomeHero() {
 
   async function handleSend(text: string) {
     setSending(true);
+    const templateLabel = selectedTemplate?.processName ?? null;
     try {
       await startFromBrief(text, {
         templateId: selectedTemplateId ?? undefined,
@@ -69,6 +70,18 @@ export function HomeHero() {
       setBrief("");
       setSelectedTemplateId(null);
       setSelectedTemplate(null);
+      // Foundation first; activeProcessId + pending reply enable Workshop deep-link
+      toast.success(
+        templateLabel
+          ? `Seeded “${templateLabel}” in Foundation`
+          : "Draft ready in Foundation",
+        {
+          action: {
+            label: "Open Workshop",
+            onClick: () => router.push("/workshop"),
+          },
+        }
+      );
       router.push("/foundation");
     } catch {
       toast.error("Could not start from your brief");

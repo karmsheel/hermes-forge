@@ -3,21 +3,14 @@ import { scanHermesProfiles } from "@/lib/personnel/scan-hermes-profiles";
 import { getUserOverlord } from "@/lib/overlord/user-overlord";
 
 /**
- * If the business has zero hired agents and the user has an Overlord,
- * ensure a hired HermesAgentProfile row exists for that profileKey.
- * Idempotent. Returns the hired agent row or null if nothing to do.
+ * Ensure a hired HermesAgentProfile row exists for the user's Forge Overlord
+ * on this business. Idempotent. Returns the hired Overlord row, or null if
+ * no Overlord is set.
+ *
+ * Unlike the earlier "hire only when zero agents" behavior, this always
+ * hires the Overlord so it remains available next to other hired agents.
  */
 export async function ensureOverlordHired(businessId: string, userId: string) {
-  const hiredCount = await prisma.hermesAgentProfile.count({
-    where: { businessId, isHired: true },
-  });
-  if (hiredCount > 0) {
-    return prisma.hermesAgentProfile.findFirst({
-      where: { businessId, isHired: true },
-      orderBy: [{ isDefault: "desc" }, { displayName: "asc" }],
-    });
-  }
-
   const overlord = await getUserOverlord(userId);
   if (!overlord) return null;
 
@@ -35,7 +28,25 @@ export async function ensureOverlordHired(businessId: string, userId: string) {
   });
 
   if (existing) {
-    if (existing.isHired) return existing;
+    if (existing.isHired) {
+      // Keep display metadata in sync with the user Overlord snapshot when useful.
+      if (
+        existing.displayName !== displayName ||
+        existing.hermesHome !== hermesHome
+      ) {
+        return prisma.hermesAgentProfile.update({
+          where: { id: existing.id },
+          data: {
+            displayName,
+            hermesHome,
+            description,
+            model,
+            isDefault,
+          },
+        });
+      }
+      return existing;
+    }
     return prisma.hermesAgentProfile.update({
       where: { id: existing.id },
       data: {

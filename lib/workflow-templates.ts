@@ -1,8 +1,10 @@
 /**
- * Workflow template library (backlog 4.1).
+ * Workflow template library (backlog 4.1 / 6.7).
  * Curated templates live as JSON under `templates/workflows/`.
+ * Home / Foundation starters seed **Foundation drafts** (not workshop-first processes).
  */
 
+import type { SeedDraftInput } from "@/lib/foundation";
 import approvalFlow from "@/templates/workflows/approval-flow.json" with { type: "json" };
 import contentOps from "@/templates/workflows/content-ops.json" with { type: "json" };
 import customerJourney from "@/templates/workflows/customer-journey.json" with { type: "json" };
@@ -71,4 +73,29 @@ export function getWorkflowTemplate(id: WorkflowTemplateId): WorkflowTemplate | 
 
 export function isWorkflowTemplateId(value: string | null | undefined): value is WorkflowTemplateId {
   return Boolean(value && WORKFLOW_TEMPLATE_IDS.includes(value as WorkflowTemplateId));
+}
+
+/**
+ * Map a curated workflow template to Foundation draft seed input(s) (6.7).
+ * One primary draft per template today; array keeps multi-block templates open.
+ */
+export function templateToFoundationDrafts(
+  template: WorkflowTemplate
+): SeedDraftInput[] {
+  const description = [
+    template.description?.trim(),
+    template.seedPrompt?.trim()
+      ? `Starter brief: ${template.seedPrompt.trim().slice(0, 800)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return [
+    {
+      name: template.processName.trim() || template.title,
+      description,
+      diagramMermaid: template.diagramMermaid?.trim() || null,
+    },
+  ];
 }

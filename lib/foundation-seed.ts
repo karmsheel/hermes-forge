@@ -64,6 +64,7 @@ export async function seedFoundationDrafts(options: {
       inputs: true,
       outputs: true,
       ioShape: true,
+      diagramMermaid: true,
     },
   });
   const existingByName = new Map(
@@ -76,11 +77,13 @@ export async function seedFoundationDrafts(options: {
 
     const inputs = draft.inputs ?? null;
     const outputs = draft.outputs ?? null;
+    const diagramMermaid = draft.diagramMermaid?.trim() || null;
     const explicit = isIoShapeId(draft.ioShape) ? draft.ioShape : null;
     const ioShape = deriveIoShape({
       inputs,
       outputs,
       explicit,
+      diagramMermaid,
     });
     const department =
       draft.department ||
@@ -109,6 +112,12 @@ export async function seedFoundationDrafts(options: {
           inputs: draft.inputs !== undefined ? inputs : undefined,
           outputs: draft.outputs !== undefined ? outputs : undefined,
           ioShape,
+          ...(diagramMermaid
+            ? {
+                diagramMermaid,
+                diagramUpdatedAt: new Date(),
+              }
+            : {}),
           // Keep seeded stubs as draft until workshop refine / forge
           status: "draft",
           nameStatus: "confirmed",
@@ -149,6 +158,7 @@ export async function seedFoundationDrafts(options: {
         inputs: process.inputs,
         outputs: process.outputs,
         ioShape: process.ioShape,
+        diagramMermaid: process.diagramMermaid,
       });
       continue;
     }
@@ -165,6 +175,8 @@ export async function seedFoundationDrafts(options: {
         inputs,
         outputs,
         ioShape,
+        diagramMermaid,
+        diagramUpdatedAt: diagramMermaid ? new Date() : null,
         conversations: {
           create: {
             title: "Main",
@@ -214,6 +226,7 @@ export async function seedFoundationDrafts(options: {
       inputs: process.inputs,
       outputs: process.outputs,
       ioShape: process.ioShape,
+      diagramMermaid: process.diagramMermaid,
     });
   }
 

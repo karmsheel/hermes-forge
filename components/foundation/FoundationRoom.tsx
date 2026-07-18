@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useShell } from "@/components/shell/ShellContext";
 import { useForgeStage } from "@/components/shell/StageProvider";
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
-import { setActiveProcessId } from "@/lib/workshop-storage";
+import { setActiveProcessId, setPendingHermesReply } from "@/lib/workshop-storage";
 import type {
   FoundationOverview,
   SeedDraftInput,
@@ -26,6 +26,9 @@ import {
 } from "@/lib/foundation-extract";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import type { WorkflowTemplate } from "@/lib/workflow-templates";
+import { templateToFoundationDrafts } from "@/lib/workflow-templates";
+import { TemplateCards } from "@/components/home/TemplateCards";
 import { FoundationSidebar } from "./FoundationSidebar";
 import { FoundationCanvas } from "./FoundationCanvas";
 import { AddDraftDialog } from "./AddDraftDialog";
@@ -54,6 +57,7 @@ export function FoundationRoom() {
   const [linkMode, setLinkMode] = useState(false);
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [seedingTemplate, setSeedingTemplate] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +160,54 @@ export function FoundationRoom() {
       toast.error(e instanceof Error ? e.message : "Could not add draft");
     } finally {
       setCreating(false);
+    }
+  }
+
+  /** 6.7 — template starters seed Foundation drafts in-room. */
+  async function handleTemplateSeed(template: WorkflowTemplate) {
+    if (seedingTemplate) return;
+    setSeedingTemplate(true);
+    try {
+      const drafts = templateToFoundationDrafts(template);
+      const res = await fetch("/api/foundation/seed-drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drafts, mode: "skip" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to seed template");
+      }
+
+      const createdId = data.created?.[0]?.id as string | undefined;
+      const skippedOnly =
+        (data.createdCount ?? 0) === 0 && (data.skippedCount ?? 0) > 0;
+
+      if (skippedOnly) {
+        toast.message(`“${template.processName}” is already on the plant`);
+      } else {
+        toast.success(`Seeded “${template.processName}” draft`, {
+          action: createdId
+            ? {
+                label: "Open Workshop",
+                onClick: () => openWorkshop(createdId),
+              }
+            : undefined,
+        });
+      }
+
+      await load();
+      if (createdId) {
+        setSelectedProcessId(createdId);
+        if (currentBusiness?.id) {
+          setActiveProcessId(currentBusiness.id, createdId);
+          setPendingHermesReply(createdId);
+        }
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not seed template");
+    } finally {
+      setSeedingTemplate(false);
     }
   }
 
@@ -411,6 +463,17 @@ export function FoundationRoom() {
           onSelectProcess={setSelectedProcessId}
           onOpenWorkshop={openWorkshop}
           onAddDraft={() => setAddOpen(true)}
+          emptyExtra={
+            <div
+              className={`foundation-template-starters${seedingTemplate ? " is-busy" : ""}`}
+              aria-busy={seedingTemplate}
+            >
+              <TemplateCards
+                selectedId={null}
+                onSelect={(t) => void handleTemplateSeed(t)}
+              />
+            </div>
+          }
           onRename={renameProcess}
           onDelete={deleteProcess}
           linkMode={linkMode}

@@ -874,7 +874,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** **6.6** + **6.7** (wow). Defer 4.5 integrations, 4.16 code signing, 5.5/5.6 connectors.
+**Next implementation priority:** Phase 6 polish / next backlog after **6.6–6.7**. Defer 4.5 integrations, 4.16 code signing, 5.5/5.6 connectors.
 
 ---
 
@@ -1050,7 +1050,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ---
 
-### 6.7 Entry-flow migration (Home → Foundation) — **MOSTLY DONE** (priority)
+### 6.7 Entry-flow migration (Home → Foundation) — **DONE** (priority)
 
 **Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. **Home dissolves into Foundation** for new businesses.
 
@@ -1058,14 +1058,18 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 **Deliverables:**
 - [x] Home composer / new business → **Foundation** (start-from-brief → `/foundation`; room default Foundation; optional personnel hire / lazy ensure-hired, no forced post-create hire)
-- [ ] Template starters seed Foundation drafts (and optional first workshop deep-link) — partial: templates still via Home composer then Foundation
+- [x] Template starters seed Foundation drafts (and optional first workshop deep-link)
+  - Home send + template → `status: draft` via foundation seed (not workshop-first `mapping`)
+  - Optional starter Mermaid on template drafts; brief attached for Workshop Hermes reply
+  - Foundation empty-state template pills seed in-room; toast **Open Workshop** deep-link
+
 - [x] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
 - [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
 - [x] Overlord + Foundation onboarding copy (prompt addon + room chrome)
 - [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
 - [x] App-wide Forge Overlord setup before Business Manager (spawn or existing profile); remove forced per-business first hire; Underlord renamed Overlord
 
-**Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later; do not block this item. Hard redirect `/home` → Foundation for thin businesses deferred (templates still on Home).
+**Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later. Hard redirect `/home` → Foundation for thin businesses (Home still hosts composer/templates for acquisition).
 
 **Depends on:** 6.2, 6.0
 
@@ -1127,7 +1131,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
 | 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Done** (rooms + layout + export + outside I/O framing) |
-| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Mostly done** |
+| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (template → Foundation draft seed) |
 
 ---
 
@@ -1190,5 +1194,6 @@ When picking up a backlog item:
 
 **Phase 6:**
 - Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Overlord, Workshop-in-Map, God Mode→Map
-- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 mostly done** — remaining: template → Foundation seed; hard Home dissolve deferred
+- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 done** (Home/template → Foundation drafts + Workshop deep-link; hard Home dissolve deferred)
+
 - Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6), per-room homepages

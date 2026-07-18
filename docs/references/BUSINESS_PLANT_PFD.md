@@ -225,10 +225,11 @@ Directed edges between processes in one business. See backlog **6.5**.
 
 Agreed sequence for 6.6 + 6.7 after this reference:
 
-1. **IA + unlock** — room switcher (from stage explorer), soft-lock states, forged gate  
-2. **Entry (6.7)** — new / thin business → Foundation; dissolve Home-as-lobby for that path  
-3. **Map plant (6.6)** — promote God Mode canvas into Map; Workshop as drill-in tool  
-4. **Copy** — Overlord identity in Foundation; unlock tooltips; soft-lock empty states  
+1. **IA + unlock** — room switcher (from stage explorer), soft-lock states, forged gate — **Done**  
+2. **Entry (6.7)** — new / thin business → Foundation; template starters seed Foundation drafts — **Done** (hard Home dissolve deferred)  
+3. **Map plant (6.6)** — promote God Mode canvas into Map; Workshop as drill-in tool — **Done**  
+4. **Copy** — Overlord identity in Foundation; unlock tooltips; soft-lock empty states — **Done** (baseline)  
+
 5. **Polish** — progressive chrome; mature last-room restore  
 
 ### Explicitly deferred (do not expand into)

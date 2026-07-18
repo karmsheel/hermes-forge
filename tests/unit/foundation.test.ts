@@ -29,6 +29,17 @@ describe("normalizeSeedDrafts", () => {
     assert.equal(out[1].name, "Fulfillment");
     assert.equal(out[1].ioShape, "simo");
   });
+
+  it("preserves starter diagramMermaid for template seeds (6.7)", () => {
+    const out = normalizeSeedDrafts([
+      {
+        name: "SOP",
+        diagramMermaid: "flowchart TD\n  a-->b",
+      },
+    ]);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].diagramMermaid, "flowchart TD\n  a-->b");
+  });
 });
 
 describe("toFoundationProcessCard", () => {

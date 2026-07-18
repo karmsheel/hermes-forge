@@ -12,7 +12,7 @@ interface TemplateCardsProps {
 export function TemplateCards({ selectedId, onSelect, onClear }: TemplateCardsProps) {
   return (
     <div className="home-templates">
-      <div className="home-templates__label">Start from a template</div>
+      <div className="home-templates__label">Start from a template draft</div>
       <div className="home-templates__pills" role="list">
         {WORKFLOW_TEMPLATES.map((template) => {
           const active = selectedId === template.id;

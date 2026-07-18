@@ -1,11 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ExternalLink, Loader2, MoreVertical, Pencil, Smile, Trash2 } from "lucide-react";
+import {
+  CloudUpload,
+  Download,
+  ExternalLink,
+  GitBranch,
+  Loader2,
+  MoreVertical,
+  Pencil,
+  Settings2,
+  Smile,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
-import { downloadBlob } from "@/lib/business-export";
+import type { BusinessGitStatus } from "@/lib/business-git";
+import {
+  buildBusinessExportPayload,
+  createBusinessExportZip,
+  downloadBlob,
+  makeExportFilename,
+} from "@/lib/business-export";
 import {
   businessInitial,
   resolveBusinessAvatar,
@@ -13,10 +30,11 @@ import {
   type BusinessIconKey,
 } from "@/lib/business-avatar";
 import { getProjectCardThumbStyle } from "@/lib/home/project-card-thumb";
+import { timeAgo } from "@/lib/time-ago";
 import type { BusinessSummary } from "@/lib/types";
 import { BusinessAvatarPicker } from "./BusinessAvatarPicker";
 
-const MENU_WIDTH = 11.5 * 16;
+const MENU_WIDTH = 13.5 * 16;
 
 interface BusinessTileCardProps {
   business: BusinessSummary;
@@ -44,15 +62,31 @@ export function BusinessTileCard({
   const [renameValue, setRenameValue] = useState(business.name);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gitOpen, setGitOpen] = useState(false);
   const [savingRename, setSavingRename] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [syncingGit, setSyncingGit] = useState(false);
+  const [pushingGit, setPushingGit] = useState(false);
+  const [savingRemote, setSavingRemote] = useState(false);
+  const [gitStatus, setGitStatus] = useState<BusinessGitStatus | null>(null);
+  const [remoteDraft, setRemoteDraft] = useState({ url: "", branch: "main" });
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const workflowCount = business._count?.processes ?? 0;
   const avatar = resolveBusinessAvatar(business.name, business.avatarEmoji, business.avatarIcon);
   const AvatarIcon = avatar.kind === "icon" ? resolveBusinessIcon(avatar.value) : null;
+  const lastSaved = business.updatedAt ? timeAgo(business.updatedAt) : null;
+  const lastSavedExact = business.updatedAt
+    ? new Date(business.updatedAt).toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : undefined;
+  const gitBusy = syncingGit || pushingGit || savingRemote;
+  const menuBusy = downloading || gitBusy || deleting;
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -85,6 +119,28 @@ export function BusinessTileCard({
     };
   }, [closeMenu, menuOpen]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/businesses/${business.id}/git`);
+        if (!res.ok || cancelled) return;
+        const status = (await res.json()) as BusinessGitStatus;
+        if (cancelled) return;
+        setGitStatus(status);
+        setRemoteDraft({
+          url: status.remoteUrl ?? "",
+          branch: status.remoteBranch ?? "main",
+        });
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [business.id]);
+
   function toggleMenu(e: React.MouseEvent) {
     e.stopPropagation();
     if (menuOpen) {
@@ -115,6 +171,138 @@ export function BusinessTileCard({
       await refreshCurrentBusiness();
     }
     return data;
+  }
+
+  async function refreshGitStatus() {
+    const statusRes = await fetch(`/api/businesses/${business.id}/git`);
+    if (!statusRes.ok) return;
+    const status = (await statusRes.json()) as BusinessGitStatus;
+    setGitStatus(status);
+    setRemoteDraft((prev) => ({
+      url: status.remoteUrl ?? prev.url,
+      branch: status.remoteBranch ?? prev.branch ?? "main",
+    }));
+  }
+
+  async function handleGitSync() {
+    setSyncingGit(true);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Git sync failed");
+      toast.success(data.committed ? `Synced to Git (${data.message})` : data.message);
+      await refreshGitStatus();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Git sync failed");
+    } finally {
+      setSyncingGit(false);
+    }
+  }
+
+  async function handleGitPush(syncFirst: boolean) {
+    setPushingGit(true);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: syncFirst ? "sync_and_push" : "push" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Git push failed");
+      toast.success(data.message || "Pushed to remote");
+      await refreshGitStatus();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Git push failed");
+      await refreshGitStatus();
+    } finally {
+      setPushingGit(false);
+    }
+  }
+
+  async function handleSaveRemote(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingRemote(true);
+    try {
+      const res = await fetch(`/api/businesses/${business.id}/git`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          remoteUrl: remoteDraft.url.trim() || null,
+          remoteBranch: remoteDraft.branch.trim() || "main",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save remote");
+      toast.success(data.note || "Remote saved");
+      await refreshGitStatus();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save remote");
+    } finally {
+      setSavingRemote(false);
+    }
+  }
+
+  async function handleDownloadZip() {
+    setDownloading(true);
+    try {
+      const bizRes = await fetch(`/api/businesses/${business.id}`);
+      if (!bizRes.ok) throw new Error("Failed to load business");
+      const fullBiz = await bizRes.json();
+
+      const procs = (fullBiz?.processes || []) as Array<{ id: string }>;
+      const processesWithMessages = await Promise.all(
+        procs.map(async (p) => {
+          const r = await fetch(`/api/processes/${p.id}`);
+          if (!r.ok) return null;
+          const full = await r.json();
+          return {
+            name: full.name,
+            description: full.description,
+            department: full.department,
+            trigger: full.trigger,
+            inputs: full.inputs,
+            outputs: full.outputs,
+            manualSteps: full.manualSteps,
+            diagramMermaid: full.diagramMermaid,
+            messages: (full.messages || []).map(
+              (m: { role: string; content: string; createdAt: string }) => ({
+                role: m.role,
+                content: m.content,
+                createdAt: m.createdAt,
+              })
+            ),
+          };
+        })
+      );
+
+      const validProcesses = processesWithMessages.filter(Boolean) as NonNullable<
+        (typeof processesWithMessages)[number]
+      >[];
+
+      const payload = buildBusinessExportPayload({
+        business: {
+          name: fullBiz.name || business.name,
+          description: fullBiz.description ?? business.description,
+          industry: fullBiz.industry ?? business.industry,
+        },
+        processes: validProcesses,
+        memories: fullBiz.memories,
+      });
+
+      const blob = await createBusinessExportZip(payload, business.name);
+      const filename = makeExportFilename(business.name);
+      await downloadBlob(blob, filename);
+      toast.success(`Downloaded ${filename}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to export business as ZIP");
+    } finally {
+      setDownloading(false);
+    }
   }
 
   async function confirmRename(e: React.FormEvent) {
@@ -188,6 +376,28 @@ export function BusinessTileCard({
     }
   }
 
+  function openGitPanel() {
+    setRemoteDraft({
+      url: gitStatus?.remoteUrl ?? remoteDraft.url,
+      branch: gitStatus?.remoteBranch ?? remoteDraft.branch ?? "main",
+    });
+    setGitOpen(true);
+  }
+
+  const gitMeta = gitStatus
+    ? !gitStatus.gitAvailable
+      ? "No Git"
+      : !gitStatus.initialized
+        ? "Untracked"
+        : gitStatus.dirty
+          ? "Git dirty"
+          : gitStatus.remoteUrl
+            ? gitStatus.lastPushedAt
+              ? "Pushed"
+              : "Remote set"
+            : "Git local"
+    : null;
+
   return (
     <>
       <div className={`business-manager__tile${isSwitching ? " is-loading" : ""}`}>
@@ -211,7 +421,11 @@ export function BusinessTileCard({
         >
           <div
             className="business-manager__tile-thumb"
-            style={avatar.kind === "initial" ? getProjectCardThumbStyle(business.name, skin, resolved) : undefined}
+            style={
+              avatar.kind === "initial"
+                ? getProjectCardThumbStyle(business.name, skin, resolved)
+                : undefined
+            }
             aria-hidden
           >
             {avatar.kind === "emoji" ? (
@@ -219,18 +433,22 @@ export function BusinessTileCard({
             ) : avatar.kind === "icon" && AvatarIcon ? (
               <AvatarIcon className="business-manager__tile-icon" />
             ) : (
-              <span className="business-manager__tile-initial">{businessInitial(business.name)}</span>
+              <span className="business-manager__tile-initial">
+                {businessInitial(business.name)}
+              </span>
             )}
           </div>
           <div className="business-manager__tile-body">
             <span className="business-manager__tile-name">{business.name}</span>
-            {business.description ? (
-              <span className="business-manager__tile-meta">{business.description}</span>
-            ) : (
-              <span className="business-manager__tile-meta">
-                {workflowCount === 1 ? "1 workflow" : `${workflowCount} workflows`}
+            <span className="business-manager__tile-meta">
+              {workflowCount === 1 ? "1 workflow" : `${workflowCount} workflows`}
+              {gitMeta ? ` · ${gitMeta}` : ""}
+            </span>
+            {lastSaved ? (
+              <span className="business-manager__tile-meta" title={lastSavedExact}>
+                Saved {lastSaved}
               </span>
-            )}
+            ) : null}
           </div>
         </button>
 
@@ -247,7 +465,11 @@ export function BusinessTileCard({
             aria-haspopup="menu"
             aria-expanded={menuOpen}
           >
-            <MoreVertical className="w-3.5 h-3.5" />
+            {menuBusy ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <MoreVertical className="w-3.5 h-3.5" />
+            )}
           </button>
         </div>
 
@@ -310,6 +532,81 @@ export function BusinessTileCard({
           <button
             type="button"
             role="menuitem"
+            className="workflow-menu__item"
+            disabled={downloading}
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+              void handleDownloadZip();
+            }}
+          >
+            {downloading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            Download ZIP
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="workflow-menu__item"
+            disabled={gitBusy || gitStatus?.gitAvailable === false}
+            title="Materialize and commit to local Git repo"
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+              void handleGitSync();
+            }}
+          >
+            {syncingGit ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <GitBranch className="w-3.5 h-3.5" />
+            )}
+            Sync Git
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="workflow-menu__item"
+            disabled={
+              gitBusy || gitStatus?.gitAvailable === false || !gitStatus?.remoteUrl
+            }
+            title={
+              gitStatus?.remoteUrl
+                ? "Sync local repo then push to remote"
+                : "Configure a remote first"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+              void handleGitPush(true);
+            }}
+          >
+            {pushingGit ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <CloudUpload className="w-3.5 h-3.5" />
+            )}
+            Push to remote
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="workflow-menu__item"
+            onClick={(e) => {
+              e.stopPropagation();
+              closeMenu();
+              openGitPanel();
+            }}
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+            Git remote settings
+          </button>
+          <button
+            type="button"
+            role="menuitem"
             className="workflow-menu__item workflow-menu__item--danger"
             onClick={(e) => {
               e.stopPropagation();
@@ -334,7 +631,9 @@ export function BusinessTileCard({
           />
           <form onSubmit={confirmRename} className="relative w-full max-w-md card p-6">
             <h2 className="text-xl font-semibold tracking-tight">Rename business</h2>
-            <p className="text-sm text-text-muted mt-2">Change the display name for this business.</p>
+            <p className="text-sm text-text-muted mt-2">
+              Change the display name for this business.
+            </p>
             <input
               className="input w-full mt-4"
               value={renameValue}
@@ -378,6 +677,85 @@ export function BusinessTileCard({
         }
         onClear={() => void saveAvatar({ avatarEmoji: null, avatarIcon: null })}
       />
+
+      {gitOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70"
+            aria-label="Close Git settings"
+            onClick={() => !gitBusy && setGitOpen(false)}
+            disabled={gitBusy}
+          />
+          <form
+            onSubmit={handleSaveRemote}
+            className="relative w-full max-w-md card p-6 space-y-3"
+          >
+            <h2 className="text-xl font-semibold tracking-tight">Git remote</h2>
+            <p className="text-sm text-text-muted">
+              Local path:{" "}
+              <span className="text-text-soft break-all">
+                {gitStatus?.repoPath || "—"}
+              </span>
+            </p>
+            {gitStatus?.lastPushError ? (
+              <p className="text-xs text-red-400">{gitStatus.lastPushError}</p>
+            ) : null}
+            <div className="grid gap-2 sm:grid-cols-[1fr_7rem]">
+              <input
+                className="input text-sm"
+                placeholder="https://github.com/you/my-business.git"
+                value={remoteDraft.url}
+                onChange={(e) =>
+                  setRemoteDraft((prev) => ({ ...prev, url: e.target.value }))
+                }
+                disabled={gitBusy}
+              />
+              <input
+                className="input text-sm"
+                placeholder="main"
+                value={remoteDraft.branch}
+                onChange={(e) =>
+                  setRemoteDraft((prev) => ({ ...prev, branch: e.target.value }))
+                }
+                disabled={gitBusy}
+              />
+            </div>
+            <p className="text-[11px] text-text-soft">
+              Auth uses your system Git credentials (Credential Manager / SSH agent). Forge does not
+              store tokens.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                disabled={gitBusy}
+                onClick={() => setGitOpen(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                disabled={
+                  gitBusy || !gitStatus?.remoteUrl || !gitStatus.initialized
+                }
+                onClick={() => void handleGitPush(false)}
+                title="Push current HEAD without re-syncing"
+              >
+                {pushingGit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Push only"}
+              </button>
+              <button
+                type="submit"
+                className="btn-primary text-sm disabled:opacity-50"
+                disabled={gitBusy}
+              >
+                {savingRemote ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save remote"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {deleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
