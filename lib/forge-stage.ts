@@ -50,13 +50,37 @@ export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
  * Room-scoped nav item ids (see NavRail main section).
  * Holistic items (log, decisions) live in the rail footer and are always shown.
  * Workshop is a Map tool (nav under Map), not a peer room.
+ * Each room has its own Home at the top of the rail (room homes — deferred 6.7 polish).
  */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
   foundation: ["home", "foundation", "documents", "personnel"],
-  map: ["functions", "workshop", "god-mode", "documents", "personnel"],
-  monitor: ["metrics", "content", "cronalytics"],
-  automate: ["automations", "automation-analysis", "personnel", "content"],
+  map: ["home", "god-mode", "functions", "workshop", "documents", "personnel"],
+  monitor: ["home", "metrics", "content", "cronalytics"],
+  automate: ["home", "automations", "automation-analysis", "personnel", "content"],
 };
+
+/** Per-room Home routes (left-rail Home + room-switch landing). */
+export const ROOM_HOME_ROUTES: Record<ForgeStage, string> = {
+  foundation: "/home",
+  map: "/map/home",
+  monitor: "/monitor/home",
+  automate: "/automate/home",
+};
+
+export function isRoomHomePath(pathname: string): boolean {
+  const path = pathname.split("?")[0] || "/";
+  return (
+    path === "/home" ||
+    path === "/" ||
+    path === "/map/home" ||
+    path === "/monitor/home" ||
+    path === "/automate/home"
+  );
+}
+
+export function roomHomeForStage(stage: ForgeStage): string {
+  return ROOM_HOME_ROUTES[stage];
+}
 
 /** Nav ids always available regardless of room (footer of NavRail). */
 export const HOLISTIC_NAV_IDS = ["decisions", "log"] as const;
@@ -104,6 +128,12 @@ export function writeStoredStage(businessId: string, stage: ForgeStage): void {
 export function stageFromPath(pathname: string): ForgeStage | null {
   const path = pathname.split("?")[0] || "/";
 
+  // Per-room homes (before broader /home and /automations prefixes)
+  if (path === "/home" || path === "/") return "foundation";
+  if (path === "/map/home") return "map";
+  if (path === "/monitor/home") return "monitor";
+  if (path === "/automate/home") return "automate";
+
   if (path.startsWith("/foundation")) {
     return "foundation";
   }
@@ -138,7 +168,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   }
 
   // Room-neutral: available in every room
-  if (path === "/home" || path === "/log" || path.startsWith("/decisions")) {
+  if (path === "/log" || path.startsWith("/decisions")) {
     return null;
   }
 
@@ -153,12 +183,12 @@ export function isNavIdInStage(navId: string, stage: ForgeStage): boolean {
   return STAGE_NAV_IDS[stage].includes(navId);
 }
 
-/** Default landing route when switching into a room. */
+/** Default landing route when switching into a room (each room's Home). */
 export const STAGE_DEFAULT_ROUTES: Record<ForgeStage, string> = {
-  foundation: "/foundation",
-  map: "/god-mode",
-  monitor: "/metrics",
-  automate: "/automations",
+  foundation: ROOM_HOME_ROUTES.foundation,
+  map: ROOM_HOME_ROUTES.map,
+  monitor: ROOM_HOME_ROUTES.monitor,
+  automate: ROOM_HOME_ROUTES.automate,
 };
 
 /** Whether the current path is a primary page for the given room. */
@@ -166,8 +196,8 @@ export function pathBelongsToStage(pathname: string, stage: ForgeStage): boolean
   const path = pathname.split("?")[0] || "/";
   const inferred = stageFromPath(path);
   if (inferred) return inferred === stage;
-  // Neutral routes (home, log, decisions) are valid in every room
-  if (path === "/home" || path === "/log" || path.startsWith("/decisions")) return true;
+  // Neutral routes (log, decisions) are valid in every room
+  if (path === "/log" || path.startsWith("/decisions")) return true;
   if (path.startsWith("/content")) return stage === "monitor" || stage === "automate";
   if (path.startsWith("/documents")) return stage === "foundation" || stage === "map";
   if (path.startsWith("/personnel") && !path.includes("hire") && !path.includes("academy")) {

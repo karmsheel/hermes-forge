@@ -818,7 +818,7 @@ M0 is **Hermes-only inside Forge** (no Notion required; n8n secondary until M1).
 
 **Remaining:** Hermes scheduled metric collectors; failure alerts productization.
 
-### 5.3 Automate: agent assign + Hermes cron (content-aware) — **MOSTLY DONE**
+### 5.3 Automate: agent assign + Hermes cron (content-aware) — **DONE** (M0)
 
 **Already shipped (4.10 / 4.4):** hired agent bind on Automation, DeployPanel agent picker, Hermes cron deploy.
 
@@ -827,7 +827,7 @@ M0 is **Hermes-only inside Forge** (no Notion required; n8n secondary until M1).
 - [x] Cron prompts mention Forge Content inventory for drafts
 - [x] Auto-create Content via `POST /api/content/ingest` (Automation.ingestToken) + simulate handoff UI
 - [x] In-app notification (`content_review`) when agent drafts need review
-- [ ] Pause/resume UX + owner-facing run health (beyond Cronalytics)
+- [ ] ~~Pause/resume UX + owner-facing run health~~ → **moved to Phase 7 (7.1)**
 
 ### 5.4 Content Ops template — **DONE**
 
@@ -944,7 +944,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 **Partial / deferred:**
 - [x] Overlord persona in Foundation chat context (shipped under 6.6)
-- [ ] Hermes tool-calls that auto-write documents + seed drafts mid-chat (today: propose in chat; user Add draft or seed API)
+- [x] Hermes plant tools mid-chat: auto-apply `forge-drafts` + `forge-docs` fences from studio chat (server-side apply + SSE `plant_apply`; UI refresh) — see `lib/plant-apply.ts`
 - [ ] Thin-business auto-redirect when switching businesses (6.7); Home dissolves into Foundation for new businesses
 - [x] Foundation as first-class room in room switcher (not only a Map-stage nav item) — shipped under 6.6
 
@@ -1010,7 +1010,9 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Chatbar prompt/snapshot hints for handoffs
 - [x] Unit tests: `process-links.test.ts`
 
-**Partial:** Hermes does not yet auto-create links via tool-calls (proposes verbally; user draws). Ports unused in UI.
+**Partial:**
+- [x] Hermes plant tool: auto-apply `forge-links` fences mid-chat (resolve by process name; server-side + SSE `plant_apply`)
+- [ ] Ports unused in UI (fromPort/toPort still optional metadata only)
 
 **Depends on:** 6.1, 6.2, 6.4
 
@@ -1069,11 +1071,39 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
 - [x] App-wide Forge Overlord setup before Business Manager (spawn or existing profile); remove forced per-business first hire; Underlord renamed Overlord
 
-**Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later. Hard redirect `/home` → Foundation for thin businesses (Home still hosts composer/templates for acquisition).
+**Deferred (explicit):** Hard redirect `/home` → Foundation for thin businesses only (Foundation Home still hosts composer/templates). Deeper unique content per room home (beyond shared hero + room copy) can evolve later.
+
+**Follow-on shipped:** per-room Homes (Map / Monitor / Automate) — see **6.8**.
 
 **Depends on:** 6.2, 6.0
 
 **Do not:** Break desktop multi-tab session restore (4.15) or business isolation.
+
+---
+
+### 6.8 Per-room Homes — **DONE**
+
+**Goal:** Each room has a Home at the top of the left rail; switching rooms lands on that room’s Home.
+
+**Routes:**
+| Room | Home path |
+|------|-----------|
+| Foundation | `/home` |
+| Map | `/map/home` |
+| Monitor | `/monitor/home` |
+| Automate | `/automate/home` |
+
+**Deliverables:**
+- [x] Shared `HomeHero` surface with room-scoped badge/title/subtitle (`lib/room-home.ts`)
+- [x] `ROOM_HOME_ROUTES` + `STAGE_DEFAULT_ROUTES` land on room Home
+- [x] Nav rail: Home first in every room’s `STAGE_NAV_IDS`, href follows active room
+- [x] Room switcher always navigates to the target room’s Home
+- [x] Soft-lock empty states on Map/Monitor/Automate Home when room not unlocked
+- [x] New business create → `/home` (Foundation Home)
+
+**Depends on:** 6.6, 6.7
+
+**Do not:** Break multi-tab restore or business isolation. Composer send still seeds Foundation drafts (shared acquisition path).
 
 ---
 
@@ -1120,18 +1150,41 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 5.0 | Stage explorer + stage-scoped nav | 5 | **Done** (foundation) |
 | 5.1 | Content inventory | 5 | **Done** (foundation) |
 | 5.2 | Monitor metrics + content health | 5 | **Done** (foundation) |
-| 5.3 | Automate agent + content-aware cron | 5 | **Mostly done** |
+| 5.3 | Automate agent + content-aware cron | 5 | **Done** (M0; pause/resume → 7.1) |
 | 5.4 | Content Ops template | 5 | **Done** |
 | 5.5 | n8n Automate expansion | 5 | Pending (M1) |
 | 5.6 | Notion / external connectors | 5 | Pending (M2) |
 | 6.0 | Phase vision & plant/PFD reference | 6 | **Done** — [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) |
 | 6.1 | Process I/O shape library | 6 | **Done** (foundation) |
-| 6.2 | Foundation room (business staging) | 6 | **Done** (foundation) |
+| 6.2 | Foundation room (business staging) | 6 | **Done** (incl. plant auto-apply tools) |
 | 6.3 | Draft process seeding from conversation | 6 | **Done** (foundation) |
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
-| 6.5 | Process-to-process links (plant edges) | 6 | **Done** (foundation) |
+| 6.5 | Process-to-process links (plant edges) | 6 | **Done** (incl. auto-link fences; ports UI open) |
 | 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Done** (rooms + layout + export + outside I/O framing) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (template → Foundation draft seed) |
+| 6.8 | Per-room Homes (Map / Monitor / Automate) | 6 | **Done** |
+| 7.1 | Automate pause/resume + run health | 7 | Pending (from 5.3) |
+
+---
+
+## Phase 7 — Operating depth (post plant)
+
+Polish and productize the Map → Monitor → Automate loop after the plant PFD foundation ships.
+
+### 7.1 Automate pause/resume + owner-facing run health — **Pending**
+
+**Moved from 5.3** (M0 content-aware cron is done; this is the remaining Automate UX gap).
+
+**Goal:** Operators can pause/resume Hermes cron automations and see run health without opening Cronalytics (dev tool).
+
+**Key deliverables:**
+- [ ] Pause / resume control on automation studio + list (Hermes job API)
+- [ ] Owner-facing last run status, failure count, and recent run summary (not Cronalytics-only)
+- [ ] Soft alerts / notifications when scheduled runs fail repeatedly
+
+**Depends on:** 5.3 M0, 4.14 Cronalytics (can share data shape)
+
+**Do not:** Require Cronalytics nav for day-to-day operators; keep Cronalytics as power/dev tooling.
 
 ---
 
@@ -1195,5 +1248,10 @@ When picking up a backlog item:
 **Phase 6:**
 - Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Overlord, Workshop-in-Map, God Mode→Map
 - **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 done** (Home/template → Foundation drafts + Workshop deep-link; hard Home dissolve deferred)
+- **6.8 done** (per-room Homes at `/home`, `/map/home`, `/monitor/home`, `/automate/home`; room switch → Home; Home top of rail)
+- **6.2 / 6.5 plant tools:** studio chat auto-applies `forge-drafts`, `forge-docs`, `forge-links` (`lib/plant-apply.ts` + SSE `plant_apply`)
 
-- Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6), per-room homepages
+**Phase 7:**
+- **7.1** pause/resume + run health (moved from 5.3)
+
+- Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6); deeper unique room-home content

@@ -99,10 +99,10 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="notification-bell" ref={rootRef}>
       <button
         type="button"
-        className="app-topbar__profile"
+        className="notification-bell__trigger"
         title="Notifications"
         aria-label="Notifications"
         onClick={() => {
@@ -110,9 +110,9 @@ export function NotificationBell() {
           if (!openPanel) void load();
         }}
       >
-        <Bell className="w-4 h-4 shrink-0" />
+        <Bell aria-hidden strokeWidth={1.5} />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-[10px] text-bg font-semibold flex items-center justify-center">
+          <span className="absolute -top-px -right-px min-w-[14px] h-3.5 px-0.5 rounded-full bg-accent text-[9px] text-bg font-semibold flex items-center justify-center leading-none">
             {unread > 9 ? "9+" : unread}
           </span>
         )}

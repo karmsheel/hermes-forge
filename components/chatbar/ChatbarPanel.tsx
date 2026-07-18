@@ -83,6 +83,10 @@ import {
   parseForgeDraftsFence,
   rememberStudioConversationId,
 } from "@/lib/foundation-extract";
+import {
+  dispatchPlantApplied,
+  type PlantApplyResult,
+} from "@/lib/plant-apply";
 import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
@@ -753,12 +757,46 @@ export function ChatbarPanel() {
                   ),
                 );
               }
+            } else if (block.event === "plant_apply") {
+              const payload = parseSseJson<{
+                result?: PlantApplyResult | null;
+                summary?: string;
+                error?: string;
+                conversationId?: string;
+                assistantMessageId?: string;
+              }>(block.data);
+              if (payload?.error) {
+                toast.error("Plant apply failed", {
+                  description: payload.error,
+                });
+              } else if (payload?.result?.applied) {
+                const summary =
+                  payload.summary || "Plant data applied from chat";
+                rememberStudioConversationId(conversationId);
+                dispatchPlantApplied({
+                  result: payload.result,
+                  conversationId,
+                  assistantMessageId: payload.assistantMessageId,
+                  summary,
+                });
+                if (payload.result.errors.length > 0) {
+                  toast.message(summary, {
+                    description: payload.result.errors.slice(0, 2).join("; "),
+                  });
+                } else {
+                  toast.success(summary);
+                }
+              }
             } else if (block.event === "done") {
               const payload = parseSseJson<{
                 message?: ChatMessage;
                 title?: string;
                 receipt?: ContextReceiptData;
                 stopped?: boolean;
+                plantApply?: {
+                  result?: PlantApplyResult;
+                  summary?: string | null;
+                };
               }>(block.data);
               if (payload?.stopped) stopped = true;
               if (payload?.message) {
@@ -772,12 +810,19 @@ export function ChatbarPanel() {
                       : m,
                   ),
                 );
-                // Phase 6.3 — offer Foundation seed when assistant emits forge-drafts fence
+                // Fallback: if server did not auto-apply (e.g. chat-only mode),
+                // still offer Foundation review for forge-drafts fences.
                 const assistantText = payload.message.content || streamed;
+                const alreadyApplied = Boolean(
+                  payload.plantApply?.result?.applied &&
+                    ((payload.plantApply.result.drafts?.createdCount ?? 0) > 0 ||
+                      (payload.plantApply.result.drafts?.updatedCount ?? 0) > 0),
+                );
                 if (
                   pathname.startsWith("/foundation") &&
                   !payload.stopped &&
-                  assistantText
+                  assistantText &&
+                  !alreadyApplied
                 ) {
                   const drafts = parseForgeDraftsFence(assistantText);
                   if (drafts.length > 0) {
@@ -790,7 +835,8 @@ export function ChatbarPanel() {
                     toast.message(
                       `${drafts.length} draft process${drafts.length === 1 ? "" : "es"} proposed`,
                       {
-                        description: "Review and seed them on the Foundation canvas.",
+                        description:
+                          "Review and seed them on the Foundation canvas.",
                       },
                     );
                   }

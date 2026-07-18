@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import type { ForgeStage } from "@/lib/forge-stage";
 import { getStoredProcessStandard, type ProcessStandardId } from "@/lib/process-standards";
+import { ROOM_HOME_COPY } from "@/lib/room-home";
 import { startFromBrief } from "@/lib/start-from-brief";
 import type { WorkflowTemplate, WorkflowTemplateId } from "@/lib/workflow-templates";
 import steampunkGirl from "@/assets/girl_steampunk.svg";
@@ -15,7 +17,12 @@ import { TemplateCards } from "./TemplateCards";
 
 const heroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
-export function HomeHero() {
+export type HomeHeroProps = {
+  /** Which room this Home surface belongs to (copy only; seed still lands in Foundation). */
+  room?: ForgeStage;
+};
+
+export function HomeHero({ room = "foundation" }: HomeHeroProps) {
   const router = useRouter();
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const { openHermesConnection } = useShell();
@@ -25,6 +32,7 @@ export function HomeHero() {
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
   const [sending, setSending] = useState(false);
   const [processStandard, setProcessStandard] = useState<ProcessStandardId>("auto");
+  const copy = ROOM_HOME_COPY[room];
 
   useEffect(() => {
     setProcessStandard(getStoredProcessStandard());
@@ -104,10 +112,9 @@ export function HomeHero() {
                 } as CSSProperties
               }
             />
-            <h1 className="home-hero__title">What will you FORGE today?</h1>
-            <p className="home-hero__subtitle">
-              Start in Foundation with Overlord — sketch the plant, then map and forge
-            </p>
+            <p className="home-hero__room-badge">{copy.roomBadge}</p>
+            <h1 className="home-hero__title">{copy.title}</h1>
+            <p className="home-hero__subtitle">{copy.subtitle}</p>
           </div>
 
           <PromptComposer

@@ -234,11 +234,11 @@ export function messagesToTranscript(
  */
 export function foundationDraftsFencePromptAddon(): string {
   return [
-    "When you propose one or more new process drafts the user should seed on the Foundation canvas, end your reply with a fenced JSON block using language tag forge-drafts:",
+    "When you propose one or more new process drafts to write onto the Foundation canvas, end your reply with a fenced JSON block using language tag forge-drafts:",
     "```forge-drafts",
     '[{"name":"Example","description":"...","department":"Operations","ioShape":"siso","inputs":"...","outputs":"..."}]',
     "```",
-    "Only include processes the user described. The app will offer to seed these stubs (no Mermaid). Omit the fence if you are only answering a question without proposing new drafts.",
+    "Only include processes the user described. The app auto-applies these stubs (no Mermaid). Omit the fence if you are only answering a question without proposing new drafts.",
   ].join("\n");
 }
 

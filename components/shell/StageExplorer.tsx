@@ -6,7 +6,6 @@ import {
   FORGE_STAGE_LABELS,
   FORGE_STAGES,
   STAGE_DEFAULT_ROUTES,
-  pathBelongsToStage,
   type ForgeStage,
 } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
@@ -22,13 +21,14 @@ function useRoomNavigation() {
 
   function handleSelect(id: ForgeStage) {
     setStage(id);
-    if (!pathBelongsToStage(pathname, id)) {
-      const href = STAGE_DEFAULT_ROUTES[id];
-      if (tabsEnabled) {
-        navigateActiveTab(href);
-      } else {
-        router.push(href);
-      }
+    // Always land on that room's Home when switching rooms.
+    const href = STAGE_DEFAULT_ROUTES[id];
+    const current = pathname.split("?")[0] || "/";
+    if (current === href) return;
+    if (tabsEnabled) {
+      navigateActiveTab(href);
+    } else {
+      router.push(href);
     }
   }
 

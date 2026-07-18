@@ -26,6 +26,12 @@ import {
   documentsPromptAddon,
   loadDocumentsForPrompt,
 } from "@/lib/documents";
+import {
+  applyPlantFromAssistantText,
+  hasPlantApplyFences,
+  shouldAutoApplyPlant,
+  summarizePlantApply,
+} from "@/lib/plant-apply";
 
 const PinnedSchema = z
   .object({
@@ -361,6 +367,51 @@ export async function POST(request: NextRequest, context: RouteContext) {
             },
           });
 
+          // 6.2 / 6.5 — auto-apply plant fences (forge-drafts / forge-docs / forge-links)
+          let plantApply: Awaited<
+            ReturnType<typeof applyPlantFromAssistantText>
+          > | null = null;
+          let plantSummary: string | null = null;
+          if (
+            shouldAutoApplyPlant(route) &&
+            hasPlantApplyFences(finalText) &&
+            mode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY
+          ) {
+            try {
+              plantApply = await applyPlantFromAssistantText({
+                businessId: conversation.business.id,
+                userId: session.userId,
+                assistantText: finalText,
+                conversationId: conversation.id,
+                hermesAgentProfileId: agent?.id ?? null,
+              });
+              plantSummary = summarizePlantApply(plantApply);
+              if (plantApply.applied) {
+                send("plant_apply", {
+                  result: plantApply,
+                  summary: plantSummary,
+                  conversationId: conversation.id,
+                  assistantMessageId: assistantMessage.id,
+                });
+                send("tool_activity", {
+                  tool_name: "plant_apply",
+                  tool_call_id: `plant-${assistantMessage.id}`,
+                  status: plantApply.errors.length ? "error" : "completed",
+                  preview: plantSummary || "Plant data applied",
+                });
+              }
+            } catch (err) {
+              console.warn("Plant auto-apply failed", err);
+              send("plant_apply", {
+                result: null,
+                error:
+                  err instanceof Error ? err.message : "Plant apply failed",
+                conversationId: conversation.id,
+                assistantMessageId: assistantMessage.id,
+              });
+            }
+          }
+
           let title = conversation.title;
           if (shouldAutoTitle) {
             title = autoStudioTitleFromText(content);
@@ -387,6 +438,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
             title,
             receipt,
             runId,
+            plantApply: plantApply
+              ? { result: plantApply, summary: plantSummary }
+              : undefined,
           });
         } catch (error) {
           const isAbort =

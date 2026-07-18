@@ -11,6 +11,7 @@ import {
 import { Copy, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessAvatarMark } from "./BusinessAvatarMark";
+import { NotificationBell } from "./NotificationBell";
 import { useForgeTabs } from "./ForgeTabProvider";
 
 type ContextMenuState = {
@@ -169,6 +170,11 @@ export function ForgeTabBar() {
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
+      </div>
+
+      {/* Trailing chrome — top-right of the multi-tab strip (not AppTopBar) */}
+      <div className="forge-tab-bar__actions">
+        <NotificationBell />
       </div>
 
       {menu && menuTab ? (

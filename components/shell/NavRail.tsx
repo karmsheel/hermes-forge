@@ -25,7 +25,7 @@ import {
 import { DesktopUpdateIndicator } from "@/components/desktop/DesktopUpdateIndicator";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
-import { isNavIdInStage } from "@/lib/forge-stage";
+import { isNavIdInStage, ROOM_HOME_ROUTES } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
 import { NavThemeModeToggle } from "./NavThemeModeToggle";
@@ -51,13 +51,15 @@ export function NavRail() {
   const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
   const profileActive = profileOpen;
 
+  const roomHomeHref = ROOM_HOME_ROUTES[stage];
+
   const mainItems: NavItem[] = [
     {
       id: "home",
-      href: "/home",
+      href: roomHomeHref,
       label: "Home",
       icon: Home,
-      match: (path) => path === "/home",
+      match: (path) => path === roomHomeHref || (stage === "foundation" && path === "/"),
     },
     {
       id: "foundation",

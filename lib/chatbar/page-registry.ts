@@ -16,11 +16,54 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     blurb: {
       routeKey: "home",
       title: "Home",
-      purpose: "Start a new process from a brief or pick a workflow template.",
+      purpose:
+        "Foundation room lobby. Start a new process from a brief or pick a workflow template.",
       uiHints: [
         "Type a brief in the home composer to create a process",
         "Pick a template pill to seed the composer",
         "Ask me what to map next for this business",
+      ],
+    },
+  },
+  {
+    match: (p) => p === "/map/home",
+    blurb: {
+      routeKey: "map-home",
+      title: "Map Home",
+      purpose:
+        "Map room lobby. Brief-to-draft entry, then open Plant or Workshop to shape the business.",
+      uiHints: [
+        "Seed a draft from a brief or template",
+        "Open Plant for the business-wide process map",
+        "Open Workshop to refine a single process",
+      ],
+    },
+  },
+  {
+    match: (p) => p === "/monitor/home",
+    blurb: {
+      routeKey: "monitor-home",
+      title: "Monitor Home",
+      purpose:
+        "Monitor room lobby. Jump into metrics and content health for forged processes.",
+      uiHints: [
+        "Open Metrics to instrument KPIs",
+        "Open Content for pipeline health",
+        "Forge a process first if this room is still locked",
+      ],
+    },
+  },
+  {
+    match: (p) => p === "/automate/home",
+    blurb: {
+      routeKey: "automate-home",
+      title: "Automate Home",
+      purpose:
+        "Automate room lobby. Design and deploy jobs on forged processes.",
+      uiHints: [
+        "Open Automations to design a plan",
+        "Open Automation Analysis to rank opportunities",
+        "Forge a process first if this room is still locked",
       ],
     },
   },

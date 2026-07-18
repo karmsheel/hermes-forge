@@ -63,6 +63,7 @@ import {
   upsertPlantPosition,
 } from "@/lib/plant-layout-prefs";
 import type { ProcessLinkDto } from "@/lib/process-links";
+import { PLANT_APPLIED_EVENT } from "@/lib/plant-apply";
 import { renderMermaidSvg } from "@/lib/mermaid-render";
 import { sanitizeMermaidSource } from "@/lib/mermaid-sanitize";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
@@ -452,6 +453,16 @@ export function GodModeCanvas({ onStatsChange }: GodModeCanvasProps) {
   useEffect(() => {
     void load();
   }, [load, currentBusiness?.id]);
+
+  // 6.2 / 6.5 — studio plant auto-apply (drafts + links) → refresh Map plant
+  useEffect(() => {
+    function onPlantApplied() {
+      void load();
+    }
+    window.addEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+    return () =>
+      window.removeEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+  }, [load]);
 
   // Layout whenever data, view mode, plant layout, or theme changes (no network)
   useEffect(() => {

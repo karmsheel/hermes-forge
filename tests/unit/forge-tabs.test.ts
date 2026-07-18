@@ -36,6 +36,9 @@ describe("forge-tabs routes and titles", () => {
   it("labels routes for tab titles", () => {
     assert.equal(routePageLabel("/workshop"), "Workshop");
     assert.equal(routePageLabel("/foundation"), "Foundation");
+    assert.equal(routePageLabel("/map/home"), "Map Home");
+    assert.equal(routePageLabel("/monitor/home"), "Monitor Home");
+    assert.equal(routePageLabel("/automate/home"), "Automate Home");
     assert.equal(routePageLabel("/automations/abc"), "Automation");
     assert.equal(routePageLabel("/log"), "Business log");
   });

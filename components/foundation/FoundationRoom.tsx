@@ -24,6 +24,7 @@ import {
   type FoundationDraftsEventDetail,
   type ProposedDraft,
 } from "@/lib/foundation-extract";
+import { PLANT_APPLIED_EVENT } from "@/lib/plant-apply";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import type { WorkflowTemplate } from "@/lib/workflow-templates";
@@ -100,7 +101,7 @@ export function FoundationRoom() {
     []
   );
 
-  // Chatbar → Foundation: assistant emitted ```forge-drafts```
+  // Chatbar → Foundation: assistant emitted ```forge-drafts``` (manual review path)
   useEffect(() => {
     function onDrafts(ev: Event) {
       const detail = (ev as CustomEvent<FoundationDraftsEventDetail>).detail;
@@ -127,6 +128,16 @@ export function FoundationRoom() {
     window.addEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
     return () => window.removeEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
   }, [openReview, overview?.processes]);
+
+  // 6.2 / 6.5 — server auto-applied plant fences; refresh canvas + links
+  useEffect(() => {
+    function onPlantApplied() {
+      void load();
+    }
+    window.addEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+    return () =>
+      window.removeEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+  }, [load]);
 
   function openWorkshop(processId: string) {
     if (currentBusiness?.id) {

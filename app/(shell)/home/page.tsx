@@ -4,15 +4,14 @@ import { HomePageContext } from "@/components/chatbar/page-providers/HomePageCon
 import { HomeHero } from "@/components/home/HomeHero";
 
 /**
- * Product Home: composer + template starters.
- * Send seeds a Foundation draft (6.7) and navigates to `/foundation`.
- * Hard Home dissolve / per-room homes remain deferred.
+ * Foundation room Home: composer + template starters.
+ * Map / Monitor / Automate have sibling homes under `/map/home`, etc.
  */
 export default function HomePage() {
   return (
     <>
-      <HomePageContext />
-      <HomeHero />
+      <HomePageContext room="foundation" />
+      <HomeHero room="foundation" />
     </>
   );
 }

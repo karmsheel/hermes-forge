@@ -68,5 +68,8 @@ describe("foundationStudioPromptAddon", () => {
     assert.match(text, /Foundation/i);
     assert.match(text, /siso/);
     assert.match(text, /Workshop/);
+    assert.match(text, /forge-drafts/);
+    assert.match(text, /forge-docs/);
+    assert.match(text, /forge-links/);
   });
 });

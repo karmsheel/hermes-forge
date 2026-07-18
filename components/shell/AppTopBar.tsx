@@ -21,6 +21,9 @@ export function AppTopBar() {
 
   // When the tab strip is hidden, still allow opening a second tab from the top bar
   const showNewTab = tabsEnabled && tabs.length <= 1;
+  // Multi-tab strip owns the notification bell (top-right). Keep it here when the
+  // strip is hidden so the bell stays on the topmost chrome row.
+  const tabStripVisible = tabsEnabled && tabs.length > 1;
   const atMax = tabs.length >= FORGE_TABS_MAX;
   // Right dotted bridge only when MMA exists — otherwise it terminates into a blank slot
   const hasOpsRooms = OPS_ROOMS.some((room) => isRoomUnlocked(room));
@@ -84,7 +87,7 @@ export function AppTopBar() {
           {showHermesModelSwitcher && (
             <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           )}
-          <NotificationBell />
+          {!tabStripVisible ? <NotificationBell /> : null}
         </div>
       </div>
     </header>

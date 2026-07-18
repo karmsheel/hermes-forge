@@ -122,17 +122,25 @@ Monitor / Automate
 
 ---
 
-## 6. Entry & Home (6.7)
+## 6. Entry & Home (6.7 / 6.8)
 
 | Business state | Default landing |
 |----------------|-----------------|
-| New / thin (no or few processes; early docs only) | **Foundation** |
-| Mature (has processes; optional last-room restore) | **Map** or last room |
+| New / thin (no or few processes; early docs only) | **Foundation Home** (`/home`) |
+| Mature (has processes; optional last-room restore) | **Map Home** or last room’s Home |
 | Process deep-link / continue mapping | **Workshop** (Map tool) |
+| Room switcher click | That room’s **Home** |
 
-**Home dissolves into Foundation for new businesses.** The product Home lobby is not the primary first room.
+**Home dissolves into Foundation for new businesses.** Each room has a Home at the top of the left rail:
 
-**Deferred:** each subsequent room gets its own unique homepage (Map home, Monitor home, Automate home). Not specified in this doc; do not block 6.6/6.7 on designing them.
+| Room | Home path |
+|------|-----------|
+| Foundation | `/home` |
+| Map | `/map/home` |
+| Monitor | `/monitor/home` |
+| Automate | `/automate/home` |
+
+Shared hero composer + templates; room-scoped badge/title/subtitle. Deeper unique content per home can evolve later.
 
 **Do not:** break desktop multi-tab session restore ([`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md)) or business isolation.
 
@@ -217,7 +225,7 @@ See backlog **6.1**. UI label: **Shape**.
 
 Directed edges between processes in one business. See backlog **6.5**.
 
-**Partial:** Hermes may propose links verbally; user draws edges. Auto tool-call creation is not required for first wow.
+**Plant tools (6.2 / 6.5):** Studio chat auto-applies fenced plant tools after the assistant reply: `forge-drafts` (seed/upsert processes), `forge-docs` (upsert knowledge docs), `forge-links` (create edges by process name). See `lib/plant-apply.ts` + SSE `plant_apply`. Users can still draw/delete links in Link mode.
 
 ---
 
@@ -229,15 +237,16 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 2. **Entry (6.7)** — new / thin business → Foundation; template starters seed Foundation drafts — **Done** (hard Home dissolve deferred)  
 3. **Map plant (6.6)** — promote God Mode canvas into Map; Workshop as drill-in tool — **Done**  
 4. **Copy** — Overlord identity in Foundation; unlock tooltips; soft-lock empty states — **Done** (baseline)  
+5. **Per-room Homes (6.8)** — Map/Monitor/Automate Home routes; room switch → Home; Home top of rail — **Done**  
 
-5. **Polish** — progressive chrome; mature last-room restore  
+6. **Polish** — progressive chrome; mature last-room restore; deeper unique room-home content  
 
 ### Explicitly deferred (do not expand into)
 
 - Integrations page (4.5), n8n expansion (5.5), external connectors (5.6)  
 - Windows code signing (4.16)  
-- Per-room unique homepages  
 - Hard locks  
+- ~~Per-room unique homepages~~ shipped under 6.8 (shared hero + room copy; deeper unique content later)  
 - ~~Full plant export / outside I/O framing~~ shipped under 6.6 trail
 
 ---
@@ -248,7 +257,6 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 - Replacing Workshop deep-map (Phase 2/3 stays; entry path changes)  
 - Hard-gating routes with 404s  
 - Renaming Foundation room to Overlord or Quartermaster  
-- Building Monitor/Automate room homepages in the first implementation pass  
 - Treating Function org chart as the long-term Map primary over the plant canvas  
 
 ---
@@ -279,6 +287,7 @@ Monitor + Automate soft-unlock
 | 2026-07-16 | Room name **Foundation**; Foundation agent **Underlord** *(superseded 2026-07-18 → Overlord)* |
 | 2026-07-16 | Workshop = tool inside Map |
 | 2026-07-16 | Home dissolves into Foundation for new business; room-specific homepages later |
+| 2026-07-18 | Per-room Homes (6.8): `/home`, `/map/home`, `/monitor/home`, `/automate/home`; room switch → Home |
 | 2026-07-16 | Promote God Mode into Map as primary plant surface |
 | 2026-07-16 | Prioritize 6.6 + 6.7 wow; defer integrations and code signing |
 | 2026-07-18 | Foundation co-pilot renamed **Underlord → Overlord** (Forge Overlord) |

@@ -135,8 +135,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         } else {
           await refreshCurrentBusiness();
         }
-        // Phase 6: new businesses enter Foundation (Overlord is account-level gate)
-        router.push("/foundation");
+        // Phase 6: new businesses enter Foundation Home (Overlord is account-level gate)
+        router.push("/home");
       } catch {
         toast.error("Could not create business");
       } finally {
