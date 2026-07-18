@@ -20,6 +20,8 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const { enabled: tabsEnabled, tabs } = useForgeTabs();
   const tabStripVisible = tabsEnabled && tabs.length > 1;
   const isBusinessManager = pathname.startsWith("/business-manager");
+  const isSetup = pathname.startsWith("/setup");
+  const isFullBleed = isBusinessManager || isSetup;
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
   const isGodMode = pathname.startsWith("/god-mode");
@@ -30,7 +32,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     isOpen && "app-shell-layout--chat-open",
     !isOpen && "app-shell-layout--chat-collapsed",
     `app-shell-layout--chat-side-${side}`,
-    isBusinessManager && "app-shell-layout--business-manager",
+    isFullBleed && "app-shell-layout--business-manager",
     (isWorkshop || isAutomation || isGodMode || isFoundation) &&
       "app-shell-layout--full",
     isHome && "app-shell-layout--home",
@@ -43,7 +45,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const chat = <ChatbarPanel key="chatbar" />;
   const edgeTab = <ChatbarCollapsedTab key="chatbar-tab" />;
 
-  if (isBusinessManager) {
+  if (isFullBleed) {
     return (
       <div className={layoutClass}>
         {isLeft ? chat : null}
