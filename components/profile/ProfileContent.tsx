@@ -596,6 +596,34 @@ export function ProfileContent() {
             </div>
           </form>
 
+          <div className="card p-3 space-y-1.5 mb-3">
+            <div className="text-[10px] text-text-muted uppercase tracking-widest">
+              Forge Overlord
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className="text-sm truncate min-w-0"
+                title={
+                  user?.forgeOverlordDisplayName?.trim() ||
+                  user?.forgeOverlordProfileKey ||
+                  undefined
+                }
+              >
+                {user?.forgeOverlordDisplayName?.trim() || "Not set"}
+              </span>
+              <button
+                type="button"
+                className="btn-secondary text-xs px-2.5 py-1.5 shrink-0"
+                onClick={() => {
+                  router.push("/setup/overlord?change=1");
+                  closeProfile();
+                }}
+              >
+                Change
+              </button>
+            </div>
+          </div>
+
           <div>
             <div className="text-[10px] uppercase tracking-widest text-text-muted mb-1.5">
               Sign-in
