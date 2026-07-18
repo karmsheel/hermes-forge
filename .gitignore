@@ -57,3 +57,6 @@ terminals/
 /PRODUCT_BACKLOG.md
 /INDEX.md
 
+
+# Git worktrees (local feature isolation)
+.worktrees/
