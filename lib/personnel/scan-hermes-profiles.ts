@@ -100,9 +100,18 @@ function inspectProfileDir(
 
   const model = configContent ? parseModelFromConfig(configContent) : null;
 
+  // Default profile keeps displayName "default". Non-default prefers profile.yaml name.
+  const yamlName =
+    !isDefault && profileYamlContent
+      ? parseYamlScalar(profileYamlContent, 'name')
+      : null;
+  const displayName = isDefault
+    ? 'default'
+    : (yamlName?.trim() || profileKey);
+
   return {
     profileKey,
-    displayName: isDefault ? 'default' : profileKey,
+    displayName,
     description,
     model,
     hermesHome: profileHome,

@@ -108,17 +108,26 @@ export function OverlordSetup() {
     setContinuing(true);
     try {
       if (selectedKey !== serverOverlord?.profileKey) {
+        const selected = candidates.find((c) => c.profileKey === selectedKey);
         const res = await fetch("/api/overlord", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileKey: selectedKey }),
+          body: JSON.stringify({
+            profileKey: selectedKey,
+            ...(selected?.displayName
+              ? { displayName: selected.displayName }
+              : {}),
+            ...(selected?.hermesHome ? { hermesHome: selected.hermesHome } : {}),
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           throw new Error(data.error || "Failed to set Forge Overlord");
         }
+        toast.success("Forge Overlord set");
+      } else {
+        toast.success("Continuing…");
       }
-      toast.success("Forge Overlord set");
       router.push("/business-manager");
       router.refresh();
     } catch (err) {

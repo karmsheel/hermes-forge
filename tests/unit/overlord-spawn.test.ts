@@ -53,4 +53,22 @@ describe("spawnHermesProfile", () => {
     const scanned = scanHermesProfiles();
     assert.ok(scanned.some((p) => p.profileKey === "scanner"));
   });
+
+  it("scan prefers profile.yaml name for non-default displayName", () => {
+    spawnHermesProfile({ displayName: "My Overlord" });
+    const scanned = scanHermesProfiles();
+    const found = scanned.find((p) => p.profileKey === "my-overlord");
+    assert.ok(found);
+    assert.equal(found!.displayName, "My Overlord");
+    assert.equal(found!.isDefault, false);
+  });
+
+  it("scan keeps default profile displayName as default", () => {
+    fs.writeFileSync(path.join(home, "config.yaml"), "model:\n  default: test\n", "utf8");
+    const scanned = scanHermesProfiles();
+    const def = scanned.find((p) => p.isDefault);
+    assert.ok(def);
+    assert.equal(def!.profileKey, "default");
+    assert.equal(def!.displayName, "default");
+  });
 });

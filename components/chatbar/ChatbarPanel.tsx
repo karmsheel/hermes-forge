@@ -1296,7 +1296,11 @@ export function ChatbarPanel() {
             <label className="chatbar-panel__agent-label" htmlFor="chatbar-agent">
               Agent
             </label>
-            {hiredAgents.length === 0 ? (
+            {loadingList && hiredAgents.length === 0 ? (
+              <span className="chatbar-panel__agent-empty" aria-live="polite">
+                Loading agents…
+              </span>
+            ) : !loadingList && hiredAgents.length === 0 ? (
               <a href="/setup/overlord" className="chatbar-panel__agent-empty">
                 Choose your Forge Overlord
               </a>

@@ -46,7 +46,20 @@ export async function PUT(request: NextRequest) {
         { status: 404 },
       );
     }
-    const overlord = await setUserOverlord(session.userId, candidate);
+    // Optional client snapshots (e.g. spawn displayName) override scan when provided.
+    const displayName =
+      typeof body.displayName === "string" && body.displayName.trim()
+        ? body.displayName.trim()
+        : candidate.displayName;
+    const hermesHome =
+      typeof body.hermesHome === "string" && body.hermesHome.trim()
+        ? body.hermesHome.trim()
+        : candidate.hermesHome;
+    const overlord = await setUserOverlord(session.userId, {
+      ...candidate,
+      displayName,
+      hermesHome,
+    });
     return NextResponse.json({ overlord });
   } catch (e) {
     console.error("PUT overlord", e);
