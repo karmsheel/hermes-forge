@@ -939,14 +939,14 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] `GET /api/foundation` overview + `POST /api/foundation/seed-drafts` (idempotent by name)
 - [x] Add draft dialog; **Open in Workshop** sets active process and navigates
 - [x] Shell chatbar only — page blurb, server snapshot, studio prompt addon for Foundation
-- [x] Entry: home brief → Foundation; post-hire → Foundation (hire gate still first for new business)
+- [x] Entry: app-wide Overlord setup → Business Manager → create business → Foundation (no forced per-business hire; optional personnel hire / lazy ensure-hired)
 - [x] Unit tests: `tests/unit/foundation.test.ts` + stage/page-registry coverage
 
 **Partial / deferred:**
-- [ ] Overlord persona in Foundation chat context (6.6/6.7)
+- [x] Overlord persona in Foundation chat context (shipped under 6.6)
 - [ ] Hermes tool-calls that auto-write documents + seed drafts mid-chat (today: propose in chat; user Add draft or seed API)
 - [ ] Thin-business auto-redirect when switching businesses (6.7); Home dissolves into Foundation for new businesses
-- [ ] Foundation as first-class room in room switcher (not only a Map-stage nav item) — 6.6
+- [x] Foundation as first-class room in room switcher (not only a Map-stage nav item) — shipped under 6.6
 
 **Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes
 
@@ -1057,7 +1057,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 **Reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) § 6.
 
 **Deliverables:**
-- [x] Home composer / new business → **Foundation** (start-from-brief + hire post-create → `/foundation`; room default Foundation)
+- [x] Home composer / new business → **Foundation** (start-from-brief → `/foundation`; room default Foundation; optional personnel hire / lazy ensure-hired, no forced post-create hire)
 - [ ] Template starters seed Foundation drafts (and optional first workshop deep-link) — partial: templates still via Home composer then Foundation
 - [x] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
 - [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
