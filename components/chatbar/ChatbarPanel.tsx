@@ -1277,10 +1277,10 @@ export function ChatbarPanel() {
             </label>
             {hiredAgents.length === 0 ? (
               <a
-                href="/personnel/hire?required=1"
+                href="/setup/overlord"
                 className="chatbar-panel__agent-empty"
               >
-                Hire an agent to chat
+                Set Forge Overlord to chat
               </a>
             ) : (
               <select

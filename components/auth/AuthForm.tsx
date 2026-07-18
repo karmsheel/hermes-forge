@@ -48,7 +48,11 @@ export function AuthForm({ mode, welcome = false }: AuthFormProps) {
       }
 
       toast.success(isSignup ? "Account created" : "Welcome back");
-      router.push(redirectTo);
+      // Snappy first-run: skip BM bounce when Overlord is not set yet
+      const me = await fetch("/api/overlord")
+        .then((r) => r.json())
+        .catch(() => null);
+      router.push(me?.overlord?.profileKey ? redirectTo : "/setup/overlord");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Something went wrong");

@@ -21,7 +21,11 @@ function SignInPageInner() {
         const data = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (data?.user) {
-          router.replace(redirectTo);
+          // Already signed in: prefer Overlord setup when unset
+          const me = await fetch("/api/overlord")
+            .then((r) => r.json())
+            .catch(() => null);
+          router.replace(me?.overlord?.profileKey ? redirectTo : "/setup/overlord");
           return;
         }
       } catch {

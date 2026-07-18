@@ -135,8 +135,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
         } else {
           await refreshCurrentBusiness();
         }
-        // First-run for this business: force hire of a chatbar agent
-        router.push("/personnel/hire?required=1");
+        // Phase 6: new businesses enter Foundation (Overlord is account-level gate)
+        router.push("/foundation");
       } catch {
         toast.error("Could not create business");
       } finally {
