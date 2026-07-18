@@ -51,9 +51,9 @@ describe("toFoundationProcessCard", () => {
 });
 
 describe("foundationStudioPromptAddon", () => {
-  it("mentions Underlord, plant sketch, and shapes", () => {
+  it("mentions Overlord, plant sketch, and shapes", () => {
     const text = foundationStudioPromptAddon();
-    assert.match(text, /Underlord/);
+    assert.match(text, /Overlord/);
     assert.match(text, /Foundation/i);
     assert.match(text, /siso/);
     assert.match(text, /Workshop/);

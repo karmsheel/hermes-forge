@@ -40,7 +40,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `WINDOWS_CODE_SIGNING.md` | Windows Authenticode signing for NSIS installer and SmartScreen trust | Medium | When implementing desktop installer signing or release hardening (4.16) |
 | `GLOBAL_CHATBAR.md` | Global shell chatbar: extension parity checklist, residency, page context protocol, PR plan (4.17) | High | When implementing or reviewing the elevated in-app Hermes chatbar |
 | `BUSINESS_DOCUMENTS.md` | Business knowledge documents: kinds, schema, Hermes injection, Git layout (4.18) | High | When implementing or extending Documents / company knowledge context |
-| `BUSINESS_PLANT_PFD.md` | Phase 6: Forge rooms, soft unlock, plant PFD, Foundation / Underlord, Map promotion of God Mode | High | When implementing rooms, Foundation, Map plant, 6.6/6.7, stage→room IA, or process links |
+| `BUSINESS_PLANT_PFD.md` | Phase 6: Forge rooms, soft unlock, plant PFD, Foundation / Overlord, Map promotion of God Mode | High | When implementing rooms, Foundation, Map plant, 6.6/6.7, stage→room IA, or process links |
 | *(Plan)* Map→Monitor→Automate | Phase 5 operating stages + Content inventory (see PRODUCT_BACKLOG § Phase 5); target IA is rooms in `BUSINESS_PLANT_PFD.md` | High | When working on Content, Metrics, Automate, or legacy stage code |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
 | `PROCESS.md` | Process mapping contract schema (4.2) | Medium | When implementing PROCESS.md, templates, or agent prompt contracts |

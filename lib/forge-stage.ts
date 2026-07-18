@@ -28,7 +28,7 @@ export const FORGE_STAGE_LABELS: Record<ForgeStage, string> = {
 };
 
 export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
-  foundation: "Talk with Underlord — plant sketch, drafts, and documents",
+  foundation: "Talk with Overlord — plant sketch, drafts, and documents",
   map: "See the business as a plant; open processes in Workshop",
   monitor: "Track metrics and content health (unlocks after a forged process)",
   automate: "Assign agents and run jobs (unlocks after a forged process)",

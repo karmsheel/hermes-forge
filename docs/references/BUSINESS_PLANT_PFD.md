@@ -66,7 +66,7 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 | Concept | User-facing | Notes |
 |---------|-------------|-------|
 | Foundation room | **Foundation** | Always the room name in chrome |
-| Foundation co-pilot | **Underlord** | Agent identity / persona in Foundation chat context — **not** a room name |
+| Foundation co-pilot | **Overlord** | Agent identity / persona in Foundation chat context — **not** a room name (formerly Underlord) |
 | Map / Monitor / Automate | Same labels | Room names; evolve Phase 5 “stage” copy toward “room” |
 | Process lifecycle | draft → refined → **forged** | Gate for Monitor / Automate unlock |
 
@@ -103,7 +103,7 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 
 ```text
 New business
-  → Foundation (Underlord + chat)
+  → Foundation (Overlord + chat)
   → shapes / draft processes / docs appear
   → Map soft-unlocks when first process exists
 
@@ -228,7 +228,7 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 1. **IA + unlock** — room switcher (from stage explorer), soft-lock states, forged gate  
 2. **Entry (6.7)** — new / thin business → Foundation; dissolve Home-as-lobby for that path  
 3. **Map plant (6.6)** — promote God Mode canvas into Map; Workshop as drill-in tool  
-4. **Copy** — Underlord identity in Foundation; unlock tooltips; soft-lock empty states  
+4. **Copy** — Overlord identity in Foundation; unlock tooltips; soft-lock empty states  
 5. **Polish** — progressive chrome; mature last-room restore  
 
 ### Explicitly deferred (do not expand into)
@@ -246,7 +246,7 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 - Requiring users to learn plant/PFD vocabulary  
 - Replacing Workshop deep-map (Phase 2/3 stays; entry path changes)  
 - Hard-gating routes with 404s  
-- Renaming Foundation room to Underlord or Quartermaster  
+- Renaming Foundation room to Overlord or Quartermaster  
 - Building Monitor/Automate room homepages in the first implementation pass  
 - Treating Function org chart as the long-term Map primary over the plant canvas  
 
@@ -255,7 +255,7 @@ Agreed sequence for 6.6 + 6.7 after this reference:
 ## 12. Concept flow
 
 ```text
-Foundation (Underlord)
+Foundation (Overlord)
     │  chat → docs + draft shapes + seed processes
     ▼
 Map (plant PFD)
@@ -275,11 +275,12 @@ Monitor + Automate soft-unlock
 |------|----------|
 | 2026-07-15 | Phase 6 vision: plant metaphor, Foundation entry, I/O shapes, links, God Mode → plant |
 | 2026-07-16 | Rooms (not stages as peer modes); unlock on **forged**; soft locks |
-| 2026-07-16 | Room name **Foundation**; Foundation agent **Underlord** |
+| 2026-07-16 | Room name **Foundation**; Foundation agent **Underlord** *(superseded 2026-07-18 → Overlord)* |
 | 2026-07-16 | Workshop = tool inside Map |
 | 2026-07-16 | Home dissolves into Foundation for new business; room-specific homepages later |
 | 2026-07-16 | Promote God Mode into Map as primary plant surface |
 | 2026-07-16 | Prioritize 6.6 + 6.7 wow; defer integrations and code signing |
+| 2026-07-18 | Foundation co-pilot renamed **Underlord → Overlord** (Forge Overlord) |
 
 ---
 

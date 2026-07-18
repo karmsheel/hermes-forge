@@ -34,7 +34,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 | Business area / department | `Process.department` | "function" | `/functions` aggregates processes by department |
 | Shell mode (Phase 5) | `ForgeStage` | **room** (target) | Map / Monitor / Automate (+ Foundation); see [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) |
 | Process lifecycle | `lifecycleStatus` | draft / refined / **forged** | Forged soft-unlocks Monitor + Automate |
-| Foundation co-pilot | (prompt / persona) | **Underlord** | Agent identity in Foundation — **not** a room name |
+| Foundation co-pilot | (prompt / persona) | **Overlord** | Agent identity in Foundation — **not** a room name |
 
 **Legacy aliases:** some file names still say "project" (e.g. `RecentProjectsStrip.tsx`, `project-card-thumb.ts`) but UI copy and CSS use business/process. `/projects` redirects to `/functions`. Code may still say “stage” until 6.6/6.7 renames chrome to **room**.
 
@@ -843,19 +843,19 @@ Optional systems of record after Hermes-only loop is proven.
 
 ## Phase 6 — Business as plant: Foundation → shapes → process network
 
-**Canonical reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) (rooms, soft unlock, Underlord, Map plant, entry rules).
+**Canonical reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) (rooms, soft unlock, Overlord, Map plant, entry rules).
 
 **North-star metaphor (chemical engineering / plant design):**  
 A business is a **designed plant**. The whole plant is one process system with many unit operations (mapped processes), multiple feeds (inputs), and finished products / outcomes (outputs). Hermes Forge’s long-horizon deliverable is a **process flow diagram (PFD) of the business** — not only deep maps of isolated unit ops, but the **overall plant topology** generated as the user talks.
 
 **Product shift:**  
-Phase 2 jumps Home composer → Workshop for a single process. That is right for *depth*, wrong as the *default first room* for a new business. New businesses land in **Foundation** (agent persona **Underlord**); Map opens as the working plant; Workshop is a **tool inside Map**; Monitor / Automate **soft-unlock** after ≥1 **forged** process. Home dissolves into Foundation for new businesses.
+Phase 2 jumps Home composer → Workshop for a single process. That is right for *depth*, wrong as the *default first room* for a new business. New businesses land in **Foundation** (agent persona **Overlord**); Map opens as the working plant; Workshop is a **tool inside Map**; Monitor / Automate **soft-unlock** after ≥1 **forged** process. Home dissolves into Foundation for new businesses.
 
 **Relationship to existing surfaces:**
 
 | Surface | Role in Phase 6 |
 |---------|-----------------|
-| **Foundation room** | Default entry for new / thin businesses; chat-first plant sketch; agent **Underlord** |
+| **Foundation room** | Default entry for new / thin businesses; chat-first plant sketch; agent **Overlord** |
 | **Map room** | Working plant PFD (promoted God Mode compact + links); primary overview |
 | **Monitor / Automate rooms** | Soft-locked until ≥1 forged process; operating loop unchanged once open |
 | **Documents** | Business knowledge appears as agent populates |
@@ -881,9 +881,9 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 **Goal:** Capture the plant/PFD product thesis so agents and humans share one end state before code.
 
 **Deliverables:**
-- [x] Dedicated reference [`docs/references/BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — metaphor, **rooms**, soft unlock, shape/link model, Underlord, non-goals, decision log
+- [x] Dedicated reference [`docs/references/BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — metaphor, **rooms**, soft unlock, shape/link model, Overlord, non-goals, decision log
 - [x] Update [`docs/references/INDEX.md`](INDEX.md)
-- [x] Concept flow: Foundation (Underlord) → Map plant → Workshop tool → forge → Monitor/Automate soft-unlock
+- [x] Concept flow: Foundation (Overlord) → Map plant → Workshop tool → forge → Monitor/Automate soft-unlock
 - [x] Locked decisions (2026-07-16): forged gate, soft locks, Workshop-in-Map, Home→Foundation for new business, God Mode→Map, room-specific homepages deferred
 
 **Status:** Reference is source of truth for room IA. Implement under **6.6** / **6.7**.
@@ -929,7 +929,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 **Goal:** New default room for a business that is not “jump straight to Workshop.” User talks about the business; Hermes populates foundations (documents + draft process blocks). User later enters Workshop on a chosen process to refine.
 
-**Working name:** **Foundation** (room). Foundation agent persona: **Underlord** (6.0 / 6.7 copy).
+**Working name:** **Foundation** (room). Foundation agent persona: **Overlord** (6.0 / 6.7 copy).
 
 **Shipped:**
 - [x] Route `/foundation` + Map-stage nav (`foundation` in `STAGE_NAV_IDS`) + Map stage default landing
@@ -941,7 +941,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Unit tests: `tests/unit/foundation.test.ts` + stage/page-registry coverage
 
 **Partial / deferred:**
-- [ ] Underlord persona in Foundation chat context (6.6/6.7)
+- [ ] Overlord persona in Foundation chat context (6.6/6.7)
 - [ ] Hermes tool-calls that auto-write documents + seed drafts mid-chat (today: propose in chat; user Add draft or seed API)
 - [ ] Thin-business auto-redirect when switching businesses (6.7); Home dissolves into Foundation for new businesses
 - [ ] Foundation as first-class room in room switcher (not only a Map-stage nav item) — 6.6
@@ -1028,7 +1028,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] **Promote God Mode plant into Map** as primary Map surface (ungated product route; Map default `/god-mode`; nav label Plant)
 - [x] Workshop treated as **Map tool** (nav under Map only; not a peer room in the switcher)
 - [x] Zoom from plant → unit op (Workshop) without losing business context (existing plant click → workshop)
-- [x] Unlock / empty-state copy + Foundation **Underlord** persona wiring in chat context
+- [x] Unlock / empty-state copy + Foundation **Overlord** persona wiring in chat context
 
 **Trail deliverables (same milestone, can follow first wow):**
 - [x] Layout modes: by function (department bands) | by flow (graph layout) | manual positions — `layoutPlant` / prefs; Map + Foundation toolbars; manual drag + localStorage
@@ -1059,7 +1059,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [ ] Template starters seed Foundation drafts (and optional first workshop deep-link) — partial: templates still via Home composer then Foundation
 - [x] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
 - [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
-- [x] Underlord + Foundation onboarding copy (prompt addon + room chrome)
+- [x] Overlord + Foundation onboarding copy (prompt addon + room chrome)
 - [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
 
 **Deferred (explicit):** unique homepage per room (Map / Monitor / Automate homes) — design later; do not block this item. Hard redirect `/home` → Foundation for thin businesses deferred (templates still on Home).
@@ -1186,6 +1186,6 @@ When picking up a backlog item:
 - Optional 4.12: supersede/revoke UI; freeform policy decisions
 
 **Phase 6:**
-- Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Underlord, Workshop-in-Map, God Mode→Map
+- Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Overlord, Workshop-in-Map, God Mode→Map
 - **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 mostly done** — remaining: template → Foundation seed; hard Home dissolve deferred
 - Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6), per-room homepages

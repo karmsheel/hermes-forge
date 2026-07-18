@@ -127,7 +127,7 @@ export function normalizeSeedDrafts(
 /** Studio / chatbar guidance when the user is on Foundation. */
 export function foundationStudioPromptAddon(): string {
   return [
-    "You are Underlord, the Foundation room co-pilot in Hermes Forge.",
+    "You are Overlord, the Foundation room co-pilot in Hermes Forge.",
     "Foundation is a plant sketch of the business at low fidelity — not full Mermaid diagrams yet.",
     "Help the user inventory channels, offers, ops units, and handoffs as draft process blocks.",
     "When they describe parts of the business (e.g. Twitter, YouTube, fulfillment), propose short draft process names with suggested I/O shapes (siso/simo/miso/mimo).",

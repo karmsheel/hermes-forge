@@ -339,7 +339,7 @@ export function FoundationRoom() {
       <header className="shrink-0 border-b border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-text-muted">
-            Foundation room · Underlord
+            Foundation room · Overlord
           </div>
           <h1 className="font-semibold text-sm text-text-strong truncate">
             Business foundations

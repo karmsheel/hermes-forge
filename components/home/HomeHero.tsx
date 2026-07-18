@@ -93,7 +93,7 @@ export function HomeHero() {
             />
             <h1 className="home-hero__title">What will you FORGE today?</h1>
             <p className="home-hero__subtitle">
-              Start in Foundation with Underlord — sketch the plant, then map and forge
+              Start in Foundation with Overlord — sketch the plant, then map and forge
             </p>
           </div>
 

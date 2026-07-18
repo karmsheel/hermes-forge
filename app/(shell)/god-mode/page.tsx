@@ -52,7 +52,7 @@ export default function GodModePage() {
           <SoftRoomLock
             room="map"
             title="Map fills as processes appear"
-            description="Talk with Underlord in Foundation to seed draft process shapes. The plant map soft-unlocks when the first process exists."
+            description="Talk with Overlord in Foundation to seed draft process shapes. The plant map soft-unlocks when the first process exists."
           />
         </div>
       ) : (

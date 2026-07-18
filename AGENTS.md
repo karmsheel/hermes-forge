@@ -53,7 +53,7 @@ See `docs/references/INDEX.md` for the full list.
 Key files:
 - `PRODUCT_BACKLOG.md` — The source of truth for what to build next
 - `audit.md` — Canonical project audit (mistakes, gaps, redundancy, remediation status)
-- `BUSINESS_PLANT_PFD.md` — Phase 6 rooms, soft unlock, plant PFD, Foundation / Underlord (read when touching shell IA or Map/Foundation)
+- `BUSINESS_PLANT_PFD.md` — Phase 6 rooms, soft unlock, plant PFD, Foundation / Overlord (read when touching shell IA or Map/Foundation)
 
 ---
 
@@ -66,7 +66,7 @@ Core philosophy (inspired by Open Design):
 - Hermes does the heavy reasoning
 - The UI is a "studio" shell, not a traditional CRUD app
 
-**Long-horizon product thesis (Phase 6):** a business is a **designed plant**. The Forge is a place with **rooms** (Foundation → Map → Monitor → Automate), soft progressive unlock on **forged** processes, and Workshop as a **tool inside Map**. New businesses start in **Foundation** (agent persona **Underlord**); Map’s primary surface is the **plant PFD** (promoted God Mode canvas). Canonical model: `docs/references/BUSINESS_PLANT_PFD.md`. Priorities: `PRODUCT_BACKLOG.md` § Phase 6 (6.6 / 6.7 next).
+**Long-horizon product thesis (Phase 6):** a business is a **designed plant**. The Forge is a place with **rooms** (Foundation → Map → Monitor → Automate), soft progressive unlock on **forged** processes, and Workshop as a **tool inside Map**. New businesses start in **Foundation** (agent persona **Overlord**); Map’s primary surface is the **plant PFD** (promoted God Mode canvas). Canonical model: `docs/references/BUSINESS_PLANT_PFD.md`. Priorities: `PRODUCT_BACKLOG.md` § Phase 6 (6.6 / 6.7 next).
 
 See `docs/references/PRODUCT_BACKLOG.md`, `docs/references/audit.md`, `docs/references/BUSINESS_PLANT_PFD.md`, and `docs/references/INDEX.md` for detailed priorities and known tech debt.
 

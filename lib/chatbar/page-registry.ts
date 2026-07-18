@@ -30,9 +30,9 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       routeKey: "foundation",
       title: "Foundation",
       purpose:
-        "Starting room of the Forge. Underlord co-pilots a plant sketch: draft process blocks (I/O shapes), knowledge documents, and chat-first discovery before Map / Workshop.",
+        "Starting room of the Forge. Overlord co-pilots a plant sketch: draft process blocks (I/O shapes), knowledge documents, and chat-first discovery before Map / Workshop.",
       uiHints: [
-        "Talk with Underlord about how the business works",
+        "Talk with Overlord about how the business works",
         "Add draft process blocks for each unit of work",
         "Open a block in Workshop (Map tool) to refine the full diagram",
         "Open Documents for durable business knowledge",
