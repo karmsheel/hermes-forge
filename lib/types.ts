@@ -6,6 +6,11 @@ export interface UserProfile {
   name: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Forge Overlord snapshot (user-scoped Hermes profile). */
+  forgeOverlordProfileKey?: string | null;
+  forgeOverlordDisplayName?: string | null;
+  forgeOverlordHermesHome?: string | null;
+  forgeOverlordSetAt?: string | null;
   _count?: { businesses: number };
 }
 

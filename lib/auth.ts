@@ -58,6 +58,10 @@ export async function getCurrentUser() {
       name: true,
       createdAt: true,
       updatedAt: true,
+      forgeOverlordProfileKey: true,
+      forgeOverlordDisplayName: true,
+      forgeOverlordHermesHome: true,
+      forgeOverlordSetAt: true,
       _count: { select: { businesses: true } },
     },
   });
