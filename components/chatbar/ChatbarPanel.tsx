@@ -426,6 +426,27 @@ export function ChatbarPanel() {
             hiredAt: a.hiredAt,
           }),
         );
+
+        // Lazy-hire Forge Overlord when business has no hired agents yet
+        if (hired.length === 0) {
+          const ensureRes = await fetch("/api/overlord/ensure-hired", { method: "POST" });
+          if (ensureRes.ok) {
+            const { agent } = await ensureRes.json();
+            if (agent) {
+              hired.push({
+                id: agent.id,
+                displayName: agent.displayName,
+                description: agent.description,
+                model: agent.model,
+                profileKey: agent.profileKey,
+                iconKey: agent.iconKey,
+                isDefault: agent.isDefault,
+                hiredAt: agent.hiredAt,
+              });
+            }
+          }
+        }
+
         setHiredAgents(hired);
 
         const savedAgent = loadActiveChatbarAgentId(businessId);
@@ -1276,11 +1297,8 @@ export function ChatbarPanel() {
               Agent
             </label>
             {hiredAgents.length === 0 ? (
-              <a
-                href="/setup/overlord"
-                className="chatbar-panel__agent-empty"
-              >
-                Set Forge Overlord to chat
+              <a href="/setup/overlord" className="chatbar-panel__agent-empty">
+                Choose your Forge Overlord
               </a>
             ) : (
               <select
