@@ -265,27 +265,28 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ## Phase 2 — Home → workshop flow
 
-### 2.1 Send creates project + process + opens workshop — **DONE**
+### 2.1 Send creates project + process + opens workshop — **DONE** (superseded entry path under 6.7)
 
 **Goal:** One action from home composer (like Open Design home Send).
 
-**Files:** `app/api/start-from-brief/route.ts`, `lib/start-from-brief.ts`, `components/home/HomeHero.tsx`, `app/api/processes/[id]/chat/route.ts`
+**Files:** `app/api/start-from-brief/route.ts`, `lib/start-from-brief.ts`, `components/home/HomeHero.tsx`, `app/api/processes/[id]/chat/route.ts`, studio chat routes, `lib/chatbar/pending-studio-reply.ts`
 
-**Flow:**
+**Historical flow (Phase 2):** Home Send → Workshop + process-chat `replyOnly`.
+
+**Current flow (Phase 6.7 — product default):**
 1. User types brief, optionally picks template
-2. POST `/api/start-from-brief` — atomic create business + process + seed messages
-3. Brief stored as first user message; welcome assistant message seeded
-4. Set active business cookie + client active process id
-5. Navigate to `/workshop`; workshop auto-triggers Hermes reply (`replyOnly`)
+2. POST `/api/start-from-brief` — business + **Foundation draft** + process thread (Workshop deep-link) + **studio** conversation with user brief
+3. Client: active process id, pending Workshop reply, **pending studio reply**, open global chatbar
+4. Navigate to `/foundation`; chatbar loads studio thread and auto-starts Overlord (`replyOnly`)
 
 **Acceptance criteria:**
 - [x] Single Send action from home creates project and workflow
 - [x] Template metadata + optional starter diagram passed through
 - [x] Active business cookie set server-side
-- [x] Workshop opens on new process with brief visible in chat
-- [x] Hermes reply auto-fired when connected
+- [x] Workshop deep-link still works (toast **Open Workshop** + process pending reply)
+- [x] Foundation path: global chatbar opens with seeded Overlord conversation + auto Hermes reply
 
-**Depends on:** 1.3, 1.5, B1
+**Depends on:** 1.3, 1.5, B1; chatbar 4.17; Foundation 6.2
 
 ---
 
@@ -874,7 +875,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 polish / next backlog after **6.6–6.7**. Defer 4.5 integrations, 4.16 code signing, 5.5/5.6 connectors.
+**Next implementation priority:** Phase 6 planned scope is **shipped** (6.0–6.8 + plant tools + Home studio continuity). Prefer **7.1** (Automate run health) or deferred Phase 4/5 items (4.5, 4.16, 5.5/5.6). Defer hard Home dissolve (won’t do).
 
 ---
 
@@ -947,6 +948,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Hermes plant tools mid-chat: auto-apply `forge-drafts` + `forge-docs` fences from studio chat (server-side apply + SSE `plant_apply`; UI refresh) — see `lib/plant-apply.ts`
 - [x] ~~Thin-business auto-redirect / hard Home→Foundation dissolve~~ — **won’t do** (Home stays as Foundation Home + composer; see 6.7 / 6.8)
 - [x] Foundation as first-class room in room switcher (not only a Map-stage nav item) — shipped under 6.6
+- [x] Home Send lands on Foundation with **studio chat already seeded** and Overlord auto-reply (not only a draft card + lost process thread) — 2026-07-19
 
 **Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes
 
@@ -1054,7 +1056,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ### 6.7 Entry-flow migration (Home → Foundation) — **DONE** (priority)
 
-**Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. Home remains **Foundation Home** (composer + templates); send/templates seed Foundation drafts and open the plant path.
+**Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. Home remains **Foundation Home** (composer + templates); send/templates seed Foundation drafts and open the plant path **with Overlord already talking**.
 
 **Reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) § 6.
 
@@ -1064,6 +1066,11 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
   - Home send + template → `status: draft` via foundation seed (not workshop-first `mapping`)
   - Optional starter Mermaid on template drafts; brief attached for Workshop Hermes reply
   - Foundation empty-state template pills seed in-room; toast **Open Workshop** deep-link
+- [x] **Home Send → studio chat continuity (2026-07-19):**
+  - Server seeds Overlord **studio** conversation with the user brief (`seedStudioBriefConversation`)
+  - Client: `pendingStudioReply` + open global chatbar; ChatbarPanel `replyOnly` streams Hermes with `/foundation` plant context
+  - Studio chat API supports `replyOnly` (same pattern as process chat)
+  - Process thread pending reply retained for Workshop deep-link only
 
 - [x] “Continue mapping” deep links still open Workshop on `activeProcessId` when refining
 - [x] Empty/thin business heuristic: preferred room Foundation when no processes; Map when processes exist (`preferredRoomForReadiness`)
@@ -1075,7 +1082,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 **Follow-on shipped:** per-room Homes (Map / Monitor / Automate) — see **6.8**.
 
-**Depends on:** 6.2, 6.0
+**Depends on:** 6.2, 6.0, 4.17
 
 **Do not:** Break desktop multi-tab session restore (4.15) or business isolation.
 
@@ -1116,7 +1123,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 1.3 | Hero home + composer | 1 | Done |
 | 1.4 | Recent projects strip | 1 | Done |
 | 1.5 | Template starter cards | 1 | Done |
-| 2.1 | Send → project + workshop | 2 | Done |
+| 2.1 | Send → project + workshop | 2 | Done (entry path now Foundation + studio chat; see 6.7) |
 | 2.2 | Process standards picker | 2 | Done |
 | 2.3 | Inline model switcher | 2 | Done |
 | 2.4 | Function status lifecycle badges | 2 | Deferred |
@@ -1161,7 +1168,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.4 | God Mode compact plant canvas | 6 | **Done** (foundation) |
 | 6.5 | Process-to-process links (plant edges) | 6 | **Done** (incl. auto-link fences; ports UI open) |
 | 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Done** (rooms + layout + export + outside I/O framing) |
-| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (template → Foundation draft seed) |
+| 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (draft seed + studio chatbar continuity) |
 | 6.8 | Per-room Homes (Map / Monitor / Automate) | 6 | **Done** |
 | 7.1 | Automate pause/resume + run health | 7 | Pending (from 5.3) |
 
@@ -1201,9 +1208,10 @@ Source: [`audit.md`](audit.md). Full findings and redundancy list live there; th
 | AUDIT-5 | Dev-gate God Mode in nav + route guard | **Done** |
 | AUDIT-6 | Dead code cleanup (accent, duplicate next.config, theme exports, dead CSS) | **Mostly done** — accent.ts removed, next.config.mjs removed, accent-swatch CSS removed; residual theme export pruning optional |
 | AUDIT-7 | Schema honesty (`BusinessDecision`, `PERSONNEL_REMOVED`, personnel git import) | **Done** — Decisions HITL API + UI + `decision.*` events; unused `PERSONNEL_REMOVED` removed; personnel git import |
-| AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; `npm test` unit suite (17 tests) |
+| AUDIT-8 | Repo hygiene (gitignore WAL, API smoke tests) | **Mostly done** — WAL gitignored; expanded `npm test` unit suite (incl. plant-apply, pending-studio-reply, rooms); HTTP API smoke still optional |
 | AUDIT-9 | Terminology pass ("project" → "business" in UI) | **Done** — NewBusinessDialog, shell context, auth copy, process-card CSS |
 | AUDIT-10 | Personnel workshop integration (mentions, swimlanes, automation) | **Done** — mentions + prompts + swimlane lanes; personnel git import + automation agent bind; `@system` mentions via 3.5 |
+| AUDIT-11 | Next.js 16 auth gate: `middleware.ts` → `proxy.ts` | **Done** (2026-07-19) — deprecated middleware broke Hermes/auth API routes (HTML 404 → JSON parse errors on connect) |
 
 **Session outcomes (code):**
 - `docs/references/audit.md` committed as canonical audit
@@ -1240,18 +1248,24 @@ When picking up a backlog item:
 - `/interview` + `/api/extract` — legacy discovery; `/interview` redirects to `/home`
 - `/dashboard` — merged into `/functions` (analytics section below org chart)
 
-**Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-6 … AUDIT-10** above. Highlights:
+**Known tech debt:** See [`audit.md`](audit.md) and **AUDIT-*** above. Highlights:
 - No HTTP/SSE integration tests yet (unit smoke via `npm test` only)
 - Optional theme export pruning (AUDIT-6 residual)
 - Optional 4.12: supersede/revoke UI; freeform policy decisions
+- Process-link **ports UI** still optional metadata only (6.5)
+- SSRF risk on Hermes/n8n test endpoints if ever multi-tenant (AUDIT security)
 
-**Phase 6:**
+**Phase 6 (complete for planned scope):**
 - Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Overlord, Workshop-in-Map, God Mode→Map
-- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 done** (Home/template → Foundation drafts + Workshop deep-link; **hard Home dissolve won’t do**)
-- **6.8 done** (per-room Homes at `/home`, `/map/home`, `/monitor/home`, `/automate/home`; room switch → Home; Home top of rail)
+- **6.6–6.8 done** (rooms, Map plant, layout/export/outside I/O, per-room Homes)
+- **6.7 entry:** Home/template → Foundation drafts + **studio chatbar seeded with Overlord reply**; Workshop deep-link retained; **hard Home dissolve won’t do**
 - **6.2 / 6.5 plant tools:** studio chat auto-applies `forge-drafts`, `forge-docs`, `forge-links` (`lib/plant-apply.ts` + SSE `plant_apply`)
 
-**Phase 7:**
-- **7.1** pause/resume + run health (moved from 5.3)
+**Phase 7 (next product depth):**
+- **7.1** Automate pause/resume + owner-facing run health (from 5.3)
 
-- Defer for this push: integrations (4.5), code signing (4.16), n8n/connectors (5.5/5.6); deeper unique room-home content
+**Still open / deferred (not Phase 6 blockers):**
+- 2.4 function status badges (deferred)
+- 4.3 template marketplace; 4.5 integrations page; 4.16 code signing
+- 5.5 n8n productization (M1); 5.6 external connectors (M2)
+- Deeper unique room-home content; ports UI on plant edges

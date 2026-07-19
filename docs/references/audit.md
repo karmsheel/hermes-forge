@@ -1,8 +1,8 @@
 # Hermes Forge — Project Audit
 
-**Version audited:** v0.2.0 (+ post-release WIP)  
+**Version audited:** v0.3.4 (+ Phase 6 plant / entry)  
 **Audit date:** 2026-07-07  
-**Remediation session:** 2026-07-07 (see [Remediation progress](#remediation-progress) below)
+**Last remediation update:** 2026-07-19 (Phase 6 close-out + Next 16 proxy; see [Remediation progress](#remediation-progress))
 
 This document is the canonical repo health audit. It complements [`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md) (what to build) with an honest picture of mistakes, gaps, redundancy, and cleanup work.
 
@@ -10,7 +10,7 @@ This document is the canonical repo health audit. It complements [`PRODUCT_BACKL
 
 ## Remediation progress
 
-Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md#audit-remediation-2026-07-07)).
+Tracked in backlog as **AUDIT-1 … AUDIT-11** ([`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md#audit-remediation-2026-07-07)).
 
 | ID | Task | Status | Notes |
 |----|------|--------|-------|
@@ -18,27 +18,31 @@ Tracked in backlog as **AUDIT-1 … AUDIT-10** ([`PRODUCT_BACKLOG.md`](PRODUCT_B
 | AUDIT-2 | Personnel honesty pass | **Done** | Hire dialog + page copy; `[FIRE]` placeholders; `PersonnelIcon` removed; scaffold banner |
 | AUDIT-3 | Remove legacy Interview flow | **Done** | Deleted `app/interview/page.tsx`, `app/api/extract/route.ts`; `/interview` → `/home` |
 | AUDIT-4 | Merge Dashboard into Functions | **Done** | Org chart + analytics on `/functions`; dashboard page deleted; `/dashboard` → `/functions` |
-| AUDIT-5 | Dev-gate God Mode | **Done** | Nav hidden by default; Settings → Developer toggle; route guard |
+| AUDIT-5 | Dev-gate God Mode | **Done** | Nav hidden by default; Settings → Developer toggle; route guard (Map plant promotes God Mode for product) |
 | AUDIT-6 | Dead code cleanup | **Mostly done** | accent.ts removed; next.config.mjs removed; accent-swatch CSS removed; optional theme export prune remains |
 | AUDIT-7 | Schema honesty | **Done** | Decisions HITL API + UI + `decision.*` events (4.12); personnel git import done |
-| AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; `npm test` unit smoke suite (17 tests via node:test); HTTP API smoke still optional |
+| AUDIT-8 | Repo hygiene | **Mostly done** | WAL gitignored; expanded `npm test` unit suite (plant, rooms, pending-studio-reply, …); HTTP API smoke still optional |
 | AUDIT-9 | Terminology pass | **Done** | `NewBusinessDialog`, shell `openNewBusiness`, auth copy, `process-card` / `recent-processes` CSS |
-| AUDIT-10 | Personnel workshop integration | **Mostly done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH; personnel git import; automation agent bind shipped; `@system` mentions still open |
+| AUDIT-10 | Personnel workshop integration | **Done** | @-mentions + chat/diagram prompts + swimlane lanes; human edit PATCH; personnel git import; automation agent bind; `@system` via 3.5 |
+| AUDIT-11 | Next.js 16 `middleware` → `proxy` | **Done** (2026-07-19) | Deprecated middleware broke public Hermes/auth API routes (HTML 404 → client `Unexpected token '<'`); `proxy.ts` restores JSON |
 
 ---
 
 ## What you've actually built
 
-Hermes Forge is a **v0.2.0 agent-native process-mapping studio** with a strong core loop and substantial peripheral surface area.
+Hermes Forge is a **v0.3.x agent-native business process mapping studio** with a **plant / room IA** (Phase 6) and a strong core loop.
 
 ```mermaid
 flowchart LR
-  Home["Home + brief"] --> Workshop["Workshop"]
+  Home["Foundation Home + brief"] --> Foundation["Foundation room"]
+  Foundation --> Studio["Global chatbar Overlord"]
+  Studio --> Drafts["Draft processes + docs + links"]
+  Foundation --> Map["Map plant PFD"]
+  Map --> Workshop["Workshop tool"]
   Workshop --> Diagram["Mermaid diagram"]
-  Workshop --> Chat["Process chat"]
-  Workshop --> Tabs["Details / Questions / Export"]
-  Workshop --> Approve["Process approval"]
-  Approve --> Auto["Automation studio + n8n"]
+  Workshop --> Forge["Forge process"]
+  Forge --> Monitor["Monitor room"]
+  Forge --> Automate["Automate room"]
   Functions["Functions org chart"] --> Workshop
   Personnel["Personnel roster"] -->|"mentions + prompts"| Workshop
   Log["Business log"] --> GitExport["Git materialize"]
@@ -46,79 +50,87 @@ flowchart LR
 ```
 
 **Solid and shippable:**
-- Home → brief → workshop flow (`app/api/start-from-brief/route.ts`, `components/home/HomeHero.tsx`)
-- 2-column workshop + global chatbar (PR-5 absorption): streaming diagrams, node comments, discovery questions, conversation forks, message queue, rich composer (`app/(shell)/workshop/page.tsx`)
-- Automations pipeline (approval → studio → n8n deploy) — backlog 4.4
-- Business log + append-only events (`lib/business-log.ts`, `app/(shell)/log/page.tsx`)
-- Full theme/skin engine (built-ins, JSON install, VS Code import) — backlog 4.6–4.9
-- Electron desktop packaging (`electron/main.mjs`)
-- Functions page: org chart + merged automation analytics (`app/(shell)/functions/page.tsx`, `components/functions/*`)
+- **Phase 6 plant path:** Foundation Home Send → Foundation + **studio chat seeded with Overlord auto-reply** (`start-from-brief` + `pendingStudioReply` + chatbar `replyOnly`)
+- Foundation room, plant tools (`forge-drafts` / `forge-docs` / `forge-links` auto-apply), Map plant (layout modes, export, outside I/O), per-room Homes, soft unlock on forged
+- Workshop depth: streaming diagrams, node comments, discovery questions, forks, message queue, rich composer, process-chat in global chatbar
+- Automations pipeline (approval → studio → Hermes cron / n8n deploy) — 4.4 / 5.3 M0
+- Business log + append-only events; Documents knowledge layer; PROCESS.md
+- Full theme/skin engine (built-ins incl. Nous art, JSON install, VS Code import)
+- Electron desktop packaging + multi-tab shell (4.15)
+- Functions page: org chart + automation analytics
+- Forge Overlord first-run + lazy hire into chatbar
 
-**Scaffold / disconnected (do not treat as complete):**
-- Personnel — workshop mentions + prompts + automation agent bind shipped; `@system` mentions still open (4.10)
+**Optional / residual gaps (not “fake finished”):**
+- Automate **pause/resume + owner run health** → Phase **7.1**
+- Process-link **ports UI** (metadata exists; no UI)
+- `@system` mention polish residual if any; template marketplace; integrations page
 
 **Dev-gated tooling:**
-- God Mode — diagram canvas overview (4.13)
 - Cronalytics — Hermes cron observability (4.14)
+- Some God Mode–only extras remain under Developer settings; product Map uses plant canvas
 
-**Shipped governance (was scaffold):**
+**Shipped governance:**
 - Decisions / HITL — forge lifecycle, pending inbox, notifications, `decision.*` log events (4.12)
 
 ---
 
 ## Most glaring mistakes
 
-### 1. Feature islands — UI promises integration that doesn't exist (highest impact)
+### 1. Feature islands — largely fixed
 
-Features that look finished in navigation but don't participate in the core value chain.
-
-| Feature | Risk | Current state (post-remediation) |
-|---------|------|--------------------------------|
-| Personnel | Hire copy implied workshop assignment | **Fixed** — workshop mentions + prompts wired; automation bind still open |
+| Feature | Risk | Current state |
+|---------|------|---------------|
+| Personnel | Hire copy implied workshop assignment | **Fixed** — workshop mentions + prompts; automation bind done |
 | Swimlane standard | Lanes from roster | **Partial** — diagram prompt prefers roster lanes when standard is swimlane/auto |
-| Rich composer `@` mentions | Actor/department/system | **Partial** — actors + roles + diagram nodes; systems still open |
-| BusinessDecision | Governance record | **Done** — HITL API, `/decisions`, forge gates, log events (4.12) |
-| Git `personnel.json` | Round-trip import | **Done** — import restores personnel + docs + processes (4.11) |
+| Rich composer `@` mentions | Actor/department/system | **Mostly done** — actors + roles + systems + diagram nodes |
+| BusinessDecision | Governance record | **Done** (4.12) |
+| Git `personnel.json` | Round-trip import | **Done** (4.11) |
+| Home brief “lost” | Conversation only on process thread | **Fixed** (2026-07-19) — studio seed + chatbar open + Overlord replyOnly |
 
-### 2. Documentation drift — **largely fixed (AUDIT-1)**
+### 2. Documentation drift — **keep maintaining**
 
-`PRODUCT_BACKLOG.md` baseline was stale (old `/projects` paths, missing personnel/log/themes). Baseline and terminology section updated 2026-07-07. Keep backlog in sync when shipping features outside numbered items.
+Baseline updated 2026-07-07; Phase 6 + entry continuity updated **2026-07-19**. Keep backlog in sync when shipping features outside numbered items.
 
 ### 3. Terminology chaos — **UI pass done (AUDIT-9)**
 
 | Concept | Database | UI label |
 |---------|----------|----------|
-| Tenant | `Business` | "business" (legacy: "project" in some components) |
+| Tenant | `Business` | "business" (legacy: "project" in some file names) |
 | Workflow map | `Process` | "process" |
 | Department | `Process.department` | "function" |
+| Shell mode | `ForgeStage` | "room" (Phase 6) |
 
-### 4. Nav rail overload — **partially fixed (AUDIT-4, AUDIT-5)**
+### 4. Nav rail overload — **addressed via rooms (6.6)**
 
-Was 9 always-visible items including overlapping Functions / God Mode / Dashboard. Stage explorer thins the main rail; Log + Decisions stay in the holistic footer. God Mode and Cronalytics remain dev-gated.
+Room switcher + stage-scoped nav; soft locks for Monitor/Automate; Log + Decisions in footer. Cronalytics remains dev-gated.
 
 ### 5. Legacy discovery flow — **fixed (AUDIT-3)**
 
-Interview + `/api/extract` removed. Primary flow: Home → `start-from-brief` → Workshop + Questions panel.
+Interview + `/api/extract` removed. Primary flow: Foundation Home → `start-from-brief` → **Foundation + studio chat** (Workshop is deep-link / refine path).
 
 ### 6. Schema ahead of product — **fixed for decisions (AUDIT-7)**
 
-`BusinessDecision` + `DecisionRequest` + notifications have runtime API and UI (4.12). Unused `PERSONNEL_REMOVED` removed — fire uses `personnel.fired`. Personnel git import done. Inert Git mirror fields on `Business` unchanged.
+HITL runtime complete. Inert Git mirror fields on `Business` unchanged (low priority).
 
-### 7. Zero automated tests — **partial (AUDIT-8)**
+### 7. Automated tests — **partial (AUDIT-8)**
 
-Unit smoke suite: `npm test` → `tests/unit/*.test.ts` (process-md, templates, home-prompt, log types, export filename). No HTTP/SSE/Electron integration tests yet.
+Unit smoke suite expanded (`npm test` — plant, rooms, foundation, pending-studio-reply, etc.). No HTTP/SSE/Electron integration tests yet.
 
 ### 8. Repo hygiene — **mostly done (AUDIT-8)**
 
-SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent module removed; unit tests added.
+SQLite WAL sidecars gitignored; duplicate next.config removed; accent module removed.
 
 ### 9. Theme over-investment vs. BPM backlog — **partially addressed**
 
-10 skins / VS Code import remain. PROCESS.md (4.2), template library (4.1), and PNG/PDF export (3.8) foundation shipped 2026-07-09.
+Skins / VS Code import remain product surface. PROCESS.md, templates, plant export shipped. Optional preset prune remains.
 
 ### 10. Security footgun on test endpoints — **open**
 
-`/api/hermes/test` and `/api/n8n/test` accept arbitrary `baseUrl` (SSRF risk on shared hosts).
+`/api/hermes/test` and `/api/n8n/test` accept arbitrary `baseUrl` (SSRF risk on shared hosts). Low urgency for pure local desktop BYOK; fix before multi-tenant/hosted.
+
+### 11. Next.js 16 middleware deprecation — **fixed (AUDIT-11)**
+
+`middleware.ts` renamed to `proxy.ts` (`export async function proxy`). Prevents Hermes discover/test and auth/me from returning HTML 404s under Next 16.2.x.
 
 ---
 
@@ -129,25 +141,24 @@ SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent modu
 | ID | Item | Status |
 |----|------|--------|
 | 2.4 | Function status lifecycle badges | Deferred |
-| 3.4 | Fork-from-message UI; delete/rename conversation | **Done** |
-| 3.5 | `@department` / `@system` / actor mentionables | Partial |
-| 3.8 | PNG/PDF export; server export API | **Done** (client PNG/PDF; server route deferred) |
-| 4.1 | Workflow template library as repo files | **Done** |
-| 4.2 | Per-business `PROCESS.md` contract | **Done** (generated + Git + chat inject) |
+| 3.5 | Rich composer residual (`/export` args optional) | Mostly done |
 | 4.3 | Template marketplace / import | Pending |
 | 4.5 | Integrations page | Pending |
-| 4.12 | Business decisions / HITL | **Done** |
-| 4.15 | Desktop multi-tab shell | **Done** — see `DESKTOP_MULTI_TAB_SHELL.md` |
+| 4.16 | Windows installer code signing | Planned |
+| 5.5 | n8n Automate expansion | Pending (M1) |
+| 5.6 | Notion / external connectors | Pending (M2) |
+| 6.5 | Ports UI on plant edges | Optional residual |
+| 6.8 | Deeper unique room-home content | Optional residual |
+| 7.1 | Automate pause/resume + run health | **Pending** (next Phase 7) |
 
 ### Needed for product coherence (not all in backlog)
 
-1. Personnel ↔ process (assignees, swimlanes, chat/diagram context) — mostly done; `@system` still open
-2. ~~Personnel ↔ automation (`hermesAgentProfileId`)~~ **done** (4.10)
-3. ~~Human edit CRUD + show `roleDescription` on cards~~ **done**
-4. ~~BusinessDecision implementation or schema removal~~ **done** (4.12 HITL)
-5. ~~Git import round-trip (`personnel.json`, etc.)~~ **done** (4.11 push + restore import)
-6. `ARCHITECTURE.md` reference doc (`PROCESS.md` schema ref shipped)
-7. Minimal API smoke tests
+1. ~~Personnel ↔ process / automation~~ mostly done  
+2. ~~BusinessDecision implementation~~ done  
+3. ~~Git import round-trip~~ done  
+4. ~~Home → Foundation chat continuity~~ done (2026-07-19)  
+5. `ARCHITECTURE.md` reference doc still optional (`PROCESS.md` + plant ref shipped)  
+6. Minimal HTTP API smoke tests  
 
 ---
 
@@ -160,24 +171,25 @@ SQLite WAL sidecars gitignored; duplicate `next.config.mjs` removed; accent modu
 | `HumanPersonnelCard` | `components/personnel/HumanPersonnelCard.tsx` | **Removed** |
 | `PersonnelIcon` | `components/personnel/PersonnelIcon.tsx` | **Removed** |
 | Interview page + extract API | `app/interview/`, `app/api/extract/` | **Removed** |
-| Dashboard page | `app/(shell)/dashboard/page.tsx` | **Removed** (merged into Functions) |
-| Accent preset API | `lib/accent.ts` | **Removed** (migration inlined in theme storage) |
+| Dashboard page | `app/(shell)/dashboard/page.tsx` | **Removed** |
+| Accent preset API | `lib/accent.ts` | **Removed** |
 | Dead accent swatch CSS | `app/globals.css` | **Removed** |
-| Duplicate Next config | `next.config.mjs` vs `next.config.ts` | **Removed** `.mjs` |
-| `PERSONNEL_REMOVED` event | `lib/business-log-types.ts` | **Removed** (use `personnel.fired`) |
-| Unused theme exports | `lib/themes/*` | Pending |
+| Duplicate Next config | `next.config.mjs` | **Removed** |
+| `PERSONNEL_REMOVED` event | `lib/business-log-types.ts` | **Removed** |
+| Deprecated `middleware.ts` | root | **Migrated** to `proxy.ts` (AUDIT-11) |
+| Unused theme exports | `lib/themes/*` | Pending optional prune |
 
 ### Medium confidence
 
 | Item | Recommendation | Status |
 |------|----------------|--------|
-| God Mode in nav | Dev-gate | **Done** |
+| God Mode pure-dev nav | Dev-gate extras; Map owns plant | **Done** for product plant |
 | Dashboard | Merge into Functions | **Done** |
 | Duplicate skin picker | `SettingsMenu` → `<SkinPicker compact />` | Pending |
 | `ThemeDesignSystemPreview` | Dev-gate or remove | Pending |
-| Overlapping skin presets | Consolidate or add light palettes | Pending |
+| Overlapping skin presets | Consolidate | Pending |
 
-### Low confidence — keep, don't expand until wired
+### Low confidence — keep, don't expand until needed
 
 Cronalytics (dev-gated), VS Code theme import, optional theme export pruning.
 
@@ -187,24 +199,26 @@ Cronalytics (dev-gated), VS Code theme import, optional theme export pruning.
 
 ```mermaid
 flowchart TD
-  P35["3.5 @system mentions"] --> Core["Core polish"]
-  P53["5.3 content-from-cron"] --> Core
-  P8["API smoke tests AUDIT-8"] --> Core
-  Core --- C1["4.16 code signing"]
-  Core --- C2["4.5 integrations / 5.5 n8n"]
+  P71["7.1 Automate pause/resume + run health"] --> Ops["Operating depth"]
+  P8["API smoke tests AUDIT-8"] --> Core["Core polish"]
+  P65["6.5 ports UI optional"] --> Polish["Plant polish"]
+  Ops --- C1["4.16 code signing"]
+  Ops --- C2["4.5 / 5.5 / 5.6 integrations"]
+  Core --- SSRF["SSRF harden test endpoints"]
 ```
 
-1. **3.5** — `@system` / department mentionables
-2. **5.3** — content auto-create from cron; pause/resume run health
-3. **4.16** code signing when shipping desktop
-4. Optional: HTTP-level API smoke against a running server
+1. **7.1** — Automate pause/resume + owner-facing run health (clearest product gap after Phase 6)  
+2. **AUDIT-8 residual** — optional HTTP-level API smoke  
+3. **4.16** code signing when cutting public desktop releases  
+4. **4.5 / 5.5 / 5.6** integrations when expanding beyond Hermes-only loop  
+5. Optional: plant ports UI, unique room-home content, theme dead-code prune, SSRF on test routes  
+
+**Do not prioritize:** hard Home→Foundation dissolve (explicitly won’t do).
 
 ---
 
-## Bottom line
+## Session notes (2026-07-19)
 
-The **workshop core is strong**. 2026-07-07 fixed documentation truthfulness, personnel honesty, nav thinning, and overview consolidation. **2026-07-09** shipped PNG/PDF export, PROCESS.md foundation, template JSON library, terminology pass, and most dead-code cleanup. **HITL wave closed (4.12):** forge lifecycle, decision inbox, notifications, auto-propose, holistic nav, and `decision.*` log events. **Conversation forks complete (3.4).** Remaining work is **composer mentions (3.5)**, **Automate M0 polish (5.3)**, and **missing integration tests**.
-
----
-
-*Original audit produced in agent session 2026-07-07. Previously stored only in an ephemeral Grok plan file; committed here as the canonical reference. Updated 2026-07-09 for Tier A implementation; 2026-07-13 for HITL wave close (4.12) and conversation fork completion (3.4).*
+- Fixed Home Send dropping the conversation: seed **studio** thread + open chatbar + Overlord `replyOnly`  
+- Fixed connection screen `Unexpected token '<'`: migrate auth gate to Next 16 **`proxy.ts`**; harden Hermes client JSON parsing  
+- Phase 6 planned items treated complete; next major product slice is **Phase 7.1**
