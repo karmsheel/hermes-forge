@@ -1,11 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ExternalLink, Loader2, Newspaper, Rocket } from "lucide-react";
+import {
+  ExternalLink,
+  Loader2,
+  Newspaper,
+  Pause,
+  Play,
+  RefreshCw,
+  Rocket,
+} from "lucide-react";
 import { CredentialChecklist } from "./CredentialChecklist";
+import { RunHealthCard } from "./RunHealthCard";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { useN8nConnection } from "@/components/n8n/N8nConnectionProvider";
+import { hermesApiBody } from "@/lib/hermes-models";
 import type {
   AutomationAgentSummary,
   AutomationPlan,
@@ -14,6 +24,7 @@ import type {
   IntegrationRequirement,
 } from "@/lib/automation-types";
 import type { AutomationDeployStatus } from "@/lib/process-status";
+import type { AutomationRunHealthSummary } from "@/lib/types";
 import Link from "next/link";
 
 type DeployType = "hermes_cron" | "n8n_workflow";
@@ -67,11 +78,67 @@ export function DeployPanel({
   const [simulating, setSimulating] = useState(false);
   const [simTitle, setSimTitle] = useState("");
   const [simBody, setSimBody] = useState("");
+  const [health, setHealth] = useState<AutomationRunHealthSummary | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [controlling, setControlling] = useState(false);
 
   const alreadyDeployed = Boolean(automation.externalId);
+  const isHermesCron =
+    alreadyDeployed && (automation.type === "hermes_cron" || !automation.type);
+  const isPaused = automation.status === "paused";
   const canDeploy = Boolean(plan?.summary) && !alreadyDeployed && !deploying;
   const selectedAgentId = assignedAgent?.id ?? automation.hermesAgentProfileId ?? "";
   const needsAgentForCron = deployType === "hermes_cron" && !selectedAgentId;
+
+  const refreshHealth = useCallback(async () => {
+    if (!hermesConfig || !isHermesCron) return;
+    setHealthLoading(true);
+    try {
+      const res = await fetch(`/api/processes/${processId}/automation/health`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(hermesApiBody(hermesConfig)),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Health refresh failed");
+      if (data.health) setHealth(data.health);
+      if (data.studio) onDeployed(data.studio);
+    } catch (error) {
+      // Soft-fail: UI still shows pause/resume
+      console.error(error);
+    } finally {
+      setHealthLoading(false);
+    }
+  }, [hermesConfig, isHermesCron, processId, onDeployed]);
+
+  useEffect(() => {
+    if (!alreadyDeployed || !isHermesCron || !hermesConfig) return;
+    void refreshHealth();
+  }, [alreadyDeployed, isHermesCron, hermesConfig?.baseUrl, hermesConfig?.apiKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleControl(action: "pause" | "resume") {
+    if (!hermesConfig) {
+      toast.error("Connect Hermes to control cron jobs");
+      return;
+    }
+    setControlling(true);
+    try {
+      const res = await fetch(`/api/processes/${processId}/automation/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...hermesApiBody(hermesConfig), action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `${action} failed`);
+      if (data.studio) onDeployed(data.studio);
+      if (data.health) setHealth(data.health);
+      toast.success(action === "pause" ? "Cron paused" : "Cron resumed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `${action} failed`);
+    } finally {
+      setControlling(false);
+    }
+  }
 
   const allCredentialsMapped =
     integrations.length === 0 ||
@@ -161,10 +228,17 @@ export function DeployPanel({
   }
 
   if (alreadyDeployed) {
+    const statusTone =
+      automation.status === "paused"
+        ? "text-amber-400"
+        : automation.status === "failed"
+          ? "text-rose-400"
+          : "text-emerald-400";
+
     return (
       <div className="p-4 border-t border-zinc-800 space-y-3">
         <div className="text-[10px] uppercase tracking-widest text-zinc-500">Deployed</div>
-        <p className="text-xs text-emerald-400">
+        <p className={`text-xs ${statusTone}`}>
           {automation.type === "n8n_workflow" ? "n8n workflow" : "Hermes cron"} ·{" "}
           {automation.status}
         </p>
@@ -183,11 +257,55 @@ export function DeployPanel({
             Open in n8n <ExternalLink className="w-3.5 h-3.5" />
           </a>
         )}
-        {automation.type === "hermes_cron" && (
+        {isHermesCron && (
           <>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn-secondary text-xs flex-1 flex items-center justify-center gap-1.5"
+                disabled={controlling || !hermesConnected || isPaused}
+                onClick={() => void handleControl("pause")}
+                title={!hermesConnected ? "Connect Hermes first" : "Pause scheduled runs"}
+              >
+                {controlling && !isPaused ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Pause className="w-3.5 h-3.5" />
+                )}
+                Pause
+              </button>
+              <button
+                type="button"
+                className="btn-secondary text-xs flex-1 flex items-center justify-center gap-1.5"
+                disabled={controlling || !hermesConnected || !isPaused}
+                onClick={() => void handleControl("resume")}
+                title={!hermesConnected ? "Connect Hermes first" : "Resume scheduled runs"}
+              >
+                {controlling && isPaused ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Play className="w-3.5 h-3.5" />
+                )}
+                Resume
+              </button>
+              <button
+                type="button"
+                className="btn-secondary text-xs px-2 flex items-center justify-center"
+                disabled={healthLoading || !hermesConnected}
+                onClick={() => void refreshHealth()}
+                title="Refresh run health"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${healthLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+            {!hermesConnected && (
+              <p className="text-[10px] text-amber-400">
+                Connect Hermes to pause/resume and see run health.
+              </p>
+            )}
+            <RunHealthCard health={health} loading={healthLoading && !health} />
             <p className="text-[10px] text-zinc-500">
-              Job ID: {automation.externalId}. Manage with{" "}
-              <code className="text-zinc-400">hermes cron list</code> or the Hermes dashboard.
+              Job ID: {automation.externalId}
             </p>
             <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2.5 space-y-1.5">
               <p className="text-[10px] text-emerald-300/90 font-medium flex items-center gap-1.5">

@@ -197,6 +197,18 @@ export function NotificationBell() {
                           Open Content
                         </Link>
                       )}
+                      {n.type === "automation_run_failed" && (
+                        <Link
+                          href="/automations"
+                          className="text-[10px] text-accent hover:underline px-1 py-0.5"
+                          onClick={() => {
+                            setOpenPanel(false);
+                            void markRead([n.id]);
+                          }}
+                        >
+                          Open Automate
+                        </Link>
+                      )}
                     </div>
                     <div className="text-[10px] text-text-soft mt-1">
                       {new Date(n.createdAt).toLocaleString()}

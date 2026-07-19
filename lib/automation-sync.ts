@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { serializeAutomation } from '@/lib/automation-access';
 import { slugifyJobName } from '@/lib/automation-deploy';
+import { mapHermesJobStatus as mapRuntimeStatus } from '@/lib/automation-run-health';
 import { listHermesJobs, type HermesJobSummary } from '@/lib/hermes-jobs';
 import type { AutomationWithMessages } from '@/lib/automation-types';
 
@@ -70,11 +71,7 @@ export function matchHermesJobToProcess(
 }
 
 function mapHermesJobStatus(status?: string): string {
-  if (!status) return 'active';
-  const normalized = status.toLowerCase();
-  if (normalized === 'paused' || normalized === 'disabled') return 'paused';
-  if (normalized === 'failed' || normalized === 'error') return 'failed';
-  return 'active';
+  return mapRuntimeStatus(status);
 }
 
 export interface SyncCronLinkInput {

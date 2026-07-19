@@ -9,6 +9,8 @@ import {
   Building2,
   GitBranch,
   Loader2,
+  Pause,
+  Play,
   RefreshCw,
   Wrench,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { SoftRoomLock } from "@/components/shell/SoftRoomLock";
 import { useForgeStage } from "@/components/shell/StageProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import { RunHealthCard } from "@/components/automations/RunHealthCard";
 import { hermesApiBody } from "@/lib/hermes-models";
 import {
   AUTOMATION_DEPLOY_LABELS,
@@ -41,6 +44,26 @@ function deployBadgeClass(status: AutomationDeployStatus): string {
   }
 }
 
+function runtimeBadge(proc: ApprovedProcessSummary): {
+  label: string;
+  className: string;
+} | null {
+  if (proc.automationStatus !== "deployed_cron" && proc.automationStatus !== "deployed_n8n") {
+    return null;
+  }
+  const rt = proc.runHealth?.runtimeStatus ?? proc.runtimeStatus;
+  if (rt === "paused") {
+    return { label: "Paused", className: "pill-amber" };
+  }
+  if (rt === "failed" || proc.runHealth?.unhealthy) {
+    return { label: "Unhealthy", className: "bg-rose-500/10 text-rose-400 border border-rose-500/25" };
+  }
+  if (proc.automationStatus === "deployed_cron") {
+    return { label: "Active", className: "pill-green" };
+  }
+  return null;
+}
+
 function automationCtaLabel(status: AutomationDeployStatus): string {
   if (status === "deployed_cron" || status === "deployed_n8n") {
     return "View automation";
@@ -53,10 +76,11 @@ export default function AutomationsPage() {
   const { currentBusiness } = useShell();
   const { isRoomUnlocked } = useForgeStage();
   const operateReady = isRoomUnlocked("automate");
-  const { config: hermesConfig } = useHermesConnection();
+  const { config: hermesConfig, isConnected: hermesConnected } = useHermesConnection();
   const [processes, setProcesses] = useState<ApprovedProcessSummary[]>([]);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [controlId, setControlId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,6 +126,39 @@ export default function AutomationsPage() {
   useEffect(() => {
     load();
   }, [load, currentBusiness?.id]);
+
+  async function handleControl(processId: string, action: "pause" | "resume") {
+    if (!hermesConfig) {
+      toast.error("Connect Hermes to control cron jobs");
+      return;
+    }
+    setControlId(processId);
+    try {
+      const res = await fetch(`/api/processes/${processId}/automation/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...hermesApiBody(hermesConfig), action }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `${action} failed`);
+
+      setProcesses((prev) =>
+        prev.map((p) => {
+          if (p.id !== processId) return p;
+          return {
+            ...p,
+            runtimeStatus: data.health?.runtimeStatus ?? data.studio?.automation?.status ?? p.runtimeStatus,
+            runHealth: data.health ?? p.runHealth,
+          };
+        })
+      );
+      toast.success(action === "pause" ? "Cron paused" : "Cron resumed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `${action} failed`);
+    } finally {
+      setControlId(null);
+    }
+  }
 
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
@@ -193,6 +250,12 @@ export default function AutomationsPage() {
                     <span className={`pill text-[10px] ${deployBadgeClass(proc.automationStatus)}`}>
                       {AUTOMATION_DEPLOY_LABELS[proc.automationStatus]}
                     </span>
+                    {(() => {
+                      const rt = runtimeBadge(proc);
+                      return rt ? (
+                        <span className={`pill text-[10px] ${rt.className}`}>{rt.label}</span>
+                      ) : null;
+                    })()}
                     {proc.assignedAgent && (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-bg-muted text-text-muted">
                         Agent: {proc.assignedAgent.displayName}
@@ -204,6 +267,48 @@ export default function AutomationsPage() {
                       </span>
                     )}
                   </div>
+
+                  {proc.automationStatus === "deployed_cron" && (
+                    <div className="mb-3 space-y-2">
+                      <RunHealthCard health={proc.runHealth} compact />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="btn-secondary text-[11px] flex-1 flex items-center justify-center gap-1 py-1"
+                          disabled={
+                            !hermesConnected ||
+                            controlId === proc.id ||
+                            (proc.runHealth?.runtimeStatus ?? proc.runtimeStatus) === "paused"
+                          }
+                          onClick={() => void handleControl(proc.id, "pause")}
+                        >
+                          {controlId === proc.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Pause className="w-3 h-3" />
+                          )}
+                          Pause
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary text-[11px] flex-1 flex items-center justify-center gap-1 py-1"
+                          disabled={
+                            !hermesConnected ||
+                            controlId === proc.id ||
+                            (proc.runHealth?.runtimeStatus ?? proc.runtimeStatus) !== "paused"
+                          }
+                          onClick={() => void handleControl(proc.id, "resume")}
+                        >
+                          {controlId === proc.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Play className="w-3 h-3" />
+                          )}
+                          Resume
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-auto pt-3 border-t border-border">
                     <Link

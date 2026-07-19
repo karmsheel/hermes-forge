@@ -61,7 +61,7 @@ flowchart LR
 - Forge Overlord first-run + lazy hire into chatbar
 
 **Optional / residual gaps (not “fake finished”):**
-- Automate **pause/resume + owner run health** → Phase **7.1**
+- ~~Automate **pause/resume + owner run health**~~ → **7.1 Done**
 - Process-link **ports UI** (metadata exists; no UI)
 - `@system` mention polish residual if any; template marketplace; integrations page
 
@@ -149,7 +149,7 @@ Skins / VS Code import remain product surface. PROCESS.md, templates, plant expo
 | 5.6 | Notion / external connectors | Pending (M2) |
 | 6.5 | Ports UI on plant edges | Optional residual |
 | 6.8 | Deeper unique room-home content | Optional residual |
-| 7.1 | Automate pause/resume + run health | **Pending** (next Phase 7) |
+| 7.1 | Automate pause/resume + run health | **Done** (2026-07-19) |
 
 ### Needed for product coherence (not all in backlog)
 
@@ -199,19 +199,17 @@ Cronalytics (dev-gated), VS Code theme import, optional theme export pruning.
 
 ```mermaid
 flowchart TD
-  P71["7.1 Automate pause/resume + run health"] --> Ops["Operating depth"]
   P8["API smoke tests AUDIT-8"] --> Core["Core polish"]
   P65["6.5 ports UI optional"] --> Polish["Plant polish"]
-  Ops --- C1["4.16 code signing"]
-  Ops --- C2["4.5 / 5.5 / 5.6 integrations"]
+  Core --- C1["4.16 code signing"]
+  Core --- C2["4.5 / 5.5 / 5.6 integrations"]
   Core --- SSRF["SSRF harden test endpoints"]
 ```
 
-1. **7.1** — Automate pause/resume + owner-facing run health (clearest product gap after Phase 6)  
-2. **AUDIT-8 residual** — optional HTTP-level API smoke  
-3. **4.16** code signing when cutting public desktop releases  
-4. **4.5 / 5.5 / 5.6** integrations when expanding beyond Hermes-only loop  
-5. Optional: plant ports UI, unique room-home content, theme dead-code prune, SSRF on test routes  
+1. **AUDIT-8 residual** — optional HTTP-level API smoke  
+2. **4.16** code signing when cutting public desktop releases  
+3. **4.5 / 5.5 / 5.6** integrations when expanding beyond Hermes-only loop  
+4. Optional: plant ports UI, unique room-home content, theme dead-code prune, SSRF on test routes  
 
 **Do not prioritize:** hard Home→Foundation dissolve (explicitly won’t do).
 
@@ -221,4 +219,5 @@ flowchart TD
 
 - Fixed Home Send dropping the conversation: seed **studio** thread + open chatbar + Overlord `replyOnly`  
 - Fixed connection screen `Unexpected token '<'`: migrate auth gate to Next 16 **`proxy.ts`**; harden Hermes client JSON parsing  
-- Phase 6 planned items treated complete; next major product slice is **Phase 7.1**
+- Phase 6 planned items treated complete  
+- **7.1 shipped:** Hermes pause/resume + owner run health (list + studio) + `automation_run_failed` soft alerts (no Cronalytics required)

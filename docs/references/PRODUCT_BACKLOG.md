@@ -875,7 +875,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 planned scope is **shipped** (6.0–6.8 + plant tools + Home studio continuity). Prefer **7.1** (Automate run health) or deferred Phase 4/5 items (4.5, 4.16, 5.5/5.6). Defer hard Home dissolve (won’t do).
+**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** Automate pause/resume + run health is **shipped**. Prefer deferred Phase 4/5 items (4.5, 4.16, 5.5/5.6) or optional plant polish (ports UI, room-home depth). Defer hard Home dissolve (won’t do).
 
 ---
 
@@ -1157,7 +1157,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 5.0 | Stage explorer + stage-scoped nav | 5 | **Done** (foundation) |
 | 5.1 | Content inventory | 5 | **Done** (foundation) |
 | 5.2 | Monitor metrics + content health | 5 | **Done** (foundation) |
-| 5.3 | Automate agent + content-aware cron | 5 | **Done** (M0; pause/resume → 7.1) |
+| 5.3 | Automate agent + content-aware cron | 5 | **Done** (M0; pause/resume → 7.1 **Done**) |
 | 5.4 | Content Ops template | 5 | **Done** |
 | 5.5 | n8n Automate expansion | 5 | Pending (M1) |
 | 5.6 | Notion / external connectors | 5 | Pending (M2) |
@@ -1170,7 +1170,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.6 | Business plant PFD + room IA / soft unlock | 6 | **Done** (rooms + layout + export + outside I/O framing) |
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (draft seed + studio chatbar continuity) |
 | 6.8 | Per-room Homes (Map / Monitor / Automate) | 6 | **Done** |
-| 7.1 | Automate pause/resume + run health | 7 | Pending (from 5.3) |
+| 7.1 | Automate pause/resume + run health | 7 | **Done** |
 
 ---
 
@@ -1178,18 +1178,19 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 Polish and productize the Map → Monitor → Automate loop after the plant PFD foundation ships.
 
-### 7.1 Automate pause/resume + owner-facing run health — **Pending**
+### 7.1 Automate pause/resume + owner-facing run health — **DONE**
 
-**Moved from 5.3** (M0 content-aware cron is done; this is the remaining Automate UX gap).
+**Moved from 5.3** (M0 content-aware cron was done; this closed the remaining Automate UX gap).
 
 **Goal:** Operators can pause/resume Hermes cron automations and see run health without opening Cronalytics (dev tool).
 
-**Key deliverables:**
-- [ ] Pause / resume control on automation studio + list (Hermes job API)
-- [ ] Owner-facing last run status, failure count, and recent run summary (not Cronalytics-only)
-- [ ] Soft alerts / notifications when scheduled runs fail repeatedly
+**Shipped:**
+- [x] Pause / resume on automation studio (DeployPanel) + Automations list via Hermes `POST /api/jobs/{id}/pause|resume` (`lib/hermes-jobs.ts`, `/api/processes/[id]/automation/control`)
+- [x] Owner-facing run health: last run, outcome, failure counts, success rate, summary (`lib/automation-run-health.ts`, `/api/processes/[id]/automation/health`, `RunHealthCard`)
+- [x] Health refresh on Automations list sync (`refreshBusinessAutomationHealth`); optional Cronalytics fact-DB enrichment without requiring Cronalytics UI
+- [x] Soft alerts: in-app `automation_run_failed` notification on ≥3 consecutive failures (24h dedupe); NotificationBell → Automate
 
-**Depends on:** 5.3 M0, 4.14 Cronalytics (can share data shape)
+**Depends on:** 5.3 M0, 4.14 Cronalytics (optional enrichment)
 
 **Do not:** Require Cronalytics nav for day-to-day operators; keep Cronalytics as power/dev tooling.
 
@@ -1261,11 +1262,12 @@ When picking up a backlog item:
 - **6.7 entry:** Home/template → Foundation drafts + **studio chatbar seeded with Overlord reply**; Workshop deep-link retained; **hard Home dissolve won’t do**
 - **6.2 / 6.5 plant tools:** studio chat auto-applies `forge-drafts`, `forge-docs`, `forge-links` (`lib/plant-apply.ts` + SSE `plant_apply`)
 
-**Phase 7 (next product depth):**
-- **7.1** Automate pause/resume + owner-facing run health (from 5.3)
+**Phase 7:**
+- **7.1** Automate pause/resume + owner-facing run health — **Done**
 
-**Still open / deferred (not Phase 6 blockers):**
+**Still open / deferred:**
 - 2.4 function status badges (deferred)
 - 4.3 template marketplace; 4.5 integrations page; 4.16 code signing
 - 5.5 n8n productization (M1); 5.6 external connectors (M2)
 - Deeper unique room-home content; ports UI on plant edges
+- Optional HTTP API smoke tests (AUDIT-8 residual)

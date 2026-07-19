@@ -47,24 +47,28 @@ export async function GET(request: NextRequest) {
       },
     });
 
-        const items = processes.map((process: typeof processes[0]) => {
-          const { automation, ...proc } = process;
-          return {
-            ...proc,
-            automationStatus: automationStatusToDeployStatus(
-              automation as { status: string; type: string | null; externalId?: string | null } | null
-            ),
-            assignedAgent: automation?.hermesAgentProfile
-              ? {
-                  id: automation.hermesAgentProfile.id,
-                  displayName: automation.hermesAgentProfile.displayName,
-                  profileKey: automation.hermesAgentProfile.profileKey,
-                }
-              : null,
-          };
-        });
+    const items = processes.map((process: (typeof processes)[0]) => {
+      const { automation, ...proc } = process;
+      return {
+        ...proc,
+        automationStatus: automationStatusToDeployStatus(
+          automation as { status: string; type: string | null; externalId?: string | null } | null
+        ),
+        runtimeStatus: automation?.status ?? null,
+        externalId: automation?.externalId ?? null,
+        automationType: automation?.type ?? null,
+        runHealth: null as null,
+        assignedAgent: automation?.hermesAgentProfile
+          ? {
+              id: automation.hermesAgentProfile.id,
+              displayName: automation.hermesAgentProfile.displayName,
+              profileKey: automation.hermesAgentProfile.profileKey,
+            }
+          : null,
+      };
+    });
 
-        return NextResponse.json({
+    return NextResponse.json({
       processes: items,
       business: { id: business.id, name: business.name },
     });

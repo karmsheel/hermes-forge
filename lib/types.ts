@@ -139,8 +139,34 @@ export interface ProcessSummary {
   _count: { messages: number };
 }
 
+/** Owner-facing cron run health snapshot (7.1). Mirrors AutomationRunHealth. */
+export interface AutomationRunHealthSummary {
+  jobId: string;
+  runtimeStatus: 'active' | 'paused' | 'failed';
+  hermesStatus: string | null;
+  schedule: string | null;
+  lastRunAt: string | null;
+  lastOutcome: 'success' | 'failed' | 'unknown';
+  lastError: string | null;
+  nextRunAt: string | null;
+  recentFailures: number;
+  recentSuccesses: number;
+  recentRuns: number;
+  consecutiveFailures: number;
+  successRate: number | null;
+  summary: string;
+  unhealthy: boolean;
+  source: 'hermes' | 'hermes+cronalytics' | 'status_only';
+}
+
 export interface ApprovedProcessSummary extends ProcessSummary {
   automationStatus: AutomationDeployStatus;
+  /** Raw Automation.status (designing | active | paused | failed | …). */
+  runtimeStatus?: string | null;
+  externalId?: string | null;
+  automationType?: string | null;
+  /** Present after Hermes sync refresh. */
+  runHealth?: AutomationRunHealthSummary | null;
   assignedAgent?: {
     id: string;
     displayName: string;
