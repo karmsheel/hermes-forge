@@ -49,27 +49,33 @@ const SelectionSchema = z
   })
   .optional();
 
-const ChatSchema = z.object({
-  content: z.string().trim().min(1).max(20_000),
-  baseUrl: z.string().min(1),
-  apiKey: z.string().optional(),
-  model: z.string().optional(),
-  route: z.string().optional(),
-  /** chat-only | follow-page | pinned-entity */
-  contextMode: z.string().optional(),
-  firstVisit: z.boolean().optional(),
-  /** Page-registered live selection / extra snapshot lines */
-  registration: z
-    .object({
-      selection: SelectionSchema,
-      snapshotLines: z.array(z.string().max(2000)).max(20).optional(),
-      pinned: PinnedSchema,
-    })
-    .optional()
-    .nullable(),
-  /** Client may send a prebuilt payload; server still re-validates/rebuilds safely */
-  context: z.record(z.string(), z.unknown()).optional(),
-});
+const ChatSchema = z
+  .object({
+    content: z.string().trim().min(1).max(20_000).optional(),
+    /** Home/Foundation seed: reply to last user message without re-inserting it */
+    replyOnly: z.boolean().optional(),
+    baseUrl: z.string().min(1),
+    apiKey: z.string().optional(),
+    model: z.string().optional(),
+    route: z.string().optional(),
+    /** chat-only | follow-page | pinned-entity */
+    contextMode: z.string().optional(),
+    firstVisit: z.boolean().optional(),
+    /** Page-registered live selection / extra snapshot lines */
+    registration: z
+      .object({
+        selection: SelectionSchema,
+        snapshotLines: z.array(z.string().max(2000)).max(20).optional(),
+        pinned: PinnedSchema,
+      })
+      .optional()
+      .nullable(),
+    /** Client may send a prebuilt payload; server still re-validates/rebuilds safely */
+    context: z.record(z.string(), z.unknown()).optional(),
+  })
+  .refine((data) => data.replyOnly === true || !!data.content?.trim(), {
+    message: "content is required unless replyOnly is true",
+  });
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -116,8 +122,43 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const route = body.route || "/home";
     const page = pageBlurbForPath(route);
-    const content = body.content.trim();
+    const replyOnly = body.replyOnly === true;
     const mode = normalizeChatbarContextMode(body.contextMode);
+
+    let content: string;
+    let userMessage: {
+      id: string;
+      content: string;
+      createdAt: Date;
+      conversationId: string | null;
+    };
+
+    if (replyOnly) {
+      const last = conversation.messages[conversation.messages.length - 1];
+      if (!last || last.role !== "user") {
+        return Response.json(
+          { error: "No user message to reply to" },
+          { status: 400 },
+        );
+      }
+      content = last.content;
+      userMessage = {
+        id: last.id,
+        content: last.content,
+        createdAt: last.createdAt,
+        conversationId: last.conversationId,
+      };
+    } else {
+      content = body.content!.trim();
+      userMessage = await prisma.chatMessage.create({
+        data: {
+          conversationId: conversation.id,
+          processId: null,
+          role: "user",
+          content,
+        },
+      });
+    }
 
     const agent = conversation.hermesAgentProfile?.isHired
       ? conversation.hermesAgentProfile
@@ -178,16 +219,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       protocol: FORGE_CONTEXT_PROTOCOL,
     };
 
-    const userMessage = await prisma.chatMessage.create({
-      data: {
-        conversationId: conversation.id,
-        processId: null,
-        role: "user",
-        content,
-      },
-    });
-
-    const prior = conversation.messages.map((m) => ({
+    // replyOnly: last message is already the user turn; exclude it from prior history
+    const priorSource = replyOnly
+      ? conversation.messages.slice(0, -1)
+      : conversation.messages;
+    const prior = priorSource.map((m) => ({
       role: m.role,
       content: m.content,
     }));

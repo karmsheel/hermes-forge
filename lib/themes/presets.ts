@@ -221,59 +221,6 @@ export const cyberpunkSkin: ForgeSkin = {
   },
 };
 
-/** Gunmetal + electric cyan — industrial AI forge (Claude / Cursor / Vercel vibes). */
-const CYBER = {
-  background: "#090A0F",
-  card: "#151821",
-  primary: "#36C2F6",
-  secondary: "#6EE7FF",
-  success: "#3DD68C",
-  text: "#F2F4F8",
-} as const;
-
-function cyberLine(pct: number): string {
-  return mix(CYBER.primary, CYBER.background, (100 - pct) / 100);
-}
-
-function cyberSurface(pct: number): string {
-  return mix(CYBER.secondary, CYBER.card, (100 - pct) / 100);
-}
-
-export const cyberForgeSkin: ForgeSkin = {
-  name: "cyber-forge",
-  label: "Cyber Forge",
-  description: "Gunmetal and electric cyan — industrial AI forge",
-  colors: {
-    background: CYBER.background,
-    foreground: CYBER.text,
-    card: CYBER.card,
-    cardForeground: CYBER.text,
-    muted: mix(CYBER.background, CYBER.card, 0.38),
-    mutedForeground: mix(CYBER.text, CYBER.background, 0.52),
-    popover: "#1A1F2B",
-    popoverForeground: CYBER.text,
-    primary: CYBER.primary,
-    primaryForeground: CYBER.background,
-    secondary: cyberSurface(18),
-    secondaryForeground: CYBER.secondary,
-    accent: cyberSurface(32),
-    accentForeground: CYBER.secondary,
-    border: cyberLine(16),
-    input: cyberLine(22),
-    ring: CYBER.primary,
-    midground: CYBER.secondary,
-    composerRing: CYBER.primary,
-    destructive: "#F05252",
-    destructiveForeground: CYBER.text,
-    sidebarBackground: "#06070B",
-    sidebarBorder: cyberLine(10),
-    userBubble: CYBER.card,
-    userBubbleBorder: cyberLine(28),
-    success: CYBER.success,
-    info: "#4DA8FF",
-  },
-};
-
 /** Iron + ember — cooling forge: steel, ash, and low embers. */
 const IRON_EMBER_LIGHT = {
   background: "#F0EEEA",
@@ -392,7 +339,6 @@ export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
   ember: emberSkin,
   mono: monoSkin,
   cyberpunk: cyberpunkSkin,
-  "cyber-forge": cyberForgeSkin,
 };
 
 export const BUILTIN_SKIN_LIST = Object.values(BUILTIN_SKINS);

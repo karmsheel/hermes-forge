@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import steampunkGirl from "@/assets/girl_steampunk.svg";
+import nousForgeArt from "@/assets/girl_nous.png";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, GitBranch, Hammer, Loader2, Upload } from "lucide-react";
@@ -10,14 +12,17 @@ import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { NavThemeModeToggle } from "@/components/shell/NavThemeModeToggle";
 import { useShell } from "@/components/shell/ShellContext";
 import { useShellNavigate } from "@/components/shell/useShellNavigate";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import type { BusinessExportPayload, BusinessSummary } from "@/lib/types";
 
-const forgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
+const defaultForgeArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
 export default function BusinessManagerPage() {
   const router = useRouter();
   const { switchBusiness, openNewBusiness, currentBusiness, refreshCurrentBusiness } = useShell();
   const { openBusinessHome, enabled: tabsEnabled } = useShellNavigate();
+  const { skinName } = useTheme();
+  const useNousArt = skinName === "nous";
   const [businesses, setBusinesses] = useState<BusinessSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
@@ -226,14 +231,24 @@ export default function BusinessManagerPage() {
                 : undefined
             }
           >
-            <div
-              className="business-manager__forge-art"
-              style={
-                {
-                  "--business-manager-forge-art-url": `url("${forgeArtUrl}")`,
-                } as CSSProperties
-              }
-            />
+            {useNousArt ? (
+              <Image
+                className="business-manager__forge-art business-manager__forge-art--raster"
+                src={nousForgeArt}
+                alt=""
+                width={280}
+                height={280}
+              />
+            ) : (
+              <div
+                className="business-manager__forge-art"
+                style={
+                  {
+                    "--business-manager-forge-art-url": `url("${defaultForgeArtUrl}")`,
+                  } as CSSProperties
+                }
+              />
+            )}
           </div>
 
           <div ref={forgeActionsRef} className="business-manager__forge-actions">

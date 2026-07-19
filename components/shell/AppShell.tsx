@@ -28,7 +28,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const isAutomation = pathname.startsWith("/automations");
   const isGodMode = pathname.startsWith("/god-mode");
   const isFoundation = pathname.startsWith("/foundation");
-  const isHome = pathname === "/home";
+  const isHome =
+    pathname === "/home" ||
+    pathname === "/map/home" ||
+    pathname === "/monitor/home" ||
+    pathname === "/automate/home";
   const chatOpen = isOpen && !hideChatbar;
   const layoutClass = [
     "app-shell-layout",

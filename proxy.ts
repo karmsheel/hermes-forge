@@ -10,7 +10,7 @@ const HERMES_API_PREFIX = '/api/hermes';
 // Token-authenticated agent → Content handoff (Automation.ingestToken).
 const CONTENT_INGEST_PATH = '/api/content/ingest';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (

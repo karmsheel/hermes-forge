@@ -19,10 +19,16 @@ export function HermesStartupScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("from") || "/business-manager";
-  const { isConnected, isBusy, autoConnect, setupApiServer, restartGateway, status } =
-    useHermesConnection();
+  const {
+    isConnected,
+    isBusy,
+    autoConnect,
+    testConnection,
+    setupApiServer,
+    restartGateway,
+    status,
+  } = useHermesConnection();
 
-  const hadSavedConfig = useRef(false);
   const splashDone = useRef(false);
   const autoConnectStarted = useRef(false);
 
@@ -37,10 +43,10 @@ export function HermesStartupScreen() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    hadSavedConfig.current = Boolean(loadHermesConfig());
     setMounted(true);
   }, []);
 
+  // Splash → always attempt auto-connect (saved config and/or local discover)
   useEffect(() => {
     if (!mounted || splashDone.current) return;
 
@@ -49,48 +55,22 @@ export function HermesStartupScreen() {
       setSplashLeaving(true);
       window.setTimeout(() => {
         setSplashLeaving(false);
-        setPhase(hadSavedConfig.current ? "connecting" : "idle");
+        setPhase("connecting");
       }, 520);
     }, SPLASH_MS);
 
     return () => window.clearTimeout(timer);
   }, [mounted]);
 
-  useEffect(() => {
-    if (phase === "splash" || phase === "leaving") return;
-
-    if (hadSavedConfig.current && !autoConnectStarted.current) {
-      autoConnectStarted.current = true;
-      setPhase("connecting");
-    }
-  }, [phase]);
-
-  useEffect(() => {
-    if (isBusy && (phase === "idle" || phase === "connecting")) {
-      setPhase("connecting");
-    }
-  }, [isBusy, phase]);
-
-  useEffect(() => {
-    if (!splashDone.current || phase === "splash" || phase === "leaving") return;
-
-    if (isConnected) {
-      setErrorModalOpen(false);
-      setPhase("leaving");
-      return;
-    }
-
-    if (phase !== "connecting") return;
-
-    if (!isBusy && !isConnected) {
-      setPhase("idle");
-    }
-  }, [isBusy, isConnected, phase]);
-
   const refreshDiscovery = useCallback(async () => {
     try {
       const res = await fetch("/api/hermes/discover", { method: "POST" });
-      const data = await res.json();
+      const text = await res.text();
+      if (!text.trim() || text.trim().startsWith("<")) {
+        setHasApiKey(null);
+        return null;
+      }
+      const data = JSON.parse(text) as { hasApiKey?: boolean };
       setHasApiKey(Boolean(data.hasApiKey));
       return data;
     } catch {
@@ -98,6 +78,59 @@ export function HermesStartupScreen() {
       return null;
     }
   }, []);
+
+  /**
+   * After splash: try saved credentials first, then full local discover.
+   * Previously the screen only set phase "connecting" and never called autoConnect().
+   */
+  useEffect(() => {
+    if (phase !== "connecting") return;
+    if (autoConnectStarted.current) return;
+    if (isConnected) return;
+
+    autoConnectStarted.current = true;
+
+    void (async () => {
+      let ok = false;
+      try {
+        const saved = loadHermesConfig();
+        if (saved?.baseUrl && saved.apiKey) {
+          ok = await testConnection(saved);
+        }
+        if (!ok) {
+          ok = await autoConnect();
+        }
+      } finally {
+        // leave phase transitions to the isConnected / failure handlers below
+      }
+
+      if (!ok) {
+        await refreshDiscovery();
+        setErrorModalOpen(true);
+        setPhase("idle");
+      }
+    })();
+  }, [phase, isConnected, testConnection, autoConnect, refreshDiscovery]);
+
+  // Connected → leave startup
+  useEffect(() => {
+    if (!splashDone.current || phase === "splash") return;
+
+    if (isConnected) {
+      setErrorModalOpen(false);
+      setPhase("leaving");
+    }
+  }, [isConnected, phase]);
+
+  // Provider may still be testing a saved config while splash is up —
+  // keep showing the connecting overlay once splash is done.
+  useEffect(() => {
+    if (!splashDone.current) return;
+    if (phase === "leaving" || phase === "splash") return;
+    if (isBusy && phase === "idle") {
+      setPhase("connecting");
+    }
+  }, [isBusy, phase]);
 
   const handleExitComplete = useCallback(() => {
     void (async () => {
@@ -124,10 +157,18 @@ export function HermesStartupScreen() {
     setActionMessage(null);
     setConnecting(true);
     setPhase("connecting");
+    // Allow manual retry even if the automatic attempt already ran
+    autoConnectStarted.current = true;
 
     let connected = false;
     try {
-      connected = await autoConnect();
+      const saved = loadHermesConfig();
+      if (saved?.baseUrl && saved.apiKey) {
+        connected = await testConnection(saved);
+      }
+      if (!connected) {
+        connected = await autoConnect();
+      }
     } finally {
       setConnecting(false);
     }
@@ -135,6 +176,7 @@ export function HermesStartupScreen() {
     if (!connected) {
       await refreshDiscovery();
       setErrorModalOpen(true);
+      setPhase("idle");
     }
   }
 

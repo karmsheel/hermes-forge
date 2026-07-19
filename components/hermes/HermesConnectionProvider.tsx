@@ -61,6 +61,33 @@ const HermesConnectionContext = createContext<HermesConnectionContextValue | nul
 
 const IDLE_STATUS: HermesConnectionStatus = { state: "idle" };
 
+/**
+ * Parse JSON from an API response. If the server returned HTML (e.g. Next 404
+ * page), throw a clear error instead of "Unexpected token '<'".
+ */
+async function readJsonResponse<T = Record<string, unknown>>(
+  res: Response,
+  label: string,
+): Promise<T> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error(`${label} returned an empty response (${res.status})`);
+  }
+  if (trimmed.startsWith("<!") || trimmed.startsWith("<html")) {
+    throw new Error(
+      `${label} returned a page instead of JSON (${res.status}). The Forge API may still be starting — retry in a moment.`,
+    );
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    throw new Error(
+      `${label} returned invalid JSON (${res.status}): ${trimmed.slice(0, 120)}`,
+    );
+  }
+}
+
 function withResolvedModel(
   next: HermesConfig,
   fallback?: string
@@ -164,7 +191,10 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
           }),
         });
 
-        const data = await res.json();
+        const data = await readJsonResponse<{
+          error?: string;
+          probe?: Parameters<typeof connectionStatusFromProbe>[0];
+        }>(res, "Hermes connection test");
         if (!res.ok) {
           setStatus({
             state: "error",
@@ -177,6 +207,15 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
         const normalized = withResolvedModel(target, data.probe?.model);
         if (candidate) {
           setConfig(normalized);
+        }
+
+        if (!data.probe) {
+          setStatus({
+            state: "error",
+            error: "Connection test returned no probe result",
+            kind: "misconfigured",
+          });
+          return false;
         }
 
         return applyProbe(data.probe, candidate ? "manual" : "saved", normalized);
@@ -211,10 +250,12 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
 
     try {
       const res = await fetch("/api/hermes/setup", { method: "POST" });
-      const data = (await res.json()) as HermesSetupResponse & {
-        suggested?: { baseUrl: string; apiKey?: string } | null;
-        probe?: Parameters<typeof connectionStatusFromProbe>[0];
-      };
+      const data = await readJsonResponse<
+        HermesSetupResponse & {
+          suggested?: { baseUrl: string; apiKey?: string } | null;
+          probe?: Parameters<typeof connectionStatusFromProbe>[0];
+        }
+      >(res, "Hermes API setup");
 
       if (!res.ok || !data.ok) {
         setStatus({
@@ -265,10 +306,12 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
 
     try {
       const res = await fetch("/api/hermes/gateway/restart", { method: "POST" });
-      const data = (await res.json()) as HermesGatewayRestartResponse & {
-        suggested?: { baseUrl: string; apiKey?: string } | null;
-        probe?: Parameters<typeof connectionStatusFromProbe>[0];
-      };
+      const data = await readJsonResponse<
+        HermesGatewayRestartResponse & {
+          suggested?: { baseUrl: string; apiKey?: string } | null;
+          probe?: Parameters<typeof connectionStatusFromProbe>[0];
+        }
+      >(res, "Hermes gateway restart");
 
       if (!res.ok || !data.ok) {
         setStatus({
@@ -321,7 +364,11 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
 
     try {
       const res = await fetch("/api/hermes/discover", { method: "POST" });
-      const data = await res.json();
+      const data = await readJsonResponse<{
+        error?: string;
+        suggested?: { baseUrl?: string; apiKey?: string } | null;
+        probe?: Parameters<typeof connectionStatusFromProbe>[0];
+      }>(res, "Hermes discovery");
 
       if (!res.ok) {
         setStatus({
@@ -333,7 +380,16 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
       }
 
       if (!data.suggested?.baseUrl || !data.suggested?.apiKey) {
-        applyProbe(data.probe, "auto");
+        if (data.probe) applyProbe(data.probe, "auto");
+        else {
+          setStatus({
+            state: "error",
+            error:
+              data.error ||
+              "Could not discover Hermes. Is the gateway running with API server enabled?",
+            kind: "not_running",
+          });
+        }
         return false;
       }
 
@@ -347,7 +403,7 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
 
       saveHermesConfig(discovered);
       setConfig(discovered);
-      applyProbe(data.probe, "auto", discovered);
+      if (data.probe) applyProbe(data.probe, "auto", discovered);
       toast.success("Connected to Hermes automatically");
       return true;
     } catch (error) {

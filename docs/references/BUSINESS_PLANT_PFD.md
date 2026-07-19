@@ -131,7 +131,7 @@ Monitor / Automate
 | Process deep-link / continue mapping | **Workshop** (Map tool) |
 | Room switcher click | That room’s **Home** |
 
-**Home dissolves into Foundation for new businesses.** Each room has a Home at the top of the left rail:
+**Foundation Home stays.** `/home` is Foundation’s Home (composer + templates), not a hard redirect into `/foundation`. Each room has a Home at the top of the left rail:
 
 | Room | Home path |
 |------|-----------|
@@ -141,6 +141,8 @@ Monitor / Automate
 | Automate | `/automate/home` |
 
 Shared hero composer + templates; room-scoped badge/title/subtitle. Deeper unique content per home can evolve later.
+
+**Won’t do:** hard dissolve of Home (auto-redirect thin businesses off `/home` onto `/foundation` only).
 
 **Do not:** break desktop multi-tab session restore ([`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md)) or business isolation.
 
@@ -234,7 +236,7 @@ Directed edges between processes in one business. See backlog **6.5**.
 Agreed sequence for 6.6 + 6.7 after this reference:
 
 1. **IA + unlock** — room switcher (from stage explorer), soft-lock states, forged gate — **Done**  
-2. **Entry (6.7)** — new / thin business → Foundation; template starters seed Foundation drafts — **Done** (hard Home dissolve deferred)  
+2. **Entry (6.7)** — new / thin business → Foundation; template starters seed Foundation drafts — **Done** (hard Home dissolve **won’t do**)  
 3. **Map plant (6.6)** — promote God Mode canvas into Map; Workshop as drill-in tool — **Done**  
 4. **Copy** — Overlord identity in Foundation; unlock tooltips; soft-lock empty states — **Done** (baseline)  
 5. **Per-room Homes (6.8)** — Map/Monitor/Automate Home routes; room switch → Home; Home top of rail — **Done**  
@@ -286,7 +288,8 @@ Monitor + Automate soft-unlock
 | 2026-07-16 | Rooms (not stages as peer modes); unlock on **forged**; soft locks |
 | 2026-07-16 | Room name **Foundation**; Foundation agent **Underlord** *(superseded 2026-07-18 → Overlord)* |
 | 2026-07-16 | Workshop = tool inside Map |
-| 2026-07-16 | Home dissolves into Foundation for new business; room-specific homepages later |
+| 2026-07-16 | Home dissolves into Foundation for new business; room-specific homepages later *(superseded: per-room Homes 6.8; hard dissolve **won’t do** 2026-07-18)* |
+| 2026-07-18 | Hard Home→Foundation dissolve cancelled — keep `/home` as Foundation Home |
 | 2026-07-18 | Per-room Homes (6.8): `/home`, `/map/home`, `/monitor/home`, `/automate/home`; room switch → Home |
 | 2026-07-16 | Promote God Mode into Map as primary plant surface |
 | 2026-07-16 | Prioritize 6.6 + 6.7 wow; defer integrations and code signing |

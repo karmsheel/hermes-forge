@@ -851,7 +851,7 @@ Optional systems of record after Hermes-only loop is proven.
 A business is a **designed plant**. The whole plant is one process system with many unit operations (mapped processes), multiple feeds (inputs), and finished products / outcomes (outputs). Hermes Forge’s long-horizon deliverable is a **process flow diagram (PFD) of the business** — not only deep maps of isolated unit ops, but the **overall plant topology** generated as the user talks.
 
 **Product shift:**  
-Phase 2 jumps Home composer → Workshop for a single process. That is right for *depth*, wrong as the *default first room* for a new business. New businesses land in **Foundation** (agent persona **Overlord**); Map opens as the working plant; Workshop is a **tool inside Map**; Monitor / Automate **soft-unlock** after ≥1 **forged** process. Home dissolves into Foundation for new businesses.
+Phase 2 jumps Home composer → Workshop for a single process. That is right for *depth*, wrong as the *default first room* for a new business. New businesses land in **Foundation** (agent persona **Overlord**); Map opens as the working plant; Workshop is a **tool inside Map**; Monitor / Automate **soft-unlock** after ≥1 **forged** process. **Foundation Home** (`/home`) remains the acquisition surface (composer + templates); hard dissolve of Home into Foundation-only is **out of scope** (won’t do).
 
 **Relationship to existing surfaces:**
 
@@ -945,7 +945,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 **Partial / deferred:**
 - [x] Overlord persona in Foundation chat context (shipped under 6.6)
 - [x] Hermes plant tools mid-chat: auto-apply `forge-drafts` + `forge-docs` fences from studio chat (server-side apply + SSE `plant_apply`; UI refresh) — see `lib/plant-apply.ts`
-- [ ] Thin-business auto-redirect when switching businesses (6.7); Home dissolves into Foundation for new businesses
+- [x] ~~Thin-business auto-redirect / hard Home→Foundation dissolve~~ — **won’t do** (Home stays as Foundation Home + composer; see 6.7 / 6.8)
 - [x] Foundation as first-class room in room switcher (not only a Map-stage nav item) — shipped under 6.6
 
 **Depends on:** 4.17 chatbar, 4.18 documents, 6.1 shapes
@@ -1054,7 +1054,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 
 ### 6.7 Entry-flow migration (Home → Foundation) — **DONE** (priority)
 
-**Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. **Home dissolves into Foundation** for new businesses.
+**Goal:** Align acquisition UX with Phase 6 rooms without stranding existing workshop-first habits. Home remains **Foundation Home** (composer + templates); send/templates seed Foundation drafts and open the plant path.
 
 **Reference:** [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) § 6.
 
@@ -1071,7 +1071,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 - [x] Docs / agent references point here (`BUSINESS_PLANT_PFD.md`)
 - [x] App-wide Forge Overlord setup before Business Manager (spawn or existing profile); remove forced per-business first hire; Underlord renamed Overlord
 
-**Deferred (explicit):** Hard redirect `/home` → Foundation for thin businesses only (Foundation Home still hosts composer/templates). Deeper unique content per room home (beyond shared hero + room copy) can evolve later.
+**Won’t do:** Hard redirect `/home` → `/foundation` (or any auto-dissolve of Home for thin businesses). Keep `/home` as Foundation Home with composer/templates; plant canvas lives at `/foundation`. Deeper unique content per room home can still evolve under 6.8.
 
 **Follow-on shipped:** per-room Homes (Map / Monitor / Automate) — see **6.8**.
 
@@ -1247,7 +1247,7 @@ When picking up a backlog item:
 
 **Phase 6:**
 - Canonical IA: [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — rooms, soft unlock on **forged**, Overlord, Workshop-in-Map, God Mode→Map
-- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 done** (Home/template → Foundation drafts + Workshop deep-link; hard Home dissolve deferred)
+- **6.6 done** (rooms, Map plant, layout modes, export, outside I/O framing). **6.7 done** (Home/template → Foundation drafts + Workshop deep-link; **hard Home dissolve won’t do**)
 - **6.8 done** (per-room Homes at `/home`, `/map/home`, `/monitor/home`, `/automate/home`; room switch → Home; Home top of rail)
 - **6.2 / 6.5 plant tools:** studio chat auto-applies `forge-drafts`, `forge-docs`, `forge-links` (`lib/plant-apply.ts` + SSE `plant_apply`)
 

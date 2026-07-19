@@ -19,7 +19,9 @@ import { BUSINESS_EVENT_TYPES } from "@/lib/business-log-types";
 import { ensureBusinessOwner } from "@/lib/personnel/ensure-owner";
 import { ensureBusinessDocuments } from "@/lib/documents";
 import { deriveIoShape } from "@/lib/io-shape";
+import { autoStudioTitleFromText } from "@/lib/chatbar/studio-prompt";
 import { seedFoundationDrafts } from "@/lib/foundation-seed";
+import { ensureOverlordHired } from "@/lib/overlord/lazy-hire";
 import {
   getWorkflowTemplate,
   isWorkflowTemplateId,
@@ -51,7 +53,8 @@ type BriefBusiness = {
 
 /**
  * Home / entry: create business if needed, seed a **Foundation draft**,
- * attach the user brief for optional Workshop deep-link (pending Hermes reply).
+ * seed a **studio** conversation with the user brief (Foundation chatbar + Overlord reply),
+ * and attach the brief on the process thread for optional Workshop deep-link.
  * Phase 6.7 — templates and freeform both land as drafts, not workshop-first mapping.
  */
 export async function POST(request: NextRequest) {
@@ -228,6 +231,13 @@ export async function POST(request: NextRequest) {
       userId: session.userId,
     });
 
+    // Primary Foundation path: studio thread so the global chatbar can show + reply
+    const studio = await seedStudioBriefConversation({
+      businessId: business.id,
+      userId: session.userId,
+      brief: trimmed,
+    });
+
     const process = await prisma.process.findUnique({
       where: { id: processId },
       select: {
@@ -247,6 +257,8 @@ export async function POST(request: NextRequest) {
       business,
       process,
       foundationDraft: true,
+      studioConversationId: studio.conversationId,
+      hermesAgentProfileId: studio.hermesAgentProfileId,
     });
     setActiveBusinessCookie(response, business.id);
     return response;
@@ -306,4 +318,54 @@ async function appendUserBriefMessage(opts: {
     metadata: { preview: truncatePreview(opts.brief), role: "user" },
     ...liveOccurredNow(),
   });
+}
+
+/**
+ * New Overlord studio thread with the home brief as the first user message.
+ * Chatbar opens this conversation and replyOnly-streams Hermes on Foundation.
+ */
+async function seedStudioBriefConversation(opts: {
+  businessId: string;
+  userId: string;
+  brief: string;
+}): Promise<{ conversationId: string; hermesAgentProfileId: string | null }> {
+  const overlord = await ensureOverlordHired(opts.businessId, opts.userId);
+  const title = autoStudioTitleFromText(opts.brief);
+
+  const conversation = await prisma.conversation.create({
+    data: {
+      businessId: opts.businessId,
+      kind: "studio",
+      title,
+      processId: null,
+      hermesAgentProfileId: overlord?.id ?? null,
+    },
+    select: { id: true },
+  });
+
+  await prisma.chatMessage.create({
+    data: {
+      conversationId: conversation.id,
+      processId: null,
+      role: "user",
+      content: opts.brief,
+    },
+  });
+
+  await recordBusinessEvent({
+    businessId: opts.businessId,
+    userId: opts.userId,
+    type: BUSINESS_EVENT_TYPES.CHAT_USER_MESSAGE,
+    entityType: "chat",
+    entityId: conversation.id,
+    entityName: title,
+    summary: `Studio brief in "${title}"`,
+    metadata: { preview: truncatePreview(opts.brief), role: "user" },
+    ...liveOccurredNow(),
+  });
+
+  return {
+    conversationId: conversation.id,
+    hermesAgentProfileId: overlord?.id ?? null,
+  };
 }

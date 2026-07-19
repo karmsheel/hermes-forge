@@ -20,7 +20,10 @@ export function ChatbarCollapsedTab() {
       title="Open Hermes chat (Alt+H)"
       aria-label="Open Hermes chat"
     >
-      <HermesForgeMark className="hermes-forge-mark chatbar-collapsed-tab__icon" />
+      <HermesForgeMark
+        variant="tab"
+        className="hermes-forge-mark chatbar-collapsed-tab__icon"
+      />
     </button>
   );
 }

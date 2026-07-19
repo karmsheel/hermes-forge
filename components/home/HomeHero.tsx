@@ -1,21 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import { useShell } from "@/components/shell/ShellContext";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import type { ForgeStage } from "@/lib/forge-stage";
 import { getStoredProcessStandard, type ProcessStandardId } from "@/lib/process-standards";
 import { ROOM_HOME_COPY } from "@/lib/room-home";
 import { startFromBrief } from "@/lib/start-from-brief";
 import type { WorkflowTemplate, WorkflowTemplateId } from "@/lib/workflow-templates";
+import nousHeroArt from "@/assets/girl_nous.png";
 import steampunkGirl from "@/assets/girl_steampunk.svg";
 import { ProcessStandardPicker } from "./ProcessStandardPicker";
 import { PromptComposer } from "./PromptComposer";
 import { TemplateCards } from "./TemplateCards";
 
-const heroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
+/** Mask-friendly SVG — recolors via theme accent for all non-Nous skins. */
+const defaultHeroArtUrl = typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
 
 export type HomeHeroProps = {
   /** Which room this Home surface belongs to (copy only; seed still lands in Foundation). */
@@ -25,14 +30,17 @@ export type HomeHeroProps = {
 export function HomeHero({ room = "foundation" }: HomeHeroProps) {
   const router = useRouter();
   const composerRef = useRef<HTMLTextAreaElement>(null);
-  const { openHermesConnection } = useShell();
+  const { openHermesConnection, refreshCurrentBusiness } = useShell();
+  const { open: openChatbar } = useChatbar();
   const { showHomeProcessStandardPicker } = useDeveloperSettings();
+  const { skinName } = useTheme();
   const [brief, setBrief] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<WorkflowTemplateId | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
   const [sending, setSending] = useState(false);
   const [processStandard, setProcessStandard] = useState<ProcessStandardId>("auto");
   const copy = ROOM_HOME_COPY[room];
+  const useNousHero = skinName === "nous";
 
   useEffect(() => {
     setProcessStandard(getStoredProcessStandard());
@@ -78,11 +86,15 @@ export function HomeHero({ room = "foundation" }: HomeHeroProps) {
       setBrief("");
       setSelectedTemplateId(null);
       setSelectedTemplate(null);
-      // Foundation first; activeProcessId + pending reply enable Workshop deep-link
+      // Refresh active business (new-business cookie) so chatbar can load the studio thread
+      await refreshCurrentBusiness();
+      // Land on Foundation first so page context is plant-sketch, then open chatbar
+      router.push("/foundation");
+      openChatbar();
       toast.success(
         templateLabel
-          ? `Seeded “${templateLabel}” in Foundation`
-          : "Draft ready in Foundation",
+          ? `Seeded “${templateLabel}” — Overlord is responding`
+          : "Overlord is responding in chat",
         {
           action: {
             label: "Open Workshop",
@@ -90,7 +102,6 @@ export function HomeHero({ room = "foundation" }: HomeHeroProps) {
           },
         }
       );
-      router.push("/foundation");
     } catch {
       toast.error("Could not start from your brief");
     } finally {
@@ -100,19 +111,32 @@ export function HomeHero({ room = "foundation" }: HomeHeroProps) {
 
   return (
     <div className="home-page">
+      {/* Top-left under business picker; width matches picker (15rem), text centered */}
+      <p className="home-page__room-badge">{copy.roomBadge}</p>
       <div className="home-page__stack">
         <section className="home-hero">
           <div className="home-hero__intro">
-            <div
-              className="home-hero__art"
-              aria-hidden="true"
-              style={
-                {
-                  "--home-hero-art-url": `url(${heroArtUrl})`,
-                } as CSSProperties
-              }
-            />
-            <p className="home-hero__room-badge">{copy.roomBadge}</p>
+            {useNousHero ? (
+              <Image
+                className="home-hero__art home-hero__art--raster"
+                src={nousHeroArt}
+                alt=""
+                width={140}
+                height={140}
+                priority
+                aria-hidden
+              />
+            ) : (
+              <div
+                className="home-hero__art"
+                aria-hidden="true"
+                style={
+                  {
+                    "--home-hero-art-url": `url("${defaultHeroArtUrl}")`,
+                  } as CSSProperties
+                }
+              />
+            )}
             <h1 className="home-hero__title">{copy.title}</h1>
             <p className="home-hero__subtitle">{copy.subtitle}</p>
           </div>

@@ -3906,7 +3906,8 @@ body {
   min-height: 3.25rem;
   /* Near edge-to-edge mark; tiny inset keeps bevel readable */
   padding: 1px;
-  overflow: hidden;
+  /* Visible so the brand mark (esp. Nous cutout) can bleed past the face */
+  overflow: visible;
   /* Soft raised face — lighter bevel than the old hard 3D ledge */
   border-style: solid;
   border-width: 1px;
@@ -4004,6 +4005,105 @@ body {
   mask-size: 130%;
   -webkit-mask-position: center 55%;
   mask-position: center 55%;
+}
+
+/*
+ * Floating picture tab (all themes) — steampunk SVG mask tinted with --accent,
+ * soft white halo + accent bloom on hover. No square chrome; the mark IS the control.
+ */
+.chatbar-collapsed-tab:has(.hermes-forge-mark--tab) {
+  width: 4.25rem;
+  height: 4.25rem;
+  min-height: 4.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  filter: none;
+  color: inherit;
+}
+
+.chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab) {
+  /* Past the edge a touch — SVG has transparent padding */
+  right: -0.45rem;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chatbar-collapsed-tab__icon.hermes-forge-mark--tab {
+  width: 4.15rem;
+  height: 4.15rem;
+  min-width: 4.15rem;
+  min-height: 4.15rem;
+  flex-shrink: 0;
+  background-color: var(--accent);
+  background-image: none;
+  /* Steampunk SVG has built-in margin — scale past it like the chrome tab did */
+  -webkit-mask-size: 130%;
+  mask-size: 130%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center 55%;
+  mask-position: center 55%;
+  /* Soft white outer halo + accent depth */
+  filter:
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.9))
+    drop-shadow(0 1px 2px color-mix(in srgb, var(--accent) 28%, transparent))
+    drop-shadow(0 3px 8px color-mix(in srgb, var(--accent) 16%, transparent));
+  transition:
+    filter var(--dur-quick, 120ms) var(--ease-out, ease),
+    transform var(--dur-quick, 120ms) var(--ease-out, ease),
+    background-color var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+.chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover {
+  background: transparent;
+  border: none;
+  filter: none;
+  color: inherit;
+}
+
+.chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab):hover,
+.chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab):hover {
+  box-shadow: none;
+  border: none;
+  background: transparent;
+}
+
+.chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover .chatbar-collapsed-tab__icon {
+  transform: scale(1.06);
+  filter:
+    brightness(1.06)
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 42%, transparent))
+    drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 28%, transparent))
+    drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 22%, transparent));
+}
+
+.chatbar-collapsed-tab:has(.hermes-forge-mark--tab):focus-visible {
+  outline: none;
+}
+
+.chatbar-collapsed-tab:has(.hermes-forge-mark--tab):focus-visible .chatbar-collapsed-tab__icon {
+  filter:
+    brightness(1.04)
+    drop-shadow(0 0 1px #fff)
+    drop-shadow(0 0 2px #fff)
+    drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 50%, transparent))
+    drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 35%, transparent));
 }
 
 /* —— PR-3: context chip, receipt, intro —— */
@@ -4945,6 +5045,20 @@ body {
   transition: background-color var(--dur-quick) var(--ease-out);
 }
 
+/* Full-color Nous cutout (PNG) — background paint, not mask-tinted.
+   Same box model as the SVG mask mark so chatbar tab (width/height 100%) works. */
+.hermes-forge-mark--raster {
+  background-color: transparent;
+  background-image: var(--hermes-forge-mark-url);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  -webkit-mask: none !important;
+  mask: none !important;
+}
+
 .nav-rail__logo-art {
   width: 2rem;
   height: 2rem;
@@ -5152,6 +5266,18 @@ body {
   -webkit-mask-position: center bottom;
   mask-position: center bottom;
   pointer-events: none;
+}
+
+.business-manager__forge-art--raster {
+  display: block;
+  object-fit: contain;
+  object-position: center bottom;
+  background-color: transparent;
+  background-image: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+  -webkit-mask: none;
+  mask: none;
 }
 
 .business-manager__forge-actions {
@@ -5567,6 +5693,7 @@ body {
 
 /* Home — hero, composer, and templates as one vertically balanced stack */
 .home-page {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -5579,6 +5706,30 @@ body {
   overscroll-behavior: contain;
   /* Optical lift ~10vh above geometric center */
   padding: clamp(1.25rem, 3vh, 2.5rem) 1.5rem calc(clamp(1.25rem, 3vh, 2.5rem) + 10vh);
+}
+
+/*
+ * Room label under the business picker (top-left).
+ * Horizontal: same inset as app-topbar__inner (1.25rem) + picker width (15rem).
+ * Text is centered within the picker column so it reads as “under” the switcher.
+ */
+.home-page__room-badge {
+  position: absolute;
+  top: 0.65rem;
+  left: 1.25rem;
+  width: 15rem;
+  max-width: calc(100% - 2.5rem);
+  margin: 0;
+  padding: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--text-muted);
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .home-page__stack {
@@ -5632,13 +5783,21 @@ body {
   transition: background-color var(--dur-quick) var(--ease-out);
 }
 
-.home-hero__room-badge {
-  margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+/*
+ * Raster hero art (Nous JPG via <img>/next/image) — full-color, not mask-tinted.
+ * SVG mask art keeps the default rules so other skins recolor via --accent.
+ */
+.home-hero__art--raster {
+  display: block;
+  width: calc(var(--home-hero-art-size) * 1.25);
+  height: calc(var(--home-hero-art-size) * 1.25);
+  object-fit: contain;
+  background-color: transparent;
+  background-image: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+  -webkit-mask: none;
+  mask: none;
 }
 
 .home-hero__title {

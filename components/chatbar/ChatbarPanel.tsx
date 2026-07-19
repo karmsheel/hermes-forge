@@ -45,6 +45,10 @@ import {
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
 import {
+  consumePendingStudioReply,
+  peekPendingStudioReply,
+} from "@/lib/chatbar/pending-studio-reply";
+import {
   canSteerFromFeatures,
   steerActiveRun,
 } from "@/lib/chatbar/capabilities";
@@ -176,6 +180,14 @@ export function ChatbarPanel() {
   const messageQueueRef = useRef<QueuedMessage[]>([]);
   const isDrainingQueueRef = useRef(false);
   const activeRunIdRef = useRef<string | null>(null);
+  /** Home → Foundation: avoid double replyOnly for the same pending seed */
+  const pendingStudioReplySentRef = useRef<string | null>(null);
+  const sendMessageNowRef = useRef<
+    ((
+      text: string,
+      options?: { replyOnly?: boolean; route?: string },
+    ) => Promise<void>) | null
+  >(null);
   activeIdRef.current = activeConversationId;
   sendingRef.current = sending;
   activeRunIdRef.current = activeRunId;
@@ -492,9 +504,18 @@ export function ChatbarPanel() {
         const lockToOverlord = isChatbarOverlordOnlyPath(pathname);
         const savedAgent = loadActiveChatbarAgentId(businessId);
 
+        const pendingStudio = peekPendingStudioReply();
+        const pendingForBusiness =
+          pendingStudio?.businessId === businessId ? pendingStudio : null;
+
         let preferred: string | null = null;
         if (lockToOverlord && overlordHired) {
           preferred = overlordHired.id;
+        } else if (
+          pendingForBusiness?.hermesAgentProfileId &&
+          hired.some((a) => a.id === pendingForBusiness.hermesAgentProfileId)
+        ) {
+          preferred = pendingForBusiness.hermesAgentProfileId;
         } else if (
           agentIdOverride &&
           agentIdOverride !== "__overlord__" &&
@@ -524,12 +545,58 @@ export function ChatbarPanel() {
         if (Array.isArray(data.hiredAgents) && data.hiredAgents.length) {
           setHiredAgents(data.hiredAgents);
         }
-        const list: StudioListItem[] = data.conversations || [];
+        let list: StudioListItem[] = data.conversations || [];
+
+        // Pending home brief may be agent-scoped differently than the filter;
+        // ensure the seeded thread is selectable even if missing from the list payload.
+        if (
+          pendingForBusiness &&
+          !list.some((c) => c.id === pendingForBusiness.conversationId)
+        ) {
+          try {
+            const one = await fetch(
+              `/api/studio/conversations/${pendingForBusiness.conversationId}`,
+            );
+            if (one.ok) {
+              const detail = await one.json();
+              if (detail?.id) {
+                list = [
+                  {
+                    id: detail.id,
+                    title: detail.title || "Studio chat",
+                    kind: "studio",
+                    businessId,
+                    processId: null,
+                    forkedFromId: detail.forkedFromId ?? null,
+                    hermesAgentProfileId:
+                      detail.hermesAgentProfileId ??
+                      pendingForBusiness.hermesAgentProfileId ??
+                      null,
+                    createdAt: detail.createdAt,
+                    updatedAt: detail.updatedAt,
+                    _count: {
+                      messages: Array.isArray(detail.messages)
+                        ? detail.messages.length
+                        : 1,
+                    },
+                  } as StudioListItem,
+                  ...list,
+                ];
+              }
+            }
+          } catch {
+            /* non-fatal — pick may still work via direct message load */
+          }
+        }
+
         setConversations(list);
 
         const saved = loadActiveStudioConversationId(businessId);
         const pick =
-          (saved && list.find((c) => c.id === saved)?.id) || list[0]?.id || null;
+          pendingForBusiness?.conversationId ||
+          (saved && list.find((c) => c.id === saved)?.id) ||
+          list[0]?.id ||
+          null;
 
         setActiveConversationId(pick);
         if (pick) {
@@ -550,6 +617,19 @@ export function ChatbarPanel() {
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  // Home Send opens chat after seeding; re-load so the pending studio thread is selected
+  useEffect(() => {
+    if (!isOpen || !businessId) return;
+    const pending = peekPendingStudioReply();
+    if (!pending || pending.businessId !== businessId) return;
+    if (activeConversationId === pending.conversationId && messages.some((m) => m.role === "user")) {
+      return;
+    }
+    void loadConversations(pending.hermesAgentProfileId);
+    // Only when dock opens or business changes — avoid loops on every message update
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: open handoff
+  }, [isOpen, businessId]);
 
   // Decision redirect: switch agent + conversation when requested
   useEffect(() => {
@@ -626,8 +706,10 @@ export function ChatbarPanel() {
   }, [selectConversation, activeAgentId]);
 
   const sendMessageNow = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return;
+    async (text: string, options?: { replyOnly?: boolean; route?: string }) => {
+      const replyOnly = options?.replyOnly === true;
+      const sendRoute = options?.route || pathname;
+      if (!replyOnly && !text.trim()) return;
 
       if (!isConnected || !config?.baseUrl || !config.apiKey) {
         openHermesConnection();
@@ -663,26 +745,41 @@ export function ChatbarPanel() {
         createdAt: new Date().toISOString(),
       };
       const tempAssistantId = `temp-assistant-${Date.now()}`;
-      setMessages((prev) => [
-        ...prev,
-        optimisticUser,
-        {
-          id: tempAssistantId,
-          processId: null,
-          conversationId,
-          role: "assistant",
-          content: "",
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+      if (replyOnly) {
+        // User message already seeded (Home → Foundation); only add assistant bubble
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: tempAssistantId,
+            processId: null,
+            conversationId,
+            role: "assistant",
+            content: "",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          optimisticUser,
+          {
+            id: tempAssistantId,
+            processId: null,
+            conversationId,
+            role: "assistant",
+            content: "",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
 
       try {
         const res = await fetch(`/api/studio/conversations/${conversationId}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: text,
-            route: pathname,
+            ...(replyOnly ? { replyOnly: true } : { content: text }),
+            route: sendRoute,
             contextMode,
             firstVisit,
             registration: pageRegistration,
@@ -819,7 +916,8 @@ export function ChatbarPanel() {
                       (payload.plantApply.result.drafts?.updatedCount ?? 0) > 0),
                 );
                 if (
-                  pathname.startsWith("/foundation") &&
+                  (sendRoute.startsWith("/foundation") ||
+                    pathname.startsWith("/foundation")) &&
                   !payload.stopped &&
                   assistantText &&
                   !alreadyApplied
@@ -929,17 +1027,26 @@ export function ChatbarPanel() {
                   : m,
               );
             }
-            return prev.filter(
-              (m) => m.id !== optimisticUser.id && m.id !== tempAssistantId,
-            );
+            return prev.filter((m) => {
+              if (m.id === tempAssistantId) return false;
+              // replyOnly: real user message stays; only drop optimistic user on normal send
+              if (!replyOnly && m.id === optimisticUser.id) return false;
+              return true;
+            });
           });
           toast.message("Stopped");
         } else {
           toast.error(error instanceof Error ? error.message : "Chat failed");
           setMessages((prev) =>
-            prev.filter((m) => m.id !== optimisticUser.id && m.id !== tempAssistantId),
+            prev.filter((m) => {
+              if (m.id === tempAssistantId) return false;
+              if (!replyOnly && m.id === optimisticUser.id) return false;
+              return true;
+            }),
           );
-          setDraft((current) => (current.trim() ? current : text));
+          if (!replyOnly) {
+            setDraft((current) => (current.trim() ? current : text));
+          }
           if (activeIdRef.current === conversationId) {
             void loadConversationMessages(conversationId);
           }
@@ -967,6 +1074,59 @@ export function ChatbarPanel() {
       introBanner,
     ],
   );
+
+  sendMessageNowRef.current = sendMessageNow;
+
+  /**
+   * Home Send seeds a studio user message + pending flag, navigates to Foundation,
+   * and opens the chatbar. When the thread is ready, stream Hermes replyOnly.
+   */
+  useEffect(() => {
+    if (!businessId || loadingList || loadingMessages || sending) return;
+    if (!isConnected || !config?.baseUrl || !config.apiKey) return;
+    if (isProcessScoped || isAutomationScoped) return;
+
+    const pending = peekPendingStudioReply();
+    if (!pending || pending.businessId !== businessId) return;
+    if (activeConversationId !== pending.conversationId) return;
+    if (pendingStudioReplySentRef.current === pending.conversationId) return;
+
+    const last = messages.at(-1);
+    if (!last || last.role !== "user") {
+      // Stale or already answered — drop the one-shot flag
+      consumePendingStudioReply();
+      return;
+    }
+
+    const sender = sendMessageNowRef.current;
+    if (!sender) return;
+
+    pendingStudioReplySentRef.current = pending.conversationId;
+    consumePendingStudioReply();
+    // Force Foundation plant-sketch prompt even if nav is still mid-flight
+    void sender(last.content, { replyOnly: true, route: "/foundation" });
+  }, [
+    businessId,
+    loadingList,
+    loadingMessages,
+    sending,
+    isConnected,
+    config,
+    isProcessScoped,
+    isAutomationScoped,
+    activeConversationId,
+    messages,
+  ]);
+
+  // Prefill studio composer when requested (decision redirect / focusComposer)
+  useEffect(() => {
+    if (!composerFocusRequest) return;
+    if (isProcessScoped || isAutomationScoped) return;
+    if (composerFocusRequest.prefill) {
+      setDraft(composerFocusRequest.prefill);
+    }
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [composerFocusRequest?.key, isProcessScoped, isAutomationScoped]);
 
   const handleComposerSubmit = useCallback(() => {
     const text = draft.trim();
