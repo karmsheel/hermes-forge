@@ -5,6 +5,7 @@ const UNLOCKED_KEY = "forge:dev-unlocked";
 const VERSION_CLICKS_KEY = "forge:dev-about-version-clicks";
 const PREVIEW_UPDATE_ICON_KEY = "forge:dev-preview-update-icon";
 const SHOW_CRONALYTICS_KEY = "forge:dev-show-cronalytics";
+const SHOW_HOME_COMBINED_KEY = "forge:dev-show-home-combined";
 const SHOW_HOME_PROCESS_STANDARD_PICKER_KEY = "forge:dev-show-home-process-standard-picker";
 const SHOW_HERMES_MODEL_SWITCHER_KEY = "forge:dev-show-hermes-model-switcher";
 const SHOW_GOD_MODE_KEY = "forge:dev-show-god-mode";
@@ -54,6 +55,7 @@ export function lockDeveloperMode() {
   removeStorage(VERSION_CLICKS_KEY);
   removeStorage(PREVIEW_UPDATE_ICON_KEY);
   removeStorage(SHOW_CRONALYTICS_KEY);
+  removeStorage(SHOW_HOME_COMBINED_KEY);
   removeStorage(SHOW_GOD_MODE_KEY);
   // Legacy key from pre-4.12 when Decisions was dev-gated
   removeStorage("forge:dev-show-decisions");
@@ -102,6 +104,18 @@ export function setShowCronalyticsPage(enabled: boolean) {
     writeStorage(SHOW_CRONALYTICS_KEY, "1");
   } else {
     removeStorage(SHOW_CRONALYTICS_KEY);
+  }
+}
+
+export function getShowHomeCombinedPage(): boolean {
+  return readStorage(SHOW_HOME_COMBINED_KEY) === "1";
+}
+
+export function setShowHomeCombinedPage(enabled: boolean) {
+  if (enabled) {
+    writeStorage(SHOW_HOME_COMBINED_KEY, "1");
+  } else {
+    removeStorage(SHOW_HOME_COMBINED_KEY);
   }
 }
 

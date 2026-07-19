@@ -10,6 +10,8 @@ export function SettingsDeveloper() {
     setPreviewUpdateIcon,
     showCronalyticsPage,
     setShowCronalyticsPage,
+    showHomeCombinedPage,
+    setShowHomeCombinedPage,
     showGodModePage,
     setShowGodModePage,
     showHomeProcessStandardPicker,
@@ -91,6 +93,22 @@ export function SettingsDeveloper() {
                     type="checkbox"
                     checked={showCronalyticsPage}
                     onChange={(event) => setShowCronalyticsPage(event.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                </label>
+              }
+            />
+          </div>
+          <div className="py-1">
+            <ListRow
+              label="Show Home Combined page"
+              description="Reveal the experimental Home Combined nav item (composer + plant sketch). Hidden by default."
+              action={
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showHomeCombinedPage}
+                    onChange={(event) => setShowHomeCombinedPage(event.target.checked)}
                     className="h-4 w-4 rounded border-border accent-accent"
                   />
                 </label>

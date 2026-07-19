@@ -53,7 +53,7 @@ export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
  * Each room has its own Home at the top of the rail (room homes — deferred 6.7 polish).
  */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
-  foundation: ["home", "foundation", "documents", "personnel"],
+  foundation: ["home", "home-combined", "foundation", "documents", "personnel"],
   map: ["home", "god-mode", "functions", "workshop", "documents", "personnel"],
   monitor: ["home", "metrics", "content", "cronalytics"],
   automate: ["home", "automations", "automation-analysis", "personnel", "content"],
@@ -130,6 +130,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
 
   // Per-room homes (before broader /home and /automations prefixes)
   if (path === "/home" || path === "/") return "foundation";
+  if (path === "/home-combined") return "foundation";
   if (path === "/map/home") return "map";
   if (path === "/monitor/home") return "monitor";
   if (path === "/automate/home") return "automate";

@@ -4012,47 +4012,53 @@ body {
  * soft white halo + accent bloom on hover. No square chrome; the mark IS the control.
  */
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab) {
-  width: 4.25rem;
-  height: 4.25rem;
-  min-height: 4.25rem;
+  width: 4.75rem;
+  height: 4.75rem;
+  min-height: 4.75rem;
   padding: 0;
-  border: none;
-  border-radius: 0;
+  /* 2px frame in the same accent as the mask-tinted mark */
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
   background: transparent;
   box-shadow: none;
   filter: none;
   color: inherit;
+  overflow: visible;
+  transition:
+    border-color var(--dur-quick, 120ms) var(--ease-out, ease),
+    filter var(--dur-quick, 120ms) var(--ease-out, ease),
+    transform var(--dur-quick, 120ms) var(--ease-out, ease);
 }
 
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab) {
   /* Past the edge a touch — SVG has transparent padding */
   right: -0.45rem;
-  border: none;
-  border-radius: 0;
   box-shadow: none;
 }
 
 .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
-  border: none;
-  border-radius: 0;
   box-shadow: none;
 }
 
 .chatbar-collapsed-tab__icon.hermes-forge-mark--tab {
-  width: 4.15rem;
-  height: 4.15rem;
-  min-width: 4.15rem;
-  min-height: 4.15rem;
+  /* Larger hit face so contain shows the full figure (no mask crop) */
+  width: 4.75rem;
+  height: 4.75rem;
+  min-width: 4.75rem;
+  min-height: 4.75rem;
   flex-shrink: 0;
   background-color: var(--accent);
   background-image: none;
-  /* Steampunk SVG has built-in margin — scale past it like the chrome tab did */
-  -webkit-mask-size: 130%;
-  mask-size: 130%;
+  /*
+   * contain = full SVG in the box. (130% zoomed past empty margin but clipped
+   * to the element edge — that was the crop.)
+   */
+  -webkit-mask-size: contain;
+  mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  -webkit-mask-position: center 55%;
-  mask-position: center 55%;
+  -webkit-mask-position: center center;
+  mask-position: center center;
   /* Soft white outer halo + accent depth */
   filter:
     drop-shadow(0 0 1px #fff)
@@ -4068,7 +4074,7 @@ body {
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover {
   background: transparent;
-  border: none;
+  border-color: var(--accent);
   filter: none;
   color: inherit;
 }
@@ -4076,7 +4082,7 @@ body {
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab):hover,
 .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab):hover {
   box-shadow: none;
-  border: none;
+  border-color: var(--accent);
   background: transparent;
 }
 
@@ -5836,10 +5842,319 @@ body {
   letter-spacing: 0.06em;
 }
 
+/*
+ * Nous day — home hero composer fill matches raster hero art (girl_nous.png).
+ * Sampled solid blue (~#1839ba) differs from brand primary Muzli #0000f2.
+ * Night mode keeps the white inverted composer; other skins unchanged.
+ */
+[data-skin="nous"][data-theme="light"] .home-composer {
+  --composer-bg: #1839ba;
+  --composer-fg: #ffffff;
+  --composer-border: color-mix(in srgb, var(--composer-bg) 32%, #ffffff);
+  --composer-border-soft: color-mix(in srgb, var(--composer-border) 45%, var(--composer-bg));
+  --composer-border-strong: color-mix(in srgb, var(--composer-border) 82%, #ffffff);
+  --composer-fg-muted: color-mix(in srgb, #ffffff 65%, var(--composer-bg));
+  --composer-fg-soft: color-mix(in srgb, #ffffff 52%, var(--composer-bg));
+  --composer-fg-faint: color-mix(in srgb, #ffffff 52%, var(--composer-bg));
+}
+
+@media (prefers-color-scheme: light) {
+  [data-skin="nous"]:not([data-theme]) .home-composer {
+    --composer-bg: #1839ba;
+    --composer-fg: #ffffff;
+    --composer-border: color-mix(in srgb, var(--composer-bg) 32%, #ffffff);
+    --composer-border-soft: color-mix(in srgb, var(--composer-border) 45%, var(--composer-bg));
+    --composer-border-strong: color-mix(in srgb, var(--composer-border) 82%, #ffffff);
+    --composer-fg-muted: color-mix(in srgb, #ffffff 65%, var(--composer-bg));
+    --composer-fg-soft: color-mix(in srgb, #ffffff 52%, var(--composer-bg));
+    --composer-fg-faint: color-mix(in srgb, #ffffff 52%, var(--composer-bg));
+  }
+}
+
 .home-hero__subtitle {
   margin-top: 0.75rem;
   font-size: 1rem;
   color: var(--text-muted);
+}
+
+/* ── Home Combined (experimental Foundation layout) ──
+ * Left ~20%: half-scale hero “window”
+ * Right ~80%: plant frame fills most of that column
+ */
+.home-combined {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.home-combined__layout {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  min-height: 0;
+}
+
+/*
+ * Narrow hero column — same home content, width-compressed (no zoom/scale).
+ * Reads like the original layout with the left edge dragged inward.
+ */
+.home-combined__left {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  flex: 0 0 30%;
+  width: 30%;
+  max-width: 22rem;
+  min-width: 14rem;
+  min-height: 0;
+  gap: 1rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 0.25rem;
+}
+
+.home-combined__hero-window {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-hero--combined {
+  width: 100%;
+  max-width: none;
+  /* Same sizes as Home — only the available width is narrower */
+}
+
+.home-combined__hero-window .home-page__templates {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Template pills wrap in the narrow strip (window-resize behavior) */
+.home-combined__hero-window .home-templates {
+  width: 100%;
+}
+
+.home-combined__hero-window .home-templates__pills {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home-combined__right {
+  flex: 1 1 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  /* Right column owns ~80% of the row */
+  width: 80%;
+  /* Size queries so plant can be min(80% width, 80% height) */
+  container-type: size;
+}
+
+.plant-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  /* Square plant window ≈ 80% of the right view */
+  width: min(80cqw, 80cqh);
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  height: auto;
+}
+
+/* Fallback when container size queries are unavailable */
+@supports not (width: 1cqw) {
+  .plant-mini {
+    width: min(80%, 70vh);
+  }
+}
+
+.plant-mini__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.15rem;
+  flex-shrink: 0;
+}
+
+.plant-mini__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-strong);
+}
+
+.plant-mini__meta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.plant-mini__frame {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  overflow: auto;
+  padding: 1rem;
+  cursor: default;
+}
+
+.plant-mini__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 8rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+  padding: 1.25rem;
+  pointer-events: none;
+}
+
+.plant-mini__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+  align-content: start;
+  width: 100%;
+  min-height: 100%;
+}
+
+.plant-mini__block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-quick) var(--ease-out),
+    box-shadow var(--dur-quick) var(--ease-out),
+    background-color var(--dur-quick) var(--ease-out);
+}
+
+.plant-mini__block:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.plant-mini__block--selected {
+  border-color: var(--selected);
+  box-shadow: 0 0 0 2px var(--selected-soft, color-mix(in srgb, var(--selected) 28%, transparent));
+  background: color-mix(in srgb, var(--selected) 8%, var(--bg-elevated));
+}
+
+.plant-mini__block-icon {
+  display: flex;
+  color: var(--text-muted);
+}
+
+.plant-mini__block--selected .plant-mini__block-icon {
+  color: var(--selected);
+}
+
+.plant-mini__block-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-strong);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.plant-mini__block-status {
+  margin-top: auto;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+  .home-combined {
+    overflow-y: auto;
+  }
+
+  .home-combined__layout {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .home-combined__left {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .home-combined__hero-window {
+    width: 100%;
+    max-width: 40rem;
+  }
+
+  .home-combined__right {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: min(70vh, 28rem);
+  }
+
+  .plant-mini {
+    width: min(90vw, 28rem);
+    height: auto;
+    max-height: none;
+    aspect-ratio: 1 / 1;
+    margin: 0 auto;
+  }
+
+  .plant-mini__frame {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
 }
 
 .home-composer {

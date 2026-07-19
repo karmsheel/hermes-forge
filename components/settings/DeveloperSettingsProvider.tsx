@@ -15,6 +15,7 @@ import {
   getShowCronalyticsPage,
   getShowGodModePage,
   getShowHermesModelSwitcher,
+  getShowHomeCombinedPage,
   getShowHomeProcessStandardPicker,
   isDeveloperUnlocked,
   lockDeveloperMode as persistLockDeveloperMode,
@@ -23,6 +24,7 @@ import {
   setShowCronalyticsPage as persistShowCronalyticsPage,
   setShowGodModePage as persistShowGodModePage,
   setShowHermesModelSwitcher as persistShowHermesModelSwitcher,
+  setShowHomeCombinedPage as persistShowHomeCombinedPage,
   setShowHomeProcessStandardPicker as persistShowHomeProcessStandardPicker,
 } from "@/lib/developer-settings";
 
@@ -33,6 +35,8 @@ interface DeveloperSettingsContextValue {
   setPreviewUpdateIcon: (enabled: boolean) => void;
   showCronalyticsPage: boolean;
   setShowCronalyticsPage: (enabled: boolean) => void;
+  showHomeCombinedPage: boolean;
+  setShowHomeCombinedPage: (enabled: boolean) => void;
   showGodModePage: boolean;
   setShowGodModePage: (enabled: boolean) => void;
   showHomeProcessStandardPicker: boolean;
@@ -49,6 +53,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [previewUpdateIcon, setPreviewUpdateIconState] = useState(false);
   const [showCronalyticsPage, setShowCronalyticsPageState] = useState(false);
+  const [showHomeCombinedPage, setShowHomeCombinedPageState] = useState(false);
   const [showGodModePage, setShowGodModePageState] = useState(false);
   const [showHomeProcessStandardPicker, setShowHomeProcessStandardPickerState] = useState(false);
   const [showHermesModelSwitcher, setShowHermesModelSwitcherState] = useState(false);
@@ -58,6 +63,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setIsUnlocked(isDeveloperUnlocked());
     setPreviewUpdateIconState(getPreviewUpdateIcon());
     setShowCronalyticsPageState(getShowCronalyticsPage());
+    setShowHomeCombinedPageState(getShowHomeCombinedPage());
     setShowGodModePageState(getShowGodModePage());
     setShowHomeProcessStandardPickerState(getShowHomeProcessStandardPicker());
     setShowHermesModelSwitcherState(getShowHermesModelSwitcher());
@@ -72,6 +78,11 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const setShowCronalyticsPage = useCallback((enabled: boolean) => {
     setShowCronalyticsPageState(enabled);
     persistShowCronalyticsPage(enabled);
+  }, []);
+
+  const setShowHomeCombinedPage = useCallback((enabled: boolean) => {
+    setShowHomeCombinedPageState(enabled);
+    persistShowHomeCombinedPage(enabled);
   }, []);
 
   const setShowGodModePage = useCallback((enabled: boolean) => {
@@ -102,6 +113,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setIsUnlocked(false);
     setPreviewUpdateIconState(false);
     setShowCronalyticsPageState(false);
+    setShowHomeCombinedPageState(false);
     setShowGodModePageState(false);
     setShowHomeProcessStandardPickerState(false);
     setShowHermesModelSwitcherState(false);
@@ -116,6 +128,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setPreviewUpdateIcon,
       showCronalyticsPage: hydrated ? showCronalyticsPage : false,
       setShowCronalyticsPage,
+      showHomeCombinedPage: hydrated ? showHomeCombinedPage : false,
+      setShowHomeCombinedPage,
       showGodModePage: hydrated ? showGodModePage : false,
       setShowGodModePage,
       showHomeProcessStandardPicker: hydrated ? showHomeProcessStandardPicker : false,
@@ -132,6 +146,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setPreviewUpdateIcon,
       showCronalyticsPage,
       setShowCronalyticsPage,
+      showHomeCombinedPage,
+      setShowHomeCombinedPage,
       showGodModePage,
       setShowGodModePage,
       showHomeProcessStandardPicker,

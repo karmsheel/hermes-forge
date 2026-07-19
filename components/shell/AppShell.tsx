@@ -30,6 +30,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const isFoundation = pathname.startsWith("/foundation");
   const isHome =
     pathname === "/home" ||
+    pathname === "/home-combined" ||
     pathname === "/map/home" ||
     pathname === "/monitor/home" ||
     pathname === "/automate/home";

@@ -7,6 +7,7 @@ import type { MouseEvent } from "react";
 import {
   Activity,
   Clock,
+  Columns2,
   FileText,
   FolderKanban,
   Hammer,
@@ -45,7 +46,7 @@ export function NavRail() {
   const pathname = usePathname();
   const { requestNewProcess, user, userLoading, openProfile, profileOpen } = useShell();
   const { stage } = useForgeStage();
-  const { showCronalyticsPage } = useDeveloperSettings();
+  const { showCronalyticsPage, showHomeCombinedPage } = useDeveloperSettings();
   const { enabled: tabsEnabled, activeTab, navigateActiveTab, openInNewTab } = useForgeTabs();
   /** Prefer active tab route for highlight so desktop tabs stay consistent */
   const activePath = tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname;
@@ -60,6 +61,13 @@ export function NavRail() {
       label: "Home",
       icon: Home,
       match: (path) => path === roomHomeHref || (stage === "foundation" && path === "/"),
+    },
+    {
+      id: "home-combined",
+      href: "/home-combined",
+      label: "Home Combined",
+      icon: Columns2,
+      match: (path) => path === "/home-combined",
     },
     {
       id: "foundation",
@@ -201,7 +209,11 @@ export function NavRail() {
       <div className="nav-rail__section nav-rail__section--grow">
         {mainItems
           .filter((item) => isNavIdInStage(item.id, stage))
-          .filter((item) => item.id !== "cronalytics" || showCronalyticsPage)
+          .filter(
+            (item) =>
+              (item.id !== "cronalytics" || showCronalyticsPage) &&
+              (item.id !== "home-combined" || showHomeCombinedPage)
+          )
           .map((item) => {
           const Icon = item.icon;
           const active = isActive(item);
