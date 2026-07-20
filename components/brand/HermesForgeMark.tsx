@@ -8,7 +8,7 @@ import steampunkGirl from "@/assets/girl_steampunk.svg";
 /** Mask-friendly SVG — recolors via theme accent (default non-Nous marks + chat tab). */
 const steampunkMarkArtUrl =
   typeof steampunkGirl === "string" ? steampunkGirl : steampunkGirl.src;
-/** Full-color cutout — thin outline (hero, nav, BM) on Nous only. */
+/** Full-color cutout — thin outline (hero, BM) on Nous only. */
 const nousMarkArtUrl = typeof nousMarkArt === "string" ? nousMarkArt : nousMarkArt.src;
 
 type HermesForgeMarkProps = {
@@ -21,7 +21,7 @@ type HermesForgeMarkProps = {
 };
 
 /**
- * Shared brand mark (nav rail, Business Manager header, chatbar collapsed tab).
+ * Shared brand mark (Business Manager header, chatbar collapsed tab).
  */
 export function HermesForgeMark({ className, variant = "default" }: HermesForgeMarkProps) {
   const { skinName } = useTheme();

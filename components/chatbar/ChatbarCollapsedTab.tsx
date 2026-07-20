@@ -6,7 +6,7 @@ import { useChatbar } from "./ChatbarProvider";
 /**
  * Edge restore control when the chatbar is collapsed.
  * Sits on the same side as the dock (right or left of the content).
- * Brand mark matches Business Manager / nav rail (HermesForgeMark).
+ * Brand mark matches Business Manager (HermesForgeMark).
  */
 export function ChatbarCollapsedTab() {
   const { isOpen, open, isLeft } = useChatbar();

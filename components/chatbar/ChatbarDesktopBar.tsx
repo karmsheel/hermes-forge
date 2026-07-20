@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { Check, ClipboardCopy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
+import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsProvider";
 import {
   contextMeterDisplay,
   type ContextMeterInput,
@@ -151,6 +152,7 @@ export function ChatbarDesktopBar({
     config,
     status,
   } = useHermesConnection();
+  const { showChatbarDiagnostics } = useDeveloperSettings();
   const [copied, setCopied] = useState(false);
 
   const meter = useMemo(() => contextMeterDisplay(meterInput), [meterInput]);
@@ -255,19 +257,21 @@ export function ChatbarDesktopBar({
         <span className="chatbar-desktop-bar__meter-label">{meter.detail}</span>
       </div>
 
-      <button
-        type="button"
-        className="chatbar-desktop-bar__diag"
-        onClick={() => void onCopyDiagnostics()}
-        title="Copy redacted support diagnostics"
-        aria-label="Copy diagnostics"
-      >
-        {copied ? (
-          <Check className="w-3.5 h-3.5" aria-hidden />
-        ) : (
-          <ClipboardCopy className="w-3.5 h-3.5" aria-hidden />
-        )}
-      </button>
+      {showChatbarDiagnostics ? (
+        <button
+          type="button"
+          className="chatbar-desktop-bar__diag"
+          onClick={() => void onCopyDiagnostics()}
+          title="Copy redacted support diagnostics"
+          aria-label="Copy diagnostics"
+        >
+          {copied ? (
+            <Check className="w-3.5 h-3.5" aria-hidden />
+          ) : (
+            <ClipboardCopy className="w-3.5 h-3.5" aria-hidden />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }

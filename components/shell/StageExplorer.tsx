@@ -4,14 +4,13 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   FORGE_STAGE_DESCRIPTIONS,
   FORGE_STAGE_LABELS,
-  FORGE_STAGES,
+  LEADING_ROOMS,
+  OPS_ROOMS,
   STAGE_DEFAULT_ROUTES,
   type ForgeStage,
 } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useForgeStage } from "./StageProvider";
-
-const OPS_ROOMS = FORGE_STAGES.filter((id): id is ForgeStage => id !== "foundation");
 
 function useRoomNavigation() {
   const { stage, setStage, isRoomUnlocked } = useForgeStage();
@@ -55,21 +54,23 @@ function useRoomNavigation() {
 }
 
 /**
- * Foundation room pill — sits between the business picker and the MMA cluster
- * with equal dotted bridges on either side (layout owned by AppTopBar).
+ * Foundation | Inventory pill — sits between the business picker and the MMA
+ * cluster with equal dotted bridges on either side (layout owned by AppTopBar).
+ * Multi-tab chrome matches Map | Monitor | Automate.
  */
 export function StageExplorerFoundation() {
   const { isRoomUnlocked, renderTab } = useRoomNavigation();
+  const leadingRooms = LEADING_ROOMS.filter((id) => isRoomUnlocked(id));
 
-  if (!isRoomUnlocked("foundation")) return null;
+  if (leadingRooms.length === 0) return null;
 
   return (
     <div
-      className="shell-chrome stage-explorer stage-explorer--foundation"
+      className="shell-chrome stage-explorer stage-explorer--leading"
       role="tablist"
-      aria-label="Foundation room"
+      aria-label="Foundation and Inventory rooms"
     >
-      {renderTab("foundation")}
+      {leadingRooms.map((id) => renderTab(id))}
     </div>
   );
 }

@@ -42,7 +42,7 @@ User-installable themes use the same shape as Hermes Desktop `DesktopTheme` / Fo
 
 ## Rules
 
-- `name` must not collide with built-in skins (`forge`, `nous`, `midnight`, `ember`, `mono`, `cyberpunk`, `slate`).
+- `name` must not collide with built-in skins (`forge-os`, `nous`, `midnight`, `ember`, `mono`, `cyberpunk`).
 - Wrap as `{ "theme": { ... } }` is also accepted.
 - Stored in `localStorage` under `hermes-forge-user-themes-v1` with precomputed boot vars for flashless reload.
 

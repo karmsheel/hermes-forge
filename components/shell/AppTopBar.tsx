@@ -6,13 +6,13 @@ import { useDeveloperSettings } from "@/components/settings/DeveloperSettingsPro
 import { HermesModelSwitcher } from "@/components/hermes/HermesModelSwitcher";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessSwitcher } from "./BusinessSwitcher";
+import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { NotificationBell } from "./NotificationBell";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { useShell } from "./ShellContext";
+import { OPS_ROOMS } from "@/lib/forge-stage";
 import { StageExplorerFoundation, StageExplorerOps } from "./StageExplorer";
 import { useForgeStage } from "./StageProvider";
-
-const OPS_ROOMS = ["map", "monitor", "automate"] as const;
 
 export function AppTopBar() {
   const {
@@ -26,13 +26,13 @@ export function AppTopBar() {
 
   // When the tab strip is hidden, still allow opening a second tab from the top bar
   const showNewTab = tabsEnabled && tabs.length <= 1;
-  // Multi-tab strip owns the notification bell + window controls (top-right).
+  // Multi-tab strip owns theme toggle + notification bell + window controls (top-right).
   // Keep them here when the strip is hidden so they stay on the topmost chrome row.
   const tabStripVisible = tabsEnabled && tabs.length > 1;
   const atMax = tabs.length >= FORGE_TABS_MAX;
   // Right dotted bridge only when MMA exists — otherwise it terminates into a blank slot
   const hasOpsRooms = OPS_ROOMS.some((room) => isRoomUnlocked(room));
-  const showBell = !tabStripVisible;
+  const showTrailingChrome = !tabStripVisible;
   // Frameless desktop: this row is the drag region only when it is the topmost chrome.
   const isTopmostChrome = !tabStripVisible;
 
@@ -47,8 +47,8 @@ export function AppTopBar() {
     >
       <div className="app-topbar__inner">
         {/*
-          Leading half: [business picker] ··· [Foundation] ···
-          Foundation is always centered in the free space (equal flex on both sides).
+          Leading half: [business picker] ··· [Foundation | Inventory] ···
+          Leading rooms are always centered in the free space (equal flex on both sides).
           Right side paints dots only when MMA rooms are unlocked — otherwise an
           invisible spacer keeps balance without a line into blank space.
         */}
@@ -103,9 +103,9 @@ export function AppTopBar() {
             <HermesModelSwitcher onOpenConnection={openHermesConnection} />
           )}
           {/*
-            Bell lives on the multi-tab strip when visible; otherwise here.
+            Theme + bell live on the multi-tab strip when visible; otherwise here.
             Workshop refresh sits on this room-navbar row, under the multi-tab
-            bell column (or beside the bell when the strip is hidden).
+            chrome column (or beside them when the strip is hidden).
           */}
           {workshopRefreshAvailable ? (
             <button
@@ -118,7 +118,10 @@ export function AppTopBar() {
               <RefreshCw aria-hidden strokeWidth={1.5} />
             </button>
           ) : null}
-          {showBell ? <NotificationBell /> : null}
+          {showTrailingChrome ? (
+            <NavThemeModeToggle className="theme-mode-toggle--chrome" />
+          ) : null}
+          {showTrailingChrome ? <NotificationBell /> : null}
           {/* Window controls only on the topmost chrome row (not under the tab strip) */}
           {isTopmostChrome ? <DesktopWindowControls /> : null}
         </div>

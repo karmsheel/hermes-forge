@@ -1219,9 +1219,16 @@ export function WorkshopSession({
               <h1 className="text-lg font-semibold tracking-tight">
                 {loadingProcess ? "Loading..." : processName}
               </h1>
-              {diagramChart && activeTab === "diagram" && (
-                <div className="text-[10px] text-text-soft">Click any node to target a correction</div>
-              )}
+              {agentsRunning ? (
+                <div className="text-[10px] text-green flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
+                  Updating diagram…
+                </div>
+              ) : activeProcess?.diagramUpdatedAt ? (
+                <div className="text-[10px] text-text-soft">
+                  Updated {new Date(activeProcess.diagramUpdatedAt).toLocaleTimeString()}
+                </div>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
               {activeProcess && (
@@ -1261,7 +1268,7 @@ export function WorkshopSession({
                 </button>
               )}
               {isApproved && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-nowrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleUnforgeProcess}
@@ -1278,7 +1285,7 @@ export function WorkshopSession({
                     title="Instrument this process in Monitor"
                   >
                     <Activity className="w-3.5 h-3.5" />
-                    Attach Measurement
+                    Measurement
                   </Link>
                   <Link
                     href="/automations"
@@ -1288,17 +1295,6 @@ export function WorkshopSession({
                     <Zap className="w-3.5 h-3.5" />
                     Automate
                   </Link>
-                </div>
-              )}
-              {agentsRunning && (
-                <div className="text-[10px] text-green flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
-                  Updating diagram…
-                </div>
-              )}
-              {activeProcess?.diagramUpdatedAt && !agentsRunning && (
-                <div className="text-[10px] text-text-soft">
-                  Updated {new Date(activeProcess.diagramUpdatedAt).toLocaleTimeString()}
                 </div>
               )}
             </div>

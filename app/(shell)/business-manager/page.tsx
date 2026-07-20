@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { Building2, GitBranch, Hammer, Loader2, Upload } from "lucide-react";
 import { BusinessTileCard } from "@/components/business-manager/BusinessTileCard";
 import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
-import { NavThemeModeToggle } from "@/components/shell/NavThemeModeToggle";
 import { useShell } from "@/components/shell/ShellContext";
 import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -215,9 +214,6 @@ export default function BusinessManagerPage() {
               Choose a business to forge, import from ZIP or Git, and manage backup, export, and
               delete — your hub before entering the studio.
             </p>
-          </div>
-          <div className="business-manager__header-actions">
-            <NavThemeModeToggle />
           </div>
         </header>
 

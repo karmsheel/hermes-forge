@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -8,10 +10,11 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import { Copy, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
+import { Copy, Hammer, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
 import { DesktopWindowControls } from "@/components/desktop/DesktopWindowControls";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessAvatarMark } from "./BusinessAvatarMark";
+import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { NotificationBell } from "./NotificationBell";
 import { useForgeTabs } from "./ForgeTabProvider";
 
@@ -22,6 +25,7 @@ type ContextMenuState = {
 };
 
 export function ForgeTabBar() {
+  const pathname = usePathname();
   const {
     enabled,
     tabs,
@@ -34,6 +38,8 @@ export function ForgeTabBar() {
     activateTab,
     unloadSession,
     isSessionUnloaded,
+    navigateActiveTab,
+    openInNewTab,
   } = useForgeTabs();
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
@@ -44,6 +50,20 @@ export function ForgeTabBar() {
   const onNew = useCallback(() => {
     createTab();
   }, [createTab]);
+
+  const onBusinessManager = useCallback(
+    (e: MouseEvent<HTMLAnchorElement>) => {
+      if (!enabled) return;
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        openInNewTab("/business-manager");
+        return;
+      }
+      e.preventDefault();
+      navigateActiveTab("/business-manager");
+    },
+    [enabled, navigateActiveTab, openInNewTab],
+  );
 
   useEffect(() => {
     if (!menu) return;
@@ -68,12 +88,39 @@ export function ForgeTabBar() {
   const atMax = tabs.length >= FORGE_TABS_MAX;
   const menuTab = menu ? tabs.find((t) => t.id === menu.tabId) : null;
 
+  const onBusinessManagerPage = pathname.startsWith("/business-manager");
+
   return (
     <div
       className="forge-tab-bar desktop-drag-region"
       role="tablist"
       aria-label="Open sessions"
     >
+      {onBusinessManagerPage ? (
+        <span
+          className="forge-tab-bar__home forge-tab-bar__home--current desktop-no-drag"
+          title="Business Manager"
+          aria-label="Business Manager"
+          aria-current="page"
+        >
+          <span className="forge-tab-bar__home-mark" aria-hidden>
+            <Hammer className="forge-tab-bar__home-icon" strokeWidth={2} />
+          </span>
+        </span>
+      ) : (
+        <Link
+          href="/business-manager"
+          className="forge-tab-bar__home desktop-no-drag"
+          title="Business Manager"
+          aria-label="Business Manager"
+          onClick={onBusinessManager}
+        >
+          <span className="forge-tab-bar__home-mark" aria-hidden>
+            <Hammer className="forge-tab-bar__home-icon" strokeWidth={2} />
+          </span>
+        </Link>
+      )}
+
       {/* Single-line strip: tabs then + immediately after last tab */}
       <div className="forge-tab-bar__tabs-row desktop-no-drag">
         {tabs.map((tab, index) => {
@@ -177,8 +224,9 @@ export function ForgeTabBar() {
         </button>
       </div>
 
-      {/* Trailing chrome — bell + window controls (topmost row when multi-tab) */}
+      {/* Trailing chrome — theme + bell + window controls (topmost row when multi-tab) */}
       <div className="forge-tab-bar__actions desktop-no-drag">
+        <NavThemeModeToggle className="theme-mode-toggle--chrome" />
         <NotificationBell />
         <DesktopWindowControls />
       </div>

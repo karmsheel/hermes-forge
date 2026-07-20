@@ -23,29 +23,34 @@ describe("forge-room-readiness", () => {
   });
 
   it("soft-unlocks rooms by gate", () => {
-    // Loading / unknown readiness — only Foundation (no Map flash in nav)
+    // Loading / unknown readiness — only Foundation + Inventory (no Map flash)
     assert.equal(isRoomSoftUnlocked("foundation", null), true);
+    assert.equal(isRoomSoftUnlocked("inventory", null), true);
     assert.equal(isRoomSoftUnlocked("map", null), false);
     assert.equal(isRoomSoftUnlocked("monitor", null), false);
 
     const empty = computeRoomReadiness({ processCount: 0, forgedCount: 0 });
     assert.equal(isRoomSoftUnlocked("foundation", empty), true);
+    assert.equal(isRoomSoftUnlocked("inventory", empty), true);
     assert.equal(isRoomSoftUnlocked("map", empty), false);
     assert.equal(isRoomSoftUnlocked("monitor", empty), false);
     assert.equal(isRoomSoftUnlocked("automate", empty), false);
 
     const drafts = computeRoomReadiness({ processCount: 1, forgedCount: 0 });
     assert.equal(isRoomSoftUnlocked("map", drafts), true);
+    assert.equal(isRoomSoftUnlocked("inventory", drafts), true);
     assert.equal(isRoomSoftUnlocked("monitor", drafts), false);
 
     const forged = computeRoomReadiness({ processCount: 1, forgedCount: 1 });
     assert.equal(isRoomSoftUnlocked("monitor", forged), true);
     assert.equal(isRoomSoftUnlocked("automate", forged), true);
+    assert.equal(isRoomSoftUnlocked("inventory", forged), true);
   });
 
   it("returns lock hints when locked", () => {
     const empty = computeRoomReadiness({ processCount: 0, forgedCount: 0 });
     assert.equal(roomLockHint("foundation", empty), null);
+    assert.equal(roomLockHint("inventory", empty), null);
     assert.ok(roomLockHint("map", empty)?.includes("Foundation"));
     assert.ok(roomLockHint("monitor", empty)?.includes("Forge"));
   });

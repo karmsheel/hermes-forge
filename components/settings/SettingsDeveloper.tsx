@@ -18,6 +18,8 @@ export function SettingsDeveloper() {
     setShowHomeProcessStandardPicker,
     showHermesModelSwitcher,
     setShowHermesModelSwitcher,
+    showChatbarDiagnostics,
+    setShowChatbarDiagnostics,
     lockDeveloperMode,
   } = useDeveloperSettings();
 
@@ -61,6 +63,22 @@ export function SettingsDeveloper() {
                     type="checkbox"
                     checked={showHermesModelSwitcher}
                     onChange={(event) => setShowHermesModelSwitcher(event.target.checked)}
+                    className="h-4 w-4 rounded border-border accent-accent"
+                  />
+                </label>
+              }
+            />
+          </div>
+          <div className="py-1">
+            <ListRow
+              label="Show chatbar diagnostics copy"
+              description="Reveal the copy-diagnostics control in the chatbar footer (redacted support blob). Hidden by default."
+              action={
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showChatbarDiagnostics}
+                    onChange={(event) => setShowChatbarDiagnostics(event.target.checked)}
                     className="h-4 w-4 rounded border-border accent-accent"
                   />
                 </label>

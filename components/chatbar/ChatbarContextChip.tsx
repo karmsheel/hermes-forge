@@ -60,7 +60,7 @@ export function ChatbarContextChip({
 
   const label =
     mode === CHATBAR_CONTEXT_MODES.FOLLOW_PAGE && pageTitle
-      ? `Follow · ${pageTitle}`
+      ? pageTitle
       : contextModeLabel(mode);
 
   return (

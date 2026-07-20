@@ -41,7 +41,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<ThemePreference>("dark");
   const [resolved, setResolved] = useState<"light" | "dark">("dark");
-  const [skinName, setSkinNameState] = useState("iron-ember");
+  const [skinName, setSkinNameState] = useState(DEFAULT_SKIN_NAME);
   const [userThemesVersion, setUserThemesVersion] = useState(0);
 
   const refreshUserThemes = useCallback(() => {

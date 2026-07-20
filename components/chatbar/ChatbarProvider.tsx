@@ -155,22 +155,6 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     saveChatbarContextMode(contextMode);
   }, [contextMode, hydrated]);
 
-  // Alt+H — match hermes-browser-extension default shortcut (disabled on setup)
-  useEffect(() => {
-    if (chatbarHidden) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (!(event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey)) return;
-      if (event.key.toLowerCase() !== "h") return;
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
-      event.preventDefault();
-      setResidencyState((current) => toggleChatbarResidency(current));
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [chatbarHidden]);
-
   const setResidency = useCallback((next: ChatbarResidency) => {
     setResidencyState(normalizeChatbarResidency(next));
   }, []);
@@ -202,9 +186,9 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     setIntroRequestKey((k) => k + 1);
   }, []);
 
-  const focusComposer = useCallback(
+  /** Open dock + focus composer (studio textarea or process RichComposer). */
+  const requestComposerFocus = useCallback(
     (opts?: { prefill?: string; submit?: boolean }) => {
-      setResidencyState(CHATBAR_RESIDENCY_MODES.OPEN);
       setComposerFocusRequest({
         key: Date.now(),
         prefill: opts?.prefill,
@@ -212,6 +196,14 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       });
     },
     [],
+  );
+
+  const focusComposer = useCallback(
+    (opts?: { prefill?: string; submit?: boolean }) => {
+      setResidencyState(CHATBAR_RESIDENCY_MODES.OPEN);
+      requestComposerFocus(opts);
+    },
+    [requestComposerFocus],
   );
 
   const openDecisionSession = useCallback(
@@ -228,26 +220,47 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
         prefill: opts.prefill,
       });
       if (opts.prefill) {
-        setComposerFocusRequest({
-          key: Date.now(),
-          prefill: opts.prefill,
-        });
+        requestComposerFocus({ prefill: opts.prefill });
       }
     },
-    [],
+    [requestComposerFocus],
   );
 
   const toggle = useCallback(() => {
-    setResidencyState((current) => toggleChatbarResidency(current));
+    setResidencyState((current) => {
+      const next = toggleChatbarResidency(current);
+      if (next === CHATBAR_RESIDENCY_MODES.OPEN) {
+        // Schedule after residency commit so the panel can leave width:0.
+        queueMicrotask(() => {
+          setComposerFocusRequest({ key: Date.now() });
+        });
+      }
+      return next;
+    });
   }, []);
 
   const open = useCallback(() => {
     setResidencyState(CHATBAR_RESIDENCY_MODES.OPEN);
-  }, []);
+    requestComposerFocus();
+  }, [requestComposerFocus]);
 
   const collapse = useCallback(() => {
     setResidencyState(CHATBAR_RESIDENCY_MODES.COLLAPSED);
   }, []);
+
+  // Alt+H — match hermes-browser-extension default shortcut (disabled on setup).
+  // Works even while focused in the composer so users can open *and* close.
+  useEffect(() => {
+    if (chatbarHidden) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey)) return;
+      if (event.key.toLowerCase() !== "h") return;
+      event.preventDefault();
+      toggle();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatbarHidden, toggle]);
 
   const swapSide = useCallback(() => {
     setSideState((current) => toggleChatbarSide(current));

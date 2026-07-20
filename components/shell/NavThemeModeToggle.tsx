@@ -18,7 +18,7 @@ const ICON_PROPS = {
 
 /**
  * Day/night mode toggle for dual-palette skins.
- * Lives in the nav rail footer, above settings.
+ * Lives in title-bar trailing chrome (multi-tab strip, AppTopBar, Business Manager).
  */
 export function NavThemeModeToggle({ className }: NavThemeModeToggleProps) {
   const { skin, resolved, setPreference } = useTheme();

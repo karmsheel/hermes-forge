@@ -210,19 +210,6 @@ export function SettingsMenu({ className, placement = "bottom-end" }: SettingsMe
         <section className="settings-menu__section">
           <div className="settings-menu__section-title">
             <Palette className="w-3.5 h-3.5" />
-            <span>Appearance</span>
-          </div>
-          <SegmentedControl
-            value={preference}
-            options={THEME_OPTIONS}
-            ariaLabel="Color mode"
-            onChange={setPreference}
-          />
-        </section>
-
-        <section className="settings-menu__section">
-          <div className="settings-menu__section-title">
-            <Palette className="w-3.5 h-3.5" />
             <span>Skin</span>
           </div>
           <p className="settings-menu__skin-hint">{skinHint}</p>
@@ -240,6 +227,15 @@ export function SettingsMenu({ className, placement = "bottom-end" }: SettingsMe
               </div>
             </>
           )}
+
+          <div className="settings-menu__mode-switcher">
+            <SegmentedControl
+              value={preference}
+              options={THEME_OPTIONS}
+              ariaLabel="Color mode"
+              onChange={setPreference}
+            />
+          </div>
         </section>
 
         <footer className="settings-menu__footer">

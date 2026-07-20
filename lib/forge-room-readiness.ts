@@ -33,19 +33,20 @@ export function computeRoomReadiness(stats: RoomReadinessStats): RoomReadiness {
 
 /**
  * Whether the room is unlocked for chrome + full product surface.
- * While readiness is unknown (loading), only Foundation is treated as open so
- * Map/Monitor/Automate do not flash in the room switcher before stats arrive.
- * Deep links to locked rooms still render SoftRoomLock empty states.
+ * While readiness is unknown (loading), only Foundation + Inventory are treated
+ * as open so Map/Monitor/Automate do not flash in the room switcher before
+ * stats arrive. Deep links to locked rooms still render SoftRoomLock empty states.
  */
 export function isRoomSoftUnlocked(
   room: ForgeStage,
   readiness: RoomReadiness | null | undefined,
 ): boolean {
   if (!readiness) {
-    return room === "foundation";
+    return room === "foundation" || room === "inventory";
   }
   switch (room) {
     case "foundation":
+    case "inventory":
       return true;
     case "map":
       return readiness.mapReady;

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
 import {
@@ -29,7 +28,6 @@ import { SettingsMenu } from "@/components/settings/SettingsMenu";
 import { isNavIdInStage, ROOM_HOME_ROUTES } from "@/lib/forge-stage";
 import { useForgeTabs } from "./ForgeTabProvider";
 import { NavRailVersion } from "./NavRailVersion";
-import { NavThemeModeToggle } from "./NavThemeModeToggle";
 import { useShell } from "./ShellContext";
 import { useForgeStage } from "./StageProvider";
 
@@ -185,16 +183,6 @@ export function NavRail() {
   return (
     <nav className="nav-rail" aria-label="Main navigation">
       <div className="nav-rail__section">
-        <Link
-          href="/business-manager"
-          className={`nav-rail__logo${activePath.startsWith("/business-manager") ? " is-active" : ""}`}
-          title="Business Manager"
-          aria-label="Business Manager"
-          onClick={(e) => handleShellNav("/business-manager", e)}
-        >
-          <HermesForgeMark className="hermes-forge-mark nav-rail__logo-art" />
-        </Link>
-
         <button
           type="button"
           className="nav-rail__item nav-rail__item--accent"
@@ -269,7 +257,6 @@ export function NavRail() {
           );
         })}
         <div className="nav-rail__divider" role="separator" aria-hidden="true" />
-        <NavThemeModeToggle className="nav-rail__theme-toggle" />
         <div className="nav-rail__settings-wrap">
           <SettingsMenu className="nav-rail__settings" placement="right-end" />
         </div>

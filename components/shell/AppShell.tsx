@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { Hammer } from "lucide-react";
 import { ChatbarCollapsedTab } from "@/components/chatbar/ChatbarCollapsedTab";
 import { ChatbarPanel } from "@/components/chatbar/ChatbarPanel";
 import { ChatbarProvider, useChatbar } from "@/components/chatbar/ChatbarProvider";
@@ -66,8 +67,30 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     return (
       <div className={layoutClass}>
         <div className="app-shell-layout__main app-shell-layout__main--full-bleed">
-          {/* Full-width drag strip so window controls stay top-right when chat opens */}
-          <DesktopDragChrome />
+          {/*
+            Full-width title strip. Business Manager: theme + notifications top-right
+            (same as multi-tab chrome); always shown on web. Other full-bleed (setup):
+            desktop drag + window controls only.
+            BM also shows a plain-line hammer (current page, non-interactive) —
+            ForgeTabBar is not mounted on full-bleed surfaces.
+          */}
+          <DesktopDragChrome
+            always={isBusinessManager}
+            showShellActions={isBusinessManager}
+          >
+            {isBusinessManager ? (
+              <span
+                className="forge-tab-bar__home forge-tab-bar__home--current desktop-no-drag"
+                title="Business Manager"
+                aria-label="Business Manager"
+                aria-current="page"
+              >
+                <span className="forge-tab-bar__home-mark" aria-hidden>
+                  <Hammer className="forge-tab-bar__home-icon" strokeWidth={2} />
+                </span>
+              </span>
+            ) : null}
+          </DesktopDragChrome>
           <div className="app-shell-layout__body">
             {isLeft ? chat : null}
             <div className="app-shell-layout__content">
@@ -83,26 +106,31 @@ function AppShellFrame({ children }: { children: ReactNode }) {
 
   return (
     <div className={layoutClass}>
-      <NavRail />
-      <div className="app-shell-layout__main">
-        {/*
-          Multi-tab strip stays full-width (window controls top-right).
-          Chat docks beside the room navbar + page column so its top aligns with
-          the business picker / room pills — left dock shifts that column right.
-        */}
-        <ForgeTabBar />
-        <div className="app-shell-layout__body">
-          {isLeft ? chat : null}
-          <div className="app-shell-layout__workspace">
-            <AppTopBar />
-            <div className="app-shell-layout__content">
-              <ForgeTabOutlet>{children}</ForgeTabOutlet>
+      {/*
+        Full-bleed multi-tab title strip (window controls top-right).
+        Nav rail lives in the row BELOW so its top aligns with the strip bottom.
+      */}
+      <ForgeTabBar />
+      <div className="app-shell-layout__row">
+        <NavRail />
+        <div className="app-shell-layout__main">
+          {/*
+            Chat docks beside the room navbar + page column so its top aligns with
+            the business picker / room pills — left dock shifts that column right.
+          */}
+          <div className="app-shell-layout__body">
+            {isLeft ? chat : null}
+            <div className="app-shell-layout__workspace">
+              <AppTopBar />
+              <div className="app-shell-layout__content">
+                <ForgeTabOutlet>{children}</ForgeTabOutlet>
+              </div>
             </div>
+            {!isLeft ? chat : null}
           </div>
-          {!isLeft ? chat : null}
         </div>
+        {edgeTab}
       </div>
-      {edgeTab}
     </div>
   );
 }

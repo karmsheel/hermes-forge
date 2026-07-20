@@ -9,7 +9,7 @@ const LEGACY_ACCENT_STORAGE_KEY = "hermes-forge-accent";
 
 /** Map legacy accent ids to closest built-in skin. */
 const LEGACY_ACCENT_TO_SKIN: Record<string, string> = {
-  terracotta: "iron-ember",
+  terracotta: "forge-os",
   coral: "ember",
   amber: "ember",
   sage: "mono",

@@ -14,6 +14,7 @@ import {
   getPreviewUpdateIcon,
   getShowCronalyticsPage,
   getShowGodModePage,
+  getShowChatbarDiagnostics,
   getShowHermesModelSwitcher,
   getShowHomeCombinedPage,
   getShowHomeProcessStandardPicker,
@@ -21,6 +22,7 @@ import {
   lockDeveloperMode as persistLockDeveloperMode,
   recordVersionUnlockClick,
   setPreviewUpdateIcon as persistPreviewUpdateIcon,
+  setShowChatbarDiagnostics as persistShowChatbarDiagnostics,
   setShowCronalyticsPage as persistShowCronalyticsPage,
   setShowGodModePage as persistShowGodModePage,
   setShowHermesModelSwitcher as persistShowHermesModelSwitcher,
@@ -43,6 +45,8 @@ interface DeveloperSettingsContextValue {
   setShowHomeProcessStandardPicker: (enabled: boolean) => void;
   showHermesModelSwitcher: boolean;
   setShowHermesModelSwitcher: (enabled: boolean) => void;
+  showChatbarDiagnostics: boolean;
+  setShowChatbarDiagnostics: (enabled: boolean) => void;
   recordVersionUnlockClick: () => void;
   lockDeveloperMode: () => void;
 }
@@ -57,6 +61,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
   const [showGodModePage, setShowGodModePageState] = useState(false);
   const [showHomeProcessStandardPicker, setShowHomeProcessStandardPickerState] = useState(false);
   const [showHermesModelSwitcher, setShowHermesModelSwitcherState] = useState(false);
+  const [showChatbarDiagnostics, setShowChatbarDiagnosticsState] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -67,6 +72,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setShowGodModePageState(getShowGodModePage());
     setShowHomeProcessStandardPickerState(getShowHomeProcessStandardPicker());
     setShowHermesModelSwitcherState(getShowHermesModelSwitcher());
+    setShowChatbarDiagnosticsState(getShowChatbarDiagnostics());
     setHydrated(true);
   }, []);
 
@@ -100,6 +106,11 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     persistShowHermesModelSwitcher(enabled);
   }, []);
 
+  const setShowChatbarDiagnostics = useCallback((enabled: boolean) => {
+    setShowChatbarDiagnosticsState(enabled);
+    persistShowChatbarDiagnostics(enabled);
+  }, []);
+
   const handleVersionUnlockClick = useCallback(() => {
     const result = recordVersionUnlockClick();
     if (result.justUnlocked) {
@@ -117,6 +128,7 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
     setShowGodModePageState(false);
     setShowHomeProcessStandardPickerState(false);
     setShowHermesModelSwitcherState(false);
+    setShowChatbarDiagnosticsState(false);
     toast.success("Developer mode hidden");
   }, []);
 
@@ -136,6 +148,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowHomeProcessStandardPicker,
       showHermesModelSwitcher: hydrated ? showHermesModelSwitcher : false,
       setShowHermesModelSwitcher,
+      showChatbarDiagnostics: hydrated ? showChatbarDiagnostics : false,
+      setShowChatbarDiagnostics,
       recordVersionUnlockClick: handleVersionUnlockClick,
       lockDeveloperMode: handleLockDeveloperMode,
     }),
@@ -154,6 +168,8 @@ export function DeveloperSettingsProvider({ children }: { children: ReactNode })
       setShowHomeProcessStandardPicker,
       showHermesModelSwitcher,
       setShowHermesModelSwitcher,
+      showChatbarDiagnostics,
+      setShowChatbarDiagnostics,
       handleVersionUnlockClick,
       handleLockDeveloperMode,
     ]

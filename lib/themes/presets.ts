@@ -221,8 +221,8 @@ export const cyberpunkSkin: ForgeSkin = {
   },
 };
 
-/** Iron + ember — cooling forge: steel, ash, and low embers. */
-const IRON_EMBER_LIGHT = {
+/** Forge OS — cooling forge: steel, ash, and low embers. */
+const FORGE_OS_LIGHT = {
   background: "#F0EEEA",
   card: "#F8F7F5",
   primary: "#B4532A",
@@ -232,7 +232,7 @@ const IRON_EMBER_LIGHT = {
   muted: "#6E6C68",
 } as const;
 
-const IRON_EMBER_DARK = {
+const FORGE_OS_DARK = {
   background: "#111214",
   card: "#1A1D22",
   primary: "#A8552D",
@@ -242,8 +242,8 @@ const IRON_EMBER_DARK = {
   muted: "#8B8B8B",
 } as const;
 
-function ironEmberLine(
-  tokens: typeof IRON_EMBER_LIGHT | typeof IRON_EMBER_DARK,
+function forgeOsLine(
+  tokens: typeof FORGE_OS_LIGHT | typeof FORGE_OS_DARK,
   pct: number,
 ): string {
   return mix(tokens.primary, tokens.background, (100 - pct) / 100);
@@ -253,87 +253,87 @@ function ironEmberLine(
  * Dark structural lines need more luminance than primary-on-black alone
  * provides — blend a warmer ember ink so sidebars/cards stay readable.
  */
-function ironEmberDarkLine(pct: number): string {
-  const ink = mix(IRON_EMBER_DARK.primary, IRON_EMBER_DARK.highlight, 0.42);
-  return mix(ink, IRON_EMBER_DARK.background, (100 - pct) / 100);
+function forgeOsDarkLine(pct: number): string {
+  const ink = mix(FORGE_OS_DARK.primary, FORGE_OS_DARK.highlight, 0.42);
+  return mix(ink, FORGE_OS_DARK.background, (100 - pct) / 100);
 }
 
-function ironEmberSurface(
-  tokens: typeof IRON_EMBER_LIGHT | typeof IRON_EMBER_DARK,
+function forgeOsSurface(
+  tokens: typeof FORGE_OS_LIGHT | typeof FORGE_OS_DARK,
   pct: number,
 ): string {
   return mix(tokens.accent, tokens.card, (100 - pct) / 100);
 }
 
-export const ironEmberSkin: ForgeSkin = {
-  name: "iron-ember",
-  label: "Iron & Ember",
+export const forgeOsSkin: ForgeSkin = {
+  name: "forge-os",
+  label: "Forge OS",
   description: "Cooling steel and ash with low ember glow — modern industrial warmth",
   colors: {
-    background: IRON_EMBER_LIGHT.background,
-    foreground: IRON_EMBER_LIGHT.text,
-    card: IRON_EMBER_LIGHT.card,
-    cardForeground: IRON_EMBER_LIGHT.text,
-    muted: mix(IRON_EMBER_LIGHT.background, IRON_EMBER_LIGHT.card, 0.42),
-    mutedForeground: IRON_EMBER_LIGHT.muted,
+    background: FORGE_OS_LIGHT.background,
+    foreground: FORGE_OS_LIGHT.text,
+    card: FORGE_OS_LIGHT.card,
+    cardForeground: FORGE_OS_LIGHT.text,
+    muted: mix(FORGE_OS_LIGHT.background, FORGE_OS_LIGHT.card, 0.42),
+    mutedForeground: FORGE_OS_LIGHT.muted,
     popover: "#FFFFFF",
-    popoverForeground: IRON_EMBER_LIGHT.text,
-    primary: IRON_EMBER_LIGHT.primary,
+    popoverForeground: FORGE_OS_LIGHT.text,
+    primary: FORGE_OS_LIGHT.primary,
     primaryForeground: "#FFFFFF",
-    secondary: ironEmberSurface(IRON_EMBER_LIGHT, 14),
-    secondaryForeground: IRON_EMBER_LIGHT.highlight,
-    accent: ironEmberSurface(IRON_EMBER_LIGHT, 26),
-    accentForeground: IRON_EMBER_LIGHT.highlight,
-    border: ironEmberLine(IRON_EMBER_LIGHT, 14),
-    input: ironEmberLine(IRON_EMBER_LIGHT, 20),
-    ring: IRON_EMBER_LIGHT.accent,
-    midground: IRON_EMBER_LIGHT.accent,
-    composerRing: IRON_EMBER_LIGHT.accent,
+    secondary: forgeOsSurface(FORGE_OS_LIGHT, 14),
+    secondaryForeground: FORGE_OS_LIGHT.highlight,
+    accent: forgeOsSurface(FORGE_OS_LIGHT, 26),
+    accentForeground: FORGE_OS_LIGHT.highlight,
+    border: forgeOsLine(FORGE_OS_LIGHT, 14),
+    input: forgeOsLine(FORGE_OS_LIGHT, 20),
+    ring: FORGE_OS_LIGHT.accent,
+    midground: FORGE_OS_LIGHT.accent,
+    composerRing: FORGE_OS_LIGHT.accent,
     destructive: "#C43010",
     destructiveForeground: "#FFFFFF",
     sidebarBackground: "#EBE8E4",
-    sidebarBorder: ironEmberLine(IRON_EMBER_LIGHT, 10),
+    sidebarBorder: forgeOsLine(FORGE_OS_LIGHT, 10),
     // Day composer / user bubble: paper white with a firm dark outline
     userBubble: "#FFFFFF",
-    userBubbleBorder: IRON_EMBER_LIGHT.text,
-    composerForeground: IRON_EMBER_LIGHT.text,
-    composerPlaceholder: mix(IRON_EMBER_LIGHT.muted, "#FFFFFF", 0.22),
+    userBubbleBorder: FORGE_OS_LIGHT.text,
+    composerForeground: FORGE_OS_LIGHT.text,
+    composerPlaceholder: mix(FORGE_OS_LIGHT.muted, "#FFFFFF", 0.22),
     success: "#2F7A4A",
     info: "#3D6F94",
   },
   darkColors: {
-    background: IRON_EMBER_DARK.background,
-    foreground: IRON_EMBER_DARK.text,
-    card: IRON_EMBER_DARK.card,
-    cardForeground: IRON_EMBER_DARK.text,
-    muted: mix(IRON_EMBER_DARK.background, IRON_EMBER_DARK.card, 0.36),
-    mutedForeground: IRON_EMBER_DARK.muted,
+    background: FORGE_OS_DARK.background,
+    foreground: FORGE_OS_DARK.text,
+    card: FORGE_OS_DARK.card,
+    cardForeground: FORGE_OS_DARK.text,
+    muted: mix(FORGE_OS_DARK.background, FORGE_OS_DARK.card, 0.36),
+    mutedForeground: FORGE_OS_DARK.muted,
     popover: "#1E2229",
-    popoverForeground: IRON_EMBER_DARK.text,
-    primary: IRON_EMBER_DARK.primary,
-    primaryForeground: IRON_EMBER_DARK.text,
-    secondary: ironEmberSurface(IRON_EMBER_DARK, 16),
-    secondaryForeground: IRON_EMBER_DARK.highlight,
-    accent: ironEmberSurface(IRON_EMBER_DARK, 28),
-    accentForeground: IRON_EMBER_DARK.highlight,
-    border: ironEmberDarkLine(28),
-    input: ironEmberDarkLine(34),
-    ring: IRON_EMBER_DARK.accent,
-    midground: IRON_EMBER_DARK.accent,
-    composerRing: IRON_EMBER_DARK.accent,
+    popoverForeground: FORGE_OS_DARK.text,
+    primary: FORGE_OS_DARK.primary,
+    primaryForeground: FORGE_OS_DARK.text,
+    secondary: forgeOsSurface(FORGE_OS_DARK, 16),
+    secondaryForeground: FORGE_OS_DARK.highlight,
+    accent: forgeOsSurface(FORGE_OS_DARK, 28),
+    accentForeground: FORGE_OS_DARK.highlight,
+    border: forgeOsDarkLine(28),
+    input: forgeOsDarkLine(34),
+    ring: FORGE_OS_DARK.accent,
+    midground: FORGE_OS_DARK.accent,
+    composerRing: FORGE_OS_DARK.accent,
     destructive: "#D64545",
-    destructiveForeground: IRON_EMBER_DARK.text,
+    destructiveForeground: FORGE_OS_DARK.text,
     sidebarBackground: "#0D0E10",
-    sidebarBorder: ironEmberDarkLine(30),
-    userBubble: IRON_EMBER_DARK.card,
-    userBubbleBorder: ironEmberDarkLine(42),
+    sidebarBorder: forgeOsDarkLine(30),
+    userBubble: FORGE_OS_DARK.card,
+    userBubbleBorder: forgeOsDarkLine(42),
     success: "#5A9E6F",
     info: "#6B8FA8",
   },
 };
 
 export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
-  "iron-ember": ironEmberSkin,
+  "forge-os": forgeOsSkin,
   nous: nousSkin,
   midnight: midnightSkin,
   ember: emberSkin,
@@ -343,7 +343,7 @@ export const BUILTIN_SKINS: Record<string, ForgeSkin> = {
 
 export const BUILTIN_SKIN_LIST = Object.values(BUILTIN_SKINS);
 
-export const DEFAULT_SKIN_NAME = "iron-ember";
+export const DEFAULT_SKIN_NAME = "forge-os";
 
 export const BUILTIN_SKIN_NAMES = BUILTIN_SKIN_LIST.map((s) => s.name);
 

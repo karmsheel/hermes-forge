@@ -6,13 +6,19 @@
  * Code still uses ForgeStage as the type id; user-facing copy should say “room”.
  */
 
-export type ForgeStage = "foundation" | "map" | "monitor" | "automate";
+export type ForgeStage =
+  | "foundation"
+  | "inventory"
+  | "map"
+  | "monitor"
+  | "automate";
 
 /** @deprecated Prefer “room” in UI; alias kept for call sites mid-migration. */
 export type ForgeRoom = ForgeStage;
 
 export const FORGE_STAGES: readonly ForgeStage[] = [
   "foundation",
+  "inventory",
   "map",
   "monitor",
   "automate",
@@ -20,8 +26,22 @@ export const FORGE_STAGES: readonly ForgeStage[] = [
 
 export const FORGE_ROOMS = FORGE_STAGES;
 
+/** Rooms next to the business picker (always available; multi-tab like MMA). */
+export const LEADING_ROOMS: readonly ForgeStage[] = [
+  "foundation",
+  "inventory",
+] as const;
+
+/** Operating rooms in the center cluster (soft progressive unlock). */
+export const OPS_ROOMS: readonly ForgeStage[] = [
+  "map",
+  "monitor",
+  "automate",
+] as const;
+
 export const FORGE_STAGE_LABELS: Record<ForgeStage, string> = {
   foundation: "Foundation",
+  inventory: "Inventory",
   map: "Map",
   monitor: "Monitor",
   automate: "Automate",
@@ -29,8 +49,9 @@ export const FORGE_STAGE_LABELS: Record<ForgeStage, string> = {
 
 export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
   foundation: "Talk with Overlord — plant sketch, drafts, and documents",
+  inventory: "Digital assets and objects the business uses or ships",
   map: "See the business as a plant; open processes in Workshop",
-  monitor: "Track metrics and content health (unlocks after a forged process)",
+  monitor: "Track metrics and health of forged work (unlocks after a forged process)",
   automate: "Assign agents and run jobs (unlocks after a forged process)",
 };
 
@@ -41,6 +62,7 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
  */
 export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
   foundation: null,
+  inventory: null,
   map: "Seed at least one process in Foundation to fill the plant map.",
   monitor: "Forge a process in Map / Workshop to open Monitor.",
   automate: "Forge a process in Map / Workshop to open Automate.",
@@ -54,14 +76,16 @@ export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
  */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
   foundation: ["home", "home-combined", "foundation", "documents", "personnel"],
+  inventory: ["home", "content"],
   map: ["home", "god-mode", "functions", "workshop", "documents", "personnel"],
-  monitor: ["home", "metrics", "content", "cronalytics"],
-  automate: ["home", "automations", "automation-analysis", "personnel", "content"],
+  monitor: ["home", "metrics", "cronalytics"],
+  automate: ["home", "automations", "automation-analysis", "personnel"],
 };
 
 /** Per-room Home routes (left-rail Home + room-switch landing). */
 export const ROOM_HOME_ROUTES: Record<ForgeStage, string> = {
   foundation: "/home",
+  inventory: "/inventory/home",
   map: "/map/home",
   monitor: "/monitor/home",
   automate: "/automate/home",
@@ -72,6 +96,7 @@ export function isRoomHomePath(pathname: string): boolean {
   return (
     path === "/home" ||
     path === "/" ||
+    path === "/inventory/home" ||
     path === "/map/home" ||
     path === "/monitor/home" ||
     path === "/automate/home"
@@ -90,6 +115,7 @@ const STORAGE_PREFIX = "forge:stage:";
 export function isForgeStage(value: string | null | undefined): value is ForgeStage {
   return (
     value === "foundation" ||
+    value === "inventory" ||
     value === "map" ||
     value === "monitor" ||
     value === "automate"
@@ -131,12 +157,17 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   // Per-room homes (before broader /home and /automations prefixes)
   if (path === "/home" || path === "/") return "foundation";
   if (path === "/home-combined") return "foundation";
+  if (path === "/inventory/home") return "inventory";
   if (path === "/map/home") return "map";
   if (path === "/monitor/home") return "monitor";
   if (path === "/automate/home") return "automate";
 
   if (path.startsWith("/foundation")) {
     return "foundation";
+  }
+
+  if (path.startsWith("/inventory") || path.startsWith("/content")) {
+    return "inventory";
   }
 
   if (
@@ -157,11 +188,6 @@ export function stageFromPath(pathname: string): ForgeStage | null {
 
   if (path.startsWith("/metrics") || path.startsWith("/cronalytics")) {
     return "monitor";
-  }
-
-  if (path.startsWith("/content")) {
-    // Content lives in Monitor + Automate; keep stored room if set
-    return null;
   }
 
   if (path.startsWith("/automations") || path.startsWith("/automation-analysis")) {
@@ -187,6 +213,7 @@ export function isNavIdInStage(navId: string, stage: ForgeStage): boolean {
 /** Default landing route when switching into a room (each room's Home). */
 export const STAGE_DEFAULT_ROUTES: Record<ForgeStage, string> = {
   foundation: ROOM_HOME_ROUTES.foundation,
+  inventory: ROOM_HOME_ROUTES.inventory,
   map: ROOM_HOME_ROUTES.map,
   monitor: ROOM_HOME_ROUTES.monitor,
   automate: ROOM_HOME_ROUTES.automate,
@@ -199,7 +226,6 @@ export function pathBelongsToStage(pathname: string, stage: ForgeStage): boolean
   if (inferred) return inferred === stage;
   // Neutral routes (log, decisions) are valid in every room
   if (path === "/log" || path.startsWith("/decisions")) return true;
-  if (path.startsWith("/content")) return stage === "monitor" || stage === "automate";
   if (path.startsWith("/documents")) return stage === "foundation" || stage === "map";
   if (path.startsWith("/personnel") && !path.includes("hire") && !path.includes("academy")) {
     return stage === "foundation" || stage === "map" || stage === "automate";

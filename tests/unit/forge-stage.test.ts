@@ -5,18 +5,26 @@ import {
   HOLISTIC_NAV_IDS,
   isForgeStage,
   isNavIdInStage,
+  LEADING_ROOMS,
+  OPS_ROOMS,
   pathBelongsToStage,
   STAGE_DEFAULT_ROUTES,
   stageFromPath,
 } from "../../lib/forge-stage.ts";
 
 describe("forge-stage (rooms)", () => {
-  it("recognizes room ids including foundation", () => {
+  it("recognizes room ids including foundation and inventory", () => {
     assert.equal(isForgeStage("foundation"), true);
+    assert.equal(isForgeStage("inventory"), true);
     assert.equal(isForgeStage("map"), true);
     assert.equal(isForgeStage("monitor"), true);
     assert.equal(isForgeStage("automate"), true);
     assert.equal(isForgeStage("run"), false);
+  });
+
+  it("splits leading vs operating rooms", () => {
+    assert.deepEqual([...LEADING_ROOMS], ["foundation", "inventory"]);
+    assert.deepEqual([...OPS_ROOMS], ["map", "monitor", "automate"]);
   });
 
   it("infers room from paths", () => {
@@ -29,7 +37,8 @@ describe("forge-stage (rooms)", () => {
     assert.equal(stageFromPath("/cronalytics"), "monitor");
     assert.equal(stageFromPath("/automations/abc"), "automate");
     assert.equal(stageFromPath("/automation-analysis"), "automate");
-    assert.equal(stageFromPath("/content"), null);
+    assert.equal(stageFromPath("/content"), "inventory");
+    assert.equal(stageFromPath("/inventory/home"), "inventory");
     assert.equal(stageFromPath("/home"), "foundation");
     assert.equal(stageFromPath("/map/home"), "map");
     assert.equal(stageFromPath("/monitor/home"), "monitor");
@@ -44,6 +53,7 @@ describe("forge-stage (rooms)", () => {
 
   it("room switch lands on each room Home", () => {
     assert.equal(STAGE_DEFAULT_ROUTES.foundation, "/home");
+    assert.equal(STAGE_DEFAULT_ROUTES.inventory, "/inventory/home");
     assert.equal(STAGE_DEFAULT_ROUTES.map, "/map/home");
     assert.equal(STAGE_DEFAULT_ROUTES.monitor, "/monitor/home");
     assert.equal(STAGE_DEFAULT_ROUTES.automate, "/automate/home");
@@ -54,14 +64,19 @@ describe("forge-stage (rooms)", () => {
     assert.equal(isNavIdInStage("home", "map"), true);
     assert.equal(isNavIdInStage("home", "monitor"), true);
     assert.equal(isNavIdInStage("home", "automate"), true);
+    assert.equal(isNavIdInStage("home", "inventory"), true);
     assert.equal(isNavIdInStage("foundation", "foundation"), true);
     assert.equal(isNavIdInStage("foundation", "map"), false);
     assert.equal(isNavIdInStage("god-mode", "map"), true);
     assert.equal(isNavIdInStage("workshop", "map"), true);
     assert.equal(isNavIdInStage("workshop", "foundation"), false);
     assert.equal(isNavIdInStage("metrics", "map"), false);
-    assert.equal(isNavIdInStage("content", "monitor"), true);
-    assert.equal(isNavIdInStage("content", "automate"), true);
+    // Content only in Inventory
+    assert.equal(isNavIdInStage("content", "inventory"), true);
+    assert.equal(isNavIdInStage("content", "monitor"), false);
+    assert.equal(isNavIdInStage("content", "automate"), false);
+    assert.equal(isNavIdInStage("content", "map"), false);
+    assert.equal(isNavIdInStage("content", "foundation"), false);
     assert.equal(isNavIdInStage("automations", "automate"), true);
     assert.equal(isNavIdInStage("automation-analysis", "automate"), true);
     assert.equal(isNavIdInStage("automation-analysis", "map"), false);
@@ -74,9 +89,12 @@ describe("forge-stage (rooms)", () => {
   });
 
   it("pathBelongsToStage for content, home, documents", () => {
-    assert.equal(pathBelongsToStage("/content", "monitor"), true);
-    assert.equal(pathBelongsToStage("/content", "automate"), true);
+    assert.equal(pathBelongsToStage("/content", "inventory"), true);
+    assert.equal(pathBelongsToStage("/content", "monitor"), false);
+    assert.equal(pathBelongsToStage("/content", "automate"), false);
     assert.equal(pathBelongsToStage("/content", "map"), false);
+    assert.equal(pathBelongsToStage("/inventory/home", "inventory"), true);
+    assert.equal(pathBelongsToStage("/inventory/home", "foundation"), false);
     assert.equal(pathBelongsToStage("/home", "foundation"), true);
     assert.equal(pathBelongsToStage("/home", "map"), false);
     assert.equal(pathBelongsToStage("/map/home", "map"), true);

@@ -17,6 +17,13 @@ export const ROOM_HOME_COPY: Record<ForgeStage, RoomHomeCopy> = {
     subtitle:
       "Start in Foundation with Overlord — sketch the plant, then map and forge",
   },
+  inventory: {
+    room: "inventory",
+    roomBadge: "Inventory home",
+    title: "What will you STORE today?",
+    subtitle:
+      "Digital assets and objects the business uses or ships — content, drafts, and more",
+  },
   map: {
     room: "map",
     roomBadge: "Map home",
@@ -29,7 +36,7 @@ export const ROOM_HOME_COPY: Record<ForgeStage, RoomHomeCopy> = {
     roomBadge: "Monitor home",
     title: "What will you MEASURE today?",
     subtitle:
-      "Instrument forged work — track metrics and content health across the plant",
+      "Instrument forged work — track metrics and health across the plant",
   },
   automate: {
     room: "automate",

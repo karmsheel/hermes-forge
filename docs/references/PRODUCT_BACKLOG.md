@@ -540,7 +540,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 **Files:** `lib/themes/*`, `components/theme/ThemeProvider.tsx`, `components/theme/ThemeScript.tsx`, `components/settings/SettingsMenu.tsx`, `components/workshop/MermaidDiagram.tsx`
 
-**Shipped:** 10 built-in skins (`iron-ember` default + 9 presets), flashless boot script, accent→skin migration, Mermaid reads computed theme tokens. Most presets are dark-only in the skin picker when mode = Light.
+**Shipped:** 10 built-in skins (`forge-os` default + 9 presets), flashless boot script, accent→skin migration, Mermaid reads computed theme tokens. Most presets are dark-only in the skin picker when mode = Light.
 
 **Reference:** `docs/references/hermes-desktop-design-system.md`
 

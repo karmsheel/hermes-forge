@@ -9,6 +9,7 @@ const SHOW_HOME_COMBINED_KEY = "forge:dev-show-home-combined";
 const SHOW_HOME_PROCESS_STANDARD_PICKER_KEY = "forge:dev-show-home-process-standard-picker";
 const SHOW_HERMES_MODEL_SWITCHER_KEY = "forge:dev-show-hermes-model-switcher";
 const SHOW_GOD_MODE_KEY = "forge:dev-show-god-mode";
+const SHOW_CHATBAR_DIAGNOSTICS_KEY = "forge:dev-show-chatbar-diagnostics";
 
 const UNLOCK_CLICKS_REQUIRED = 5;
 
@@ -61,6 +62,7 @@ export function lockDeveloperMode() {
   removeStorage("forge:dev-show-decisions");
   removeStorage(SHOW_HOME_PROCESS_STANDARD_PICKER_KEY);
   removeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY);
+  removeStorage(SHOW_CHATBAR_DIAGNOSTICS_KEY);
 }
 
 export function recordVersionUnlockClick(): {
@@ -152,6 +154,18 @@ export function setShowHermesModelSwitcher(enabled: boolean) {
     writeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY, "1");
   } else {
     removeStorage(SHOW_HERMES_MODEL_SWITCHER_KEY);
+  }
+}
+
+export function getShowChatbarDiagnostics(): boolean {
+  return readStorage(SHOW_CHATBAR_DIAGNOSTICS_KEY) === "1";
+}
+
+export function setShowChatbarDiagnostics(enabled: boolean) {
+  if (enabled) {
+    writeStorage(SHOW_CHATBAR_DIAGNOSTICS_KEY, "1");
+  } else {
+    removeStorage(SHOW_CHATBAR_DIAGNOSTICS_KEY);
   }
 }
 

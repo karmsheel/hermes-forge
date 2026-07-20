@@ -61,10 +61,45 @@ function lineInk(c: SkinColors, dark: boolean): string {
   return hsl && hsl.s >= 10 ? c.foreground : "#1c1b1a";
 }
 
-function shadowVars(ink: string): Pick<
+function shadowVars(
+  ink: string,
+  dark: boolean,
+): Pick<
   ForgeSkinVars,
   "--shadow-xs" | "--shadow-sm" | "--shadow-md" | "--shadow-nous" | "--stroke-nous"
 > {
+  // Light elevation ink (e.g. Nous night = pure white on brand blue) needs higher
+  // opacities — 4–7% white is nearly invisible on saturated surfaces.
+  // Dark-mode glow opacities are ~0.6× the tuned peak (global −40% soft-down).
+  const lightInk = !isDarkBackground(ink);
+  if (dark && lightInk) {
+    return {
+      "--shadow-xs": `0 1px 0 color-mix(in srgb, ${ink} 12%, transparent)`,
+      "--shadow-sm": `0 1px 2px color-mix(in srgb, ${ink} 16%, transparent), 0 1px 3px color-mix(in srgb, ${ink} 11%, transparent)`,
+      "--shadow-md": `0 6px 32px color-mix(in srgb, ${ink} 25%, transparent), 0 2px 12px color-mix(in srgb, ${ink} 17%, transparent)`,
+      "--shadow-nous": [
+        `0 0.125rem 0.25rem -0.125rem color-mix(in srgb, ${ink} 17%, transparent)`,
+        `0 0.5rem 0.75rem -0.375rem color-mix(in srgb, ${ink} 16%, transparent)`,
+        `0 1.25rem 1.75rem -0.875rem color-mix(in srgb, ${ink} 19%, transparent)`,
+        `0 2.25rem 3rem -1.75rem color-mix(in srgb, ${ink} 11%, transparent)`,
+      ].join(", "),
+      "--stroke-nous": `color-mix(in srgb, ${ink} 22%, transparent)`,
+    };
+  }
+  if (dark) {
+    return {
+      "--shadow-xs": `0 1px 0 color-mix(in srgb, ${ink} 5%, transparent)`,
+      "--shadow-sm": `0 1px 2px color-mix(in srgb, ${ink} 7%, transparent), 0 1px 3px color-mix(in srgb, ${ink} 5%, transparent)`,
+      "--shadow-md": `0 6px 24px color-mix(in srgb, ${ink} 10%, transparent), 0 2px 8px color-mix(in srgb, ${ink} 6%, transparent)`,
+      "--shadow-nous": [
+        `0 0.125rem 0.25rem -0.125rem color-mix(in srgb, ${ink} 8%, transparent)`,
+        `0 0.5rem 0.75rem -0.375rem color-mix(in srgb, ${ink} 7%, transparent)`,
+        `0 1.25rem 1.75rem -0.875rem color-mix(in srgb, ${ink} 8%, transparent)`,
+        `0 2.25rem 3rem -1.75rem color-mix(in srgb, ${ink} 5%, transparent)`,
+      ].join(", "),
+      "--stroke-nous": `color-mix(in srgb, ${ink} 12%, transparent)`,
+    };
+  }
   return {
     "--shadow-xs": `0 1px 0 color-mix(in srgb, ${ink} 4%, transparent)`,
     "--shadow-sm": `0 1px 2px color-mix(in srgb, ${ink} 5%, transparent), 0 1px 3px color-mix(in srgb, ${ink} 4%, transparent)`,
@@ -146,7 +181,7 @@ export function forgeVarsFromColors(c: SkinColors): ForgeSkinVars {
   if (c.composerRing) {
     vars["--bg-fill-tertiary"] = `color-mix(in srgb, ${ink} 3%, transparent)`;
     vars["--bg-fill-secondary"] = `color-mix(in srgb, ${ink} 6%, transparent)`;
-    Object.assign(vars, shadowVars(ink));
+    Object.assign(vars, shadowVars(ink, dark));
   }
 
   if (dark) {

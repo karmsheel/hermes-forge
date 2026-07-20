@@ -52,6 +52,8 @@ export function routePageLabel(route: string): string {
   if (path === "/map/home") return "Map Home";
   if (path === "/monitor/home") return "Monitor Home";
   if (path === "/automate/home") return "Automate Home";
+  if (path === "/inventory/home") return "Inventory Home";
+  if (path.startsWith("/inventory")) return "Inventory";
   if (path.startsWith("/foundation")) return "Foundation";
   if (path.startsWith("/workshop")) return "Workshop";
   if (path.startsWith("/functions")) return "Functions";

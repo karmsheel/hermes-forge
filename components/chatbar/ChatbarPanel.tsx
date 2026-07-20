@@ -1155,14 +1155,18 @@ export function ChatbarPanel() {
     messages,
   ]);
 
-  // Prefill studio composer when requested (decision redirect / focusComposer)
+  // Prefill / focus studio composer (decision redirect, open tab, Alt+H, focusComposer)
   useEffect(() => {
     if (!composerFocusRequest) return;
     if (isProcessScoped || isAutomationScoped) return;
     if (composerFocusRequest.prefill) {
       setDraft(composerFocusRequest.prefill);
     }
-    requestAnimationFrame(() => textareaRef.current?.focus());
+    // Short delay so expand-from-collapsed (width:0) can paint before focus.
+    const id = window.setTimeout(() => {
+      textareaRef.current?.focus({ preventScroll: true });
+    }, 50);
+    return () => window.clearTimeout(id);
   }, [composerFocusRequest?.key, isProcessScoped, isAutomationScoped]);
 
   const handleComposerSubmit = useCallback(() => {
@@ -1806,54 +1810,58 @@ export function ChatbarPanel() {
             onRemove={removeQueuedMessage}
             onClear={clearMessageQueue}
           />
-          <div className="chatbar-panel__composer-meta">
-            <div className="chatbar-panel__composer-meta-end">
+          <div className="chatbar-panel__composer-row">
+            <div className="chatbar-panel__composer-box">
               {contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&
-              pageRegistration?.selection?.type === "process" &&
-              pageRegistration.selection.summary ? (
-                <span
-                  className="chatbar-panel__selection-pill chatbar-panel__selection-pill--process chatbar-panel__selection-pill--compact"
-                  title={`Selected process in context: ${pageRegistration.selection.summary}`}
+              pageRegistration?.selection?.summary ? (
+                <div
+                  className="chatbar-panel__composer-pills"
+                  role="status"
+                  title="Included in Hermes context for this chat"
                 >
-                  <Hammer className="w-3 h-3 shrink-0" aria-hidden />
-                  <span className="chatbar-panel__selection-pill-value">
-                    {pageRegistration.selection.summary}
+                  <span
+                    className={`chatbar-panel__selection-pill chatbar-panel__selection-pill--compact${
+                      pageRegistration.selection.type === "process"
+                        ? " chatbar-panel__selection-pill--process"
+                        : ""
+                    }`}
+                  >
+                    {pageRegistration.selection.type === "process" ? (
+                      <Hammer className="w-3 h-3 shrink-0" aria-hidden />
+                    ) : (
+                      <Crosshair className="w-3 h-3 shrink-0" aria-hidden />
+                    )}
+                    <span className="chatbar-panel__selection-pill-value">
+                      {pageRegistration.selection.summary}
+                    </span>
                   </span>
-                </span>
+                </div>
               ) : null}
-              <ChatbarContextChip
-                mode={contextMode}
-                onChange={setContextMode}
-                pageTitle={blurb.title}
-                disabled={false}
+              <textarea
+                id="chatbar-input"
+                ref={textareaRef}
+                className="chatbar-panel__composer-input chatbar-panel__composer-input--live chatbar-panel__composer-input--in-box"
+                rows={5}
+                value={draft}
+                disabled={!businessId}
+                aria-label={
+                  activeAgentLabel ? `Message ${activeAgentLabel}` : "Message Hermes"
+                }
+                placeholder={
+                  !businessId
+                    ? "Select a business to start chatting…"
+                    : !isConnected
+                      ? "Connect Hermes, then ask about this page…"
+                      : sending
+                        ? "Type to queue a follow-up while Hermes replies…"
+                        : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
+                          ? "Chat only — no page snapshot…"
+                          : "Ask about this page or your business…"
+                }
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={onComposerKeyDown}
               />
             </div>
-          </div>
-          <div className="chatbar-panel__composer-row">
-            <textarea
-              id="chatbar-input"
-              ref={textareaRef}
-              className="chatbar-panel__composer-input chatbar-panel__composer-input--live"
-              rows={3}
-              value={draft}
-              disabled={!businessId}
-              aria-label={
-                activeAgentLabel ? `Message ${activeAgentLabel}` : "Message Hermes"
-              }
-              placeholder={
-                !businessId
-                  ? "Select a business to start chatting…"
-                  : !isConnected
-                    ? "Connect Hermes, then ask about this page…"
-                    : sending
-                      ? "Type to queue a follow-up while Hermes replies…"
-                      : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
-                        ? "Chat only — no page snapshot…"
-                        : "Ask about this page or your business…"
-              }
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onComposerKeyDown}
-            />
             <div className="chatbar-panel__composer-toolbar">
               <ChatbarModelSelect
                 disabled={!businessId}
@@ -1966,14 +1974,14 @@ export function ChatbarPanel() {
             >
               <CollapseIcon className="w-4 h-4" />
             </button>
-            <p className="chatbar-panel__composer-help">
-              {sending
-                ? canSteer
-                  ? "Stop · Steer · Queue while busy · "
-                  : "Stop ends the run · Enter queues while busy · "
-                : "Enter sends · "}
-              Agent · Model · <kbd>Alt</kbd>+<kbd>H</kbd>
-            </p>
+            <div className="chatbar-panel__bottom-row-end">
+              <ChatbarContextChip
+                mode={contextMode}
+                onChange={setContextMode}
+                pageTitle={blurb.title}
+                disabled={false}
+              />
+            </div>
           </div>
         </div>
       </footer>

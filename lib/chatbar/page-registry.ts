@@ -40,15 +40,27 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p === "/inventory/home",
+    blurb: {
+      routeKey: "inventory-home",
+      title: "Inventory Home",
+      purpose:
+        "Inventory room lobby. Digital assets and objects the business uses or ships.",
+      uiHints: [
+        "Open Content for the shipping pipeline (ideas → shipped)",
+        "Keep knowledge Documents in Foundation / Map — Inventory is operational assets",
+      ],
+    },
+  },
+  {
     match: (p) => p === "/monitor/home",
     blurb: {
       routeKey: "monitor-home",
       title: "Monitor Home",
       purpose:
-        "Monitor room lobby. Jump into metrics and content health for forged processes.",
+        "Monitor room lobby. Jump into metrics for forged processes.",
       uiHints: [
         "Open Metrics to instrument KPIs",
-        "Open Content for pipeline health",
         "Forge a process first if this room is still locked",
       ],
     },
@@ -158,11 +170,11 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       routeKey: "content",
       title: "Content",
       purpose:
-        "Operational content inventory — ideas, drafts, review, ready, shipped. Separate from knowledge Documents.",
+        "Inventory room: operational content pipeline — ideas, drafts, review, ready, shipped. Separate from knowledge Documents.",
       uiHints: [
         "Create a piece and move it through statuses",
         "Use Content for what you ship; Documents for brand/strategy knowledge",
-        "In Automate, assign a Hermes agent + cron to draft on a schedule",
+        "In Automate, assign a Hermes agent + cron to draft on a schedule; review drafts here",
       ],
     },
   },
@@ -172,11 +184,12 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
       routeKey: "metrics",
       title: "Metrics",
       purpose:
-        "Monitor stage: content pipeline health and channel metrics (followers, engagement).",
+        "Monitor room: channel metrics (followers, engagement) and operational KPIs.",
       uiHints: [
         "Define metrics for LinkedIn, X, newsletter, etc.",
         "Record samples manually until Hermes collection jobs are wired",
         "Ask which KPIs matter for this business",
+        "Content pipeline lives in Inventory → Content",
       ],
     },
   },
