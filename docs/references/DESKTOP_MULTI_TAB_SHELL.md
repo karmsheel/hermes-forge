@@ -175,10 +175,21 @@ Update cross-page jumps (`home`, `functions`):
 
 **No main-process changes required** for v1. The existing single `BrowserWindow` + preload bridge is sufficient because parallelism lives in React.
 
-Optional v2 polish in `electron/main.mjs`:
+**Custom title bar (shipped):** `BrowserWindow` is **frameless** (`frame: false`). Min / maximize / restore / close are HTML controls folded into the topmost chrome row:
+
+| Surface | Drag region + window controls |
+|---------|-------------------------------|
+| ≥2 tabs | `ForgeTabBar` (trailing, after notification bell) |
+| 1 tab | `AppTopBar` actions |
+| Full-bleed (`/business-manager`, `/setup/*`) | `DesktopDragChrome` strip |
+| Auth / startup (outside shell) | `DesktopOutsideShellChrome` |
+
+Bridge: `window.forgeDesktop.window.{minimize,maximizeToggle,close,isMaximized,onMaximizedChange}` (`electron/main.mjs` + `preload.cjs`). Drag via CSS `-webkit-app-region: drag` / `no-drag` on interactive children.
+
+Optional later polish:
 
 - `setWindowOpenHandler` could offer "open in Forge tab" via IPC instead of always `shell.openExternal`
-- Custom titlebar drag region above tab bar
+- macOS traffic-light insets when mac packaging ships
 
 ---
 

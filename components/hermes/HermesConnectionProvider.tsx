@@ -127,7 +127,11 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
   );
 
   const refreshModels = useCallback(async (): Promise<void> => {
-    if (!config?.baseUrl || !config.apiKey) {
+    // Read latest config from state setter scope via functional updates where needed;
+    // credentials are passed through the current config snapshot in the closure.
+    const baseUrl = config?.baseUrl;
+    const apiKey = config?.apiKey;
+    if (!baseUrl || !apiKey) {
       setAvailableModels([]);
       return;
     }
@@ -137,10 +141,7 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
       const res = await fetch("/api/hermes/models", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          baseUrl: config.baseUrl,
-          apiKey: config.apiKey,
-        }),
+        body: JSON.stringify({ baseUrl, apiKey }),
       });
 
       if (!res.ok) {
@@ -152,20 +153,23 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
       const models: HermesModelOption[] = data.models ?? [];
       setAvailableModels(models);
 
-      if (models.length > 0 && config) {
-        const hasSelected = models.some((model) => model.id === config.model);
-        if (!hasSelected) {
-          const next = withResolvedModel(config, models[0].id);
-          setConfig(next);
-          saveHermesConfig(next);
-        }
-      }
+      // Only auto-pick a model when none is set. Never clobber a user/saved
+      // selection just because it is missing from the live list — the dock
+      // still shows the current id, and thrashing models[0] caused the
+      // footer selector to jump between values.
+      setConfig((prev) => {
+        if (!prev || prev.model?.trim() || models.length === 0) return prev;
+        const next = withResolvedModel(prev, models[0].id);
+        saveHermesConfig(next);
+        return next;
+      });
     } catch {
       setAvailableModels([]);
     } finally {
       setModelsLoading(false);
     }
-  }, [config]);
+    // Intentionally depend on credentials only — changing model must not re-fetch.
+  }, [config?.baseUrl, config?.apiKey]);
 
   const testConnection = useCallback(
     async (candidate?: HermesConfig): Promise<boolean> => {
@@ -456,12 +460,13 @@ export function HermesConnectionProvider({ children }: { children: ReactNode }) 
   }, [testConnection]);
 
   useEffect(() => {
-    if (status.state === "connected" && config) {
+    if (status.state === "connected" && config?.baseUrl && config?.apiKey) {
       void refreshModels();
     } else if (status.state !== "connected") {
       setAvailableModels([]);
     }
-  }, [config, refreshModels, status.state]);
+    // Re-fetch only when connection credentials or state change — not model id.
+  }, [config?.baseUrl, config?.apiKey, refreshModels, status.state]);
 
   const selectedModel = config?.model ?? status.model ?? null;
 

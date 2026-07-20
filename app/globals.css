@@ -2367,11 +2367,36 @@ body {
 }
 
 .app-shell-layout__main {
+  /* Shared right inset so multi-tab bell and room-bar refresh share one vertical axis */
+  --shell-chrome-end-inset: 0.65rem;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+}
+
+/*
+ * Row under the title chrome (tab bar + AppTopBar): page content + global chat.
+ * Keeps window controls on a full-width top row that the chat never invades.
+ */
+.app-shell-layout__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-layout__body > .app-shell-layout__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-shell-layout__main--full-bleed {
+  width: 100%;
 }
 
 /*
@@ -2404,9 +2429,115 @@ body {
 }
 
 /* 4.15 Desktop multi-tab shell — tab strip at top of main column (above top bar)
- * Layout: [tab][tab][+] ………… [notifications]
+ * Layout: [tab][tab][+] ………… [notifications] [window controls]
  * Account chrome (profile/settings) lives on the nav rail; bell stays top-right.
+ * Frameless desktop: strip is a drag region; interactive children use .desktop-no-drag.
  */
+
+/* Electron frameless window — drag the chrome row; never drag buttons/tabs */
+.desktop-drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.desktop-no-drag,
+.desktop-no-drag * {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Windows-style caption buttons (min / max|restore / close) */
+.desktop-window-controls {
+  display: inline-flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  align-self: stretch;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  margin-left: 0.15rem;
+  padding: 0;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+
+.desktop-window-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 100%;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color var(--dur-quick) var(--ease-out),
+    background-color var(--dur-quick) var(--ease-out);
+}
+
+.desktop-window-controls__btn:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.desktop-window-controls__btn:active {
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+}
+
+.desktop-window-controls__btn--close:hover {
+  color: #fff;
+  background: #e81123;
+}
+
+.desktop-window-controls__btn--close:active {
+  color: #fff;
+  background: color-mix(in srgb, #e81123 85%, #000);
+}
+
+/* Full-bleed / auth fallback strip when AppTopBar / ForgeTabBar are absent */
+.desktop-drag-chrome {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  height: 2.25rem;
+  min-height: 2.25rem;
+  max-height: 2.25rem;
+  padding: 0 0 0 0.5rem;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  z-index: 60;
+}
+
+.desktop-drag-chrome__lead {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.desktop-drag-chrome__spacer {
+  flex: 1 1 auto;
+  min-width: 0.5rem;
+}
+
+.desktop-drag-chrome--outside-shell {
+  position: sticky;
+  top: 0;
+}
+
 .forge-tab-bar {
   display: flex;
   flex-direction: row;
@@ -2419,7 +2550,9 @@ body {
   height: 2.35rem;
   min-height: 2.35rem;
   max-height: 2.35rem;
-  padding: 0 0.65rem 0 0.4rem;
+  /* Right inset matches .app-topbar__inner so bell/refresh centers stack.
+   * Frameless: window controls hang flush to the right edge (no trailing pad). */
+  padding: 0 0 0 0.4rem;
   background: var(--bg-subtle);
   border-bottom: 1px solid var(--border);
   user-select: none;
@@ -2428,6 +2561,11 @@ body {
   z-index: 50;
   /* visible so SettingsMenu popover can extend below the strip (tabs-row handles its own scroll) */
   overflow: visible;
+}
+
+/* Keep bell/actions padded from the edge when no window controls (web) */
+html:not(.is-forge-desktop) .forge-tab-bar {
+  padding-right: var(--shell-chrome-end-inset, 0.65rem);
 }
 
 /* One horizontal strip: tabs then +; scroll horizontally when crowded */
@@ -2902,11 +3040,10 @@ body {
   flex-shrink: 0;
   width: var(--chatbar-width);
   max-width: min(var(--chatbar-width), 100vw);
-  height: 100vh;
-  height: 100dvh;
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
+  /* Fill the body row under title chrome — not the full viewport */
+  height: auto;
+  align-self: stretch;
+  min-height: 0;
   background: var(--bg-panel);
   color: var(--text);
   z-index: 30;
@@ -3304,23 +3441,29 @@ body {
 }
 
 
-/* Chatbar desktop bar — model + context meter (PR-6) */
+/* Chatbar desktop bar — agent + model + context meter (PR-6) */
 .chatbar-desktop-bar {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   padding: 0.35rem 0 0.15rem;
   border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
   margin-top: 0.35rem;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
+.chatbar-desktop-bar__agent,
 .chatbar-desktop-bar__model {
   display: flex;
   align-items: center;
   gap: 0.3rem;
   min-width: 0;
   flex: 0 1 auto;
+  max-width: 38%;
+}
+
+.chatbar-desktop-bar__agent {
   max-width: 42%;
 }
 
@@ -3335,7 +3478,7 @@ body {
 
 .chatbar-desktop-bar__select {
   min-width: 0;
-  max-width: 9.5rem;
+  max-width: 8.5rem;
   height: 1.5rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -3350,6 +3493,26 @@ body {
 .chatbar-desktop-bar__select:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.chatbar-desktop-bar__empty,
+.chatbar-desktop-bar__empty-link {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.chatbar-desktop-bar__empty-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.chatbar-desktop-bar__empty-link:hover {
+  text-decoration: underline;
 }
 
 .chatbar-desktop-bar__spin {
@@ -4008,10 +4171,12 @@ body {
 }
 
 /*
- * Floating picture tab (all themes) — steampunk SVG mask tinted with --accent,
- * soft white halo + accent bloom on hover. No square chrome; the mark IS the control.
+ * Floating picture tab (all themes) — steampunk SVG mask tinted with --accent.
+ * Square accent frame clips the mark; outer bloom lives on the button box-shadow
+ * so hover scale never lets the figure paint past the border.
  */
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab) {
+  box-sizing: border-box;
   width: 4.75rem;
   height: 4.75rem;
   min-height: 4.75rem;
@@ -4020,56 +4185,52 @@ body {
   border: 2px solid var(--accent);
   border-radius: var(--radius-sm);
   background: transparent;
-  box-shadow: none;
   filter: none;
   color: inherit;
-  overflow: visible;
+  /* Clip mark to the rounded frame — image cannot bleed past the border */
+  overflow: hidden;
+  /* Soft outer glow (replaces filter drop-shadows on the mark, which would clip) */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #fff 35%, transparent),
+    0 0 10px color-mix(in srgb, var(--accent) 28%, transparent),
+    0 2px 8px color-mix(in srgb, var(--accent) 16%, transparent);
   transition:
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
-    filter var(--dur-quick, 120ms) var(--ease-out, ease),
+    box-shadow var(--dur-quick, 120ms) var(--ease-out, ease),
     transform var(--dur-quick, 120ms) var(--ease-out, ease);
 }
 
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab) {
   /* Past the edge a touch — SVG has transparent padding */
   right: -0.45rem;
-  box-shadow: none;
 }
 
 .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
-  box-shadow: none;
+  /* keep shared box-shadow */
 }
 
 .chatbar-collapsed-tab__icon.hermes-forge-mark--tab {
-  /* Larger hit face so contain shows the full figure (no mask crop) */
-  width: 4.75rem;
-  height: 4.75rem;
-  min-width: 4.75rem;
-  min-height: 4.75rem;
+  /* Fill the content box inside the border (not outer 4.75rem). */
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   flex-shrink: 0;
   background-color: var(--accent);
   background-image: none;
-  /*
-   * contain = full SVG in the box. (130% zoomed past empty margin but clipped
-   * to the element edge — that was the crop.)
-   */
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   -webkit-mask-position: center center;
   mask-position: center center;
-  /* Soft white outer halo + accent depth */
-  filter:
-    drop-shadow(0 0 1px #fff)
-    drop-shadow(0 0 2px #fff)
-    drop-shadow(0 0 3px rgba(255, 255, 255, 0.9))
-    drop-shadow(0 1px 2px color-mix(in srgb, var(--accent) 28%, transparent))
-    drop-shadow(0 3px 8px color-mix(in srgb, var(--accent) 16%, transparent));
+  /* No filter drop-shadow — clipped by parent overflow; glow is on the button */
+  filter: none;
   transition:
     filter var(--dur-quick, 120ms) var(--ease-out, ease),
-    transform var(--dur-quick, 120ms) var(--ease-out, ease),
     background-color var(--dur-quick, 120ms) var(--ease-out, ease);
+  transform: none;
+  transform-origin: center center;
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover {
@@ -4077,39 +4238,36 @@ body {
   border-color: var(--accent);
   filter: none;
   color: inherit;
+  /* Scale frame + mark together */
+  transform: translateY(-50%) scale(1.06);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #fff 50%, transparent),
+    0 0 14px color-mix(in srgb, var(--accent) 48%, transparent),
+    0 0 28px color-mix(in srgb, var(--accent) 30%, transparent),
+    0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab):hover,
 .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab):hover {
-  box-shadow: none;
   border-color: var(--accent);
   background: transparent;
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover .chatbar-collapsed-tab__icon {
-  transform: scale(1.06);
-  filter:
-    brightness(1.06)
-    drop-shadow(0 0 1px #fff)
-    drop-shadow(0 0 2px #fff)
-    drop-shadow(0 0 3px rgba(255, 255, 255, 0.95))
-    drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent))
-    drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 42%, transparent))
-    drop-shadow(0 0 22px color-mix(in srgb, var(--accent) 28%, transparent))
-    drop-shadow(0 4px 10px color-mix(in srgb, var(--accent) 22%, transparent));
+  transform: none;
+  filter: brightness(1.06);
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):focus-visible {
   outline: none;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #fff 50%, transparent),
+    0 0 12px color-mix(in srgb, var(--accent) 45%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):focus-visible .chatbar-collapsed-tab__icon {
-  filter:
-    brightness(1.04)
-    drop-shadow(0 0 1px #fff)
-    drop-shadow(0 0 2px #fff)
-    drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 50%, transparent))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 35%, transparent));
+  filter: brightness(1.04);
 }
 
 /* —— PR-3: context chip, receipt, intro —— */
@@ -4550,10 +4708,25 @@ body {
 @media (max-width: 1100px) {
   .app-shell-layout--chat-open .chatbar-panel {
     position: fixed;
+    /* Sit under shell title chrome (tab strip ~2.35rem + top bar 3rem when both show) */
     top: 0;
     bottom: 0;
-    height: 100vh;
-    height: 100dvh;
+    height: auto;
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+
+  /* Desktop frameless: keep overlay below title navbar so caption buttons stay free */
+  html.is-forge-desktop .app-shell-layout--chat-open.app-shell-layout--tab-strip .chatbar-panel {
+    top: calc(2.35rem + 3rem);
+  }
+
+  html.is-forge-desktop .app-shell-layout--chat-open:not(.app-shell-layout--tab-strip) .chatbar-panel {
+    top: 3rem;
+  }
+
+  html.is-forge-desktop .app-shell-layout--chat-open.app-shell-layout--business-manager .chatbar-panel {
+    top: 2.25rem; /* DesktopDragChrome height */
   }
 
   .app-shell-layout--chat-open .chatbar-panel--side-right {
@@ -4578,6 +4751,11 @@ body {
   }
 }
 
+.app-shell-layout--full .app-shell-layout__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .app-shell-layout--full .app-shell-layout__content {
   flex: 1;
   display: flex;
@@ -4596,6 +4774,11 @@ body {
   min-height: 0;
 }
 
+.app-shell-layout--home .app-shell-layout__body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .app-shell-layout--home .app-shell-layout__content {
   flex: 1;
   display: flex;
@@ -4609,6 +4792,15 @@ body {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
+}
+
+.app-shell-layout--business-manager .app-shell-layout__main {
+  min-height: 0;
+}
+
+.app-shell-layout--business-manager .app-shell-layout__body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .app-shell-layout--business-manager .app-shell-layout__content {
@@ -4632,6 +4824,17 @@ body {
  * - When MMA exists, the center track is [dots 1fr | pill | spacer 1fr] so the
  *   dotted line continues from the leading track all the way to the pill edge.
  */
+/* Frameless: window controls sit flush to the right edge of the topmost chrome row */
+.app-topbar.desktop-drag-region .app-topbar__inner {
+  padding-right: 0;
+}
+
+.app-topbar__actions .desktop-window-controls {
+  align-self: stretch;
+  height: 3rem;
+  min-height: 3rem;
+}
+
 .app-topbar__inner {
   /* Fixed center track ≈ full Map|Monitor|Automate pill so unlock state is stable */
   --app-topbar-stages-width: 15rem;
@@ -4643,7 +4846,8 @@ body {
   height: 3rem;
   min-height: 3rem;
   max-height: 3rem;
-  padding: 0 1.25rem;
+  /* Leading stays roomy; trailing matches tab-strip so bell/refresh share a vertical axis */
+  padding: 0 var(--shell-chrome-end-inset, 0.65rem) 0 1.25rem;
   overflow: visible;
   box-sizing: border-box;
 }
@@ -4911,6 +5115,49 @@ body {
   min-width: 0;
   /* Equal 1fr track to leading side keeps rooms on true page center */
   width: 100%;
+}
+
+/* Match notification-bell chrome weight (compact icon-only control) */
+.app-topbar__refresh {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.3rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  line-height: 0;
+  flex-shrink: 0;
+  transition:
+    color var(--dur-quick) var(--ease-out),
+    background-color var(--dur-quick) var(--ease-out),
+    border-color var(--dur-quick) var(--ease-out);
+}
+
+.app-topbar__refresh svg {
+  display: block;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  flex-shrink: 0;
+  stroke-width: 1.5;
+  opacity: 0.88;
+}
+
+.app-topbar__refresh:hover {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border-color: transparent;
+}
+
+.app-topbar__refresh:hover svg {
+  opacity: 1;
 }
 
 .nav-rail {

@@ -13,6 +13,20 @@ export function formatChatbarAgentLabel(
 }
 
 /**
+ * Put Forge Overlord first in the picker, then remaining hired agents
+ * in the order they arrived (usually isDefault / displayName from API).
+ */
+export function sortChatbarAgentsWithOverlordFirst<
+  T extends { profileKey?: string | null },
+>(agents: T[], overlordProfileKey?: string | null): T[] {
+  const key = overlordProfileKey?.trim();
+  if (!key || agents.length <= 1) return agents;
+  const overlord = agents.filter((a) => a.profileKey === key);
+  const rest = agents.filter((a) => a.profileKey !== key);
+  return overlord.length ? [...overlord, ...rest] : agents;
+}
+
+/**
  * On Business Manager the user only talks to the Forge Overlord.
  * Inside a business, hired agents become selectable.
  */

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast as sonnerToast } from "sonner";
-import { CheckCircle2, RefreshCw, Scissors, Zap } from "lucide-react";
+import { CheckCircle2, Scissors, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { serializeNodeCommentSummary } from "@/lib/node-comment";
@@ -128,7 +128,11 @@ export function WorkshopSession({
     // 3.4 Conversation fork
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const activeConversationIdRef = useRef<string | null>(null);
-  const { openHermesConnection, registerWorkshopNewProcess } = useShell();
+  const {
+    openHermesConnection,
+    registerWorkshopNewProcess,
+    registerWorkshopRefresh,
+  } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const { registerProcessSession, open: openChatbar, focusComposer } = useChatbar();
   // Only the initially active session consumes one-shot pending flags
@@ -446,6 +450,20 @@ export function WorkshopSession({
     registerWorkshopNewProcess(handleCreateProcess);
     return () => registerWorkshopNewProcess(null);
   }, [isActive, handleCreateProcess, registerWorkshopNewProcess]);
+
+  const handleWorkshopRefresh = useCallback(() => {
+    void loadProcessList();
+    if (activeId && businessId) void loadProcess(activeId, businessId);
+  }, [activeId, businessId, loadProcess, loadProcessList]);
+
+  useEffect(() => {
+    if (!isActive) {
+      registerWorkshopRefresh(null);
+      return;
+    }
+    registerWorkshopRefresh(handleWorkshopRefresh);
+    return () => registerWorkshopRefresh(null);
+  }, [isActive, handleWorkshopRefresh, registerWorkshopRefresh]);
 
   useEffect(() => {
     if (!pendingCreateRef.current) return;
@@ -1127,20 +1145,9 @@ export function WorkshopSession({
           processCount={processes.length}
           selectedNodeLabel={selectedNode?.label ?? null}
         />
-        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
+        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center bg-bg">
           <div className="min-w-0">
             <h1 className="font-semibold text-sm text-text-strong">Workshop</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                void loadProcessList();
-                if (activeId && businessId) void loadProcess(activeId, businessId);
-              }}
-              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh
-            </button>
           </div>
         </header>
 
@@ -1220,7 +1227,7 @@ export function WorkshopSession({
                   className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Approve for automation
+                  Forge process
                 </button>
               )}
               {isApproved && (

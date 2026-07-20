@@ -4,6 +4,7 @@ import {
   formatChatbarAgentLabel,
   isChatbarHiddenPath,
   isChatbarOverlordOnlyPath,
+  sortChatbarAgentsWithOverlordFirst,
 } from "@/lib/chatbar/agent-label";
 
 describe("formatChatbarAgentLabel", () => {
@@ -32,6 +33,30 @@ describe("formatChatbarAgentLabel", () => {
       formatChatbarAgentLabel({ displayName: "Ops", profileKey: "ops" }, null),
       "Ops",
     );
+  });
+});
+
+describe("sortChatbarAgentsWithOverlordFirst", () => {
+  it("moves Overlord to the front", () => {
+    const sorted = sortChatbarAgentsWithOverlordFirst(
+      [
+        { id: "a", profileKey: "ops", displayName: "Ops" },
+        { id: "b", profileKey: "forge-boss", displayName: "Boss" },
+        { id: "c", profileKey: "sales", displayName: "Sales" },
+      ],
+      "forge-boss",
+    );
+    assert.equal(sorted[0]?.profileKey, "forge-boss");
+    assert.equal(sorted.length, 3);
+    assert.equal(sorted[1]?.profileKey, "ops");
+  });
+
+  it("returns original order when overlord key missing", () => {
+    const agents = [
+      { id: "a", profileKey: "ops" },
+      { id: "b", profileKey: "sales" },
+    ];
+    assert.deepEqual(sortChatbarAgentsWithOverlordFirst(agents, null), agents);
   });
 });
 

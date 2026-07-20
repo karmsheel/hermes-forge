@@ -247,8 +247,28 @@ async function startServer(env) {
   attachServerLogs(serverProcess);
 }
 
+/**
+ * Resolve the BrowserWindow for an IPC sender (multi-window safe).
+ * @param {import("electron").IpcMainInvokeEvent} event
+ */
+function windowFromEvent(event) {
+  return BrowserWindow.fromWebContents(event.sender);
+}
+
+/** @param {import("electron").BrowserWindow} win */
+function attachWindowChromeEvents(win) {
+  const emitMaximized = () => {
+    if (win.isDestroyed()) return;
+    win.webContents.send("window:maximized-changed", win.isMaximized());
+  };
+  win.on("maximize", emitMaximized);
+  win.on("unmaximize", emitMaximized);
+}
+
 function createWindow() {
   const icon = resolveAppIcon();
+  // Frameless so the multi-tab / top bar can own min/max/close (Obsidian-style).
+  // Custom HTML controls live in the renderer; see DesktopWindowControls.
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 880,
@@ -257,6 +277,7 @@ function createWindow() {
     title: "Hermes Forge",
     icon: icon ?? undefined,
     backgroundColor: "#09090b",
+    frame: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
@@ -275,6 +296,8 @@ function createWindow() {
   mainWindow.on("focus", () => {
     checkForUpdatesOnFocus();
   });
+
+  attachWindowChromeEvents(mainWindow);
 }
 
 if (process.platform === "win32") {
@@ -307,6 +330,29 @@ app.whenReady().then(async () => {
 });
 
 ipcMain.handle("app:get-version", () => app.getVersion());
+
+ipcMain.handle("window:minimize", (event) => {
+  windowFromEvent(event)?.minimize();
+});
+
+ipcMain.handle("window:maximize-toggle", (event) => {
+  const win = windowFromEvent(event);
+  if (!win) return false;
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+  return win.isMaximized();
+});
+
+ipcMain.handle("window:close", (event) => {
+  windowFromEvent(event)?.close();
+});
+
+ipcMain.handle("window:is-maximized", (event) => {
+  return Boolean(windowFromEvent(event)?.isMaximized());
+});
 
 ipcMain.handle("theme:open-vscode-file", async () => {
   const win = BrowserWindow.getFocusedWindow() ?? mainWindow;

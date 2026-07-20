@@ -1,11 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChatbarCollapsedTab } from "@/components/chatbar/ChatbarCollapsedTab";
 import { ChatbarPanel } from "@/components/chatbar/ChatbarPanel";
 import { ChatbarProvider, useChatbar } from "@/components/chatbar/ChatbarProvider";
+import { DesktopDragChrome } from "@/components/desktop/DesktopDragChrome";
 import { OverlordRequiredGate } from "@/components/overlord/OverlordRequiredGate";
+import { isForgeDesktop } from "@/lib/forge-desktop";
 import { AppTopBar } from "./AppTopBar";
 import { ForgeTabBar } from "./ForgeTabBar";
 import { ForgeTabOutlet } from "./ForgeTabOutlet";
@@ -19,6 +21,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const { isOpen, isLeft, side } = useChatbar();
   const { enabled: tabsEnabled, tabs } = useForgeTabs();
   const tabStripVisible = tabsEnabled && tabs.length > 1;
+  const [desktop, setDesktop] = useState(false);
   const isBusinessManager = pathname.startsWith("/business-manager");
   const isSetup = pathname.startsWith("/setup");
   /** Overlord / first-run setup: introduce the product without the chat surface. */
@@ -35,6 +38,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     pathname === "/monitor/home" ||
     pathname === "/automate/home";
   const chatOpen = isOpen && !hideChatbar;
+
+  useEffect(() => {
+    setDesktop(isForgeDesktop());
+  }, []);
+
   const layoutClass = [
     "app-shell-layout",
     chatOpen && "app-shell-layout--chat-open",
@@ -46,6 +54,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     isHome && "app-shell-layout--home",
     tabsEnabled && "app-shell-layout--tabs",
     tabStripVisible && "app-shell-layout--tab-strip",
+    desktop && "app-shell-layout--desktop-chrome",
   ]
     .filter(Boolean)
     .join(" ");
@@ -56,11 +65,17 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   if (isFullBleed) {
     return (
       <div className={layoutClass}>
-        {isLeft ? chat : null}
-        <div className="app-shell-layout__content">
-          <ForgeTabOutlet>{children}</ForgeTabOutlet>
+        <div className="app-shell-layout__main app-shell-layout__main--full-bleed">
+          {/* Full-width drag strip so window controls stay top-right when chat opens */}
+          <DesktopDragChrome />
+          <div className="app-shell-layout__body">
+            {isLeft ? chat : null}
+            <div className="app-shell-layout__content">
+              <ForgeTabOutlet>{children}</ForgeTabOutlet>
+            </div>
+            {!isLeft ? chat : null}
+          </div>
         </div>
-        {!isLeft ? chat : null}
         {edgeTab}
       </div>
     );
@@ -69,16 +84,21 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   return (
     <div className={layoutClass}>
       <NavRail />
-      {isLeft ? chat : null}
       <div className="app-shell-layout__main">
-        {/* Tabs at top; profile/settings live on NavRail footer */}
+        {/*
+          Title chrome spans the full main column (window width minus nav).
+          Chat docks in the body row below so it never steals top-right caption space.
+        */}
         <ForgeTabBar />
         <AppTopBar />
-        <div className="app-shell-layout__content">
-          <ForgeTabOutlet>{children}</ForgeTabOutlet>
+        <div className="app-shell-layout__body">
+          {isLeft ? chat : null}
+          <div className="app-shell-layout__content">
+            <ForgeTabOutlet>{children}</ForgeTabOutlet>
+          </div>
+          {!isLeft ? chat : null}
         </div>
       </div>
-      {!isLeft ? chat : null}
       {edgeTab}
     </div>
   );

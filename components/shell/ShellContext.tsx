@@ -67,6 +67,10 @@ interface ShellContextValue {
   createBusiness: (input: NewBusinessInput) => Promise<void>;
   requestNewProcess: () => void;
   registerWorkshopNewProcess: (handler: (() => void | Promise<void>) | null) => void;
+  /** True while an active Workshop session has registered a refresh handler. */
+  workshopRefreshAvailable: boolean;
+  requestWorkshopRefresh: () => void;
+  registerWorkshopRefresh: (handler: (() => void | Promise<void>) | null) => void;
 }
 
 const ShellContext = createContext<ShellContextValue | null>(null);
@@ -82,7 +86,9 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [settingsTab, setSettingsTabState] = useState<SettingsViewId>(DEFAULT_SETTINGS_VIEW);
   const [profileOpen, setProfileOpen] = useState(false);
   const [creatingBusiness, setCreatingBusiness] = useState(false);
+  const [workshopRefreshAvailable, setWorkshopRefreshAvailable] = useState(false);
   const workshopNewProcessRef = useRef<(() => void | Promise<void>) | null>(null);
+  const workshopRefreshRef = useRef<(() => void | Promise<void>) | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -183,6 +189,18 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     router.push("/workshop");
   }, [router]);
 
+  const registerWorkshopRefresh = useCallback(
+    (handler: (() => void | Promise<void>) | null) => {
+      workshopRefreshRef.current = handler;
+      setWorkshopRefreshAvailable(!!handler);
+    },
+    []
+  );
+
+  const requestWorkshopRefresh = useCallback(() => {
+    void workshopRefreshRef.current?.();
+  }, []);
+
   const openNewBusiness = useCallback(() => setNewBusinessOpen(true), []);
   const closeNewBusiness = useCallback(() => setNewBusinessOpen(false), []);
 
@@ -228,8 +246,11 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       createBusiness,
       requestNewProcess,
       registerWorkshopNewProcess,
+      workshopRefreshAvailable,
+      requestWorkshopRefresh,
+      registerWorkshopRefresh,
     }),
-    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, profileOpen, creatingBusiness, openNewBusiness, closeNewBusiness, openSettings, closeSettings, openProfile, closeProfile, createBusiness, requestNewProcess, registerWorkshopNewProcess, switchBusiness, refreshCurrentBusiness]
+    [user, userLoading, currentBusiness, newBusinessOpen, connectionOpen, settingsOpen, settingsTab, profileOpen, creatingBusiness, openNewBusiness, closeNewBusiness, openSettings, closeSettings, openProfile, closeProfile, createBusiness, requestNewProcess, registerWorkshopNewProcess, workshopRefreshAvailable, requestWorkshopRefresh, registerWorkshopRefresh, switchBusiness, refreshCurrentBusiness]
   );
 
   return (

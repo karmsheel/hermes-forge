@@ -14,4 +14,15 @@ contextBridge.exposeInMainWorld("forgeDesktop", {
     ipcRenderer.on("update:status", handler);
     return () => ipcRenderer.removeListener("update:status", handler);
   },
+  window: {
+    minimize: () => ipcRenderer.invoke("window:minimize"),
+    maximizeToggle: () => ipcRenderer.invoke("window:maximize-toggle"),
+    close: () => ipcRenderer.invoke("window:close"),
+    isMaximized: () => ipcRenderer.invoke("window:is-maximized"),
+    onMaximizedChange: (callback) => {
+      const handler = (_event, maximized) => callback(Boolean(maximized));
+      ipcRenderer.on("window:maximized-changed", handler);
+      return () => ipcRenderer.removeListener("window:maximized-changed", handler);
+    },
+  },
 });

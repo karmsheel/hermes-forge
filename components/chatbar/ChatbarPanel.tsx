@@ -39,6 +39,7 @@ import {
 import {
   formatChatbarAgentLabel,
   isChatbarOverlordOnlyPath,
+  sortChatbarAgentsWithOverlordFirst,
 } from "@/lib/chatbar/agent-label";
 import {
   loadActiveStudioConversationId,
@@ -142,7 +143,7 @@ export function ChatbarPanel() {
     composerFocusRequest,
     decisionSessionRequest,
   } = useChatbar();
-  const { isConnected, status, config } = useHermesConnection();
+  const { isConnected, status, config, setModel } = useHermesConnection();
   const { openHermesConnection, currentBusiness } = useShell();
 
   const blurb = pageBlurbForPath(pathname);
@@ -207,8 +208,10 @@ export function ChatbarPanel() {
   const overlordAgent =
     hiredAgents.find((a) => a.profileKey === overlordProfileKey) || null;
   /** On Business Manager only the Overlord is available; inside a business all hired agents. */
-  const pickerAgents =
-    overlordOnly && overlordAgent ? [overlordAgent] : hiredAgents;
+  const pickerAgents = sortChatbarAgentsWithOverlordFirst(
+    overlordOnly && overlordAgent ? [overlordAgent] : hiredAgents,
+    overlordProfileKey,
+  );
   const activeAgent =
     hiredAgents.find((a) => a.id === activeAgentId) ||
     (overlordOnly ? overlordAgent : null) ||
@@ -659,9 +662,25 @@ export function ChatbarPanel() {
       clearMessageQueue();
       setActiveAgentId(agentId);
       saveActiveChatbarAgentId(businessId, agentId);
+
+      // Prefer the agent's configured model when known; user can still
+      // override via the separate Model dock control.
+      const nextAgent = hiredAgents.find((a) => a.id === agentId);
+      const preferred = nextAgent?.model?.trim();
+      if (preferred) {
+        setModel(preferred);
+      }
+
       await loadConversations(agentId);
     },
-    [businessId, activeAgentId, loadConversations, clearMessageQueue],
+    [
+      businessId,
+      activeAgentId,
+      hiredAgents,
+      loadConversations,
+      clearMessageQueue,
+      setModel,
+    ],
   );
 
   // Returning to Business Manager always selects the Overlord
@@ -1494,111 +1513,70 @@ export function ChatbarPanel() {
       aria-hidden={!isOpen}
       inert={!isOpen ? true : undefined}
     >
-      <header className="chatbar-panel__header chatbar-panel__header--stack">
-        <div className="chatbar-panel__header-row">
-          <div className="chatbar-panel__edge-controls">
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
-              onClick={collapse}
-              title="Hide chat (Alt+H)"
-              aria-label="Hide chat"
-            >
-              <CollapseIcon className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn chatbar-panel__swap-btn"
-              onClick={swapSide}
-              title={swapLabel}
-              aria-label={swapLabel}
-            >
-              <ArrowLeftRight className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="chatbar-panel__brand chatbar-panel__brand--session">
-            <button
-              type="button"
-              className="chatbar-panel__session-btn"
-              onClick={() => setSessionMenuOpen((v) => !v)}
-              aria-haspopup="dialog"
-              aria-expanded={sessionMenuOpen}
-              title="Switch studio conversation"
-            >
-              <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
-              <span className="chatbar-panel__session-title">{activeTitle}</span>
-              <span className="chatbar-panel__session-caret" aria-hidden>
-                ⌄
-              </span>
-            </button>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={() => void createConversation()}
-              title="New studio chat"
-              aria-label="New studio chat"
-              disabled={!businessId || !activeAgentId}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="chatbar-panel__header-actions">
-            <span
-              className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
-              title={status.error || conn.text}
-              role="status"
-            >
-              {conn.text}
-            </span>
-            <button
-              type="button"
-              className="chatbar-panel__icon-btn"
-              onClick={openHermesConnection}
-              title="Hermes connection"
-              aria-label="Hermes connection"
-            >
-              <PlugZap className="w-4 h-4" />
-            </button>
-          </div>
+      <header className="chatbar-panel__header">
+        <div className="chatbar-panel__edge-controls">
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
+            onClick={collapse}
+            title="Hide chat (Alt+H)"
+            aria-label="Hide chat"
+          >
+            <CollapseIcon className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn chatbar-panel__swap-btn"
+            onClick={swapSide}
+            title={swapLabel}
+            aria-label={swapLabel}
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+          </button>
         </div>
-        <div className="chatbar-panel__agent-row">
-          <label className="chatbar-panel__agent-label" htmlFor="chatbar-agent">
-            Agent
-          </label>
-          {loadingList && pickerAgents.length === 0 ? (
-            <span className="chatbar-panel__agent-empty" aria-live="polite">
-              Loading agents…
+        <div className="chatbar-panel__brand chatbar-panel__brand--session">
+          <button
+            type="button"
+            className="chatbar-panel__session-btn"
+            onClick={() => setSessionMenuOpen((v) => !v)}
+            aria-haspopup="dialog"
+            aria-expanded={sessionMenuOpen}
+            title="Switch studio conversation"
+          >
+            <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
+            <span className="chatbar-panel__session-title">{activeTitle}</span>
+            <span className="chatbar-panel__session-caret" aria-hidden>
+              ⌄
             </span>
-          ) : !loadingList && pickerAgents.length === 0 ? (
-            <a href="/setup/overlord" className="chatbar-panel__agent-empty">
-              Choose your Forge Overlord
-            </a>
-          ) : (
-            <select
-              id="chatbar-agent"
-              className="chatbar-panel__agent-select"
-              value={activeAgentId || pickerAgents[0]?.id || ""}
-              onChange={(e) => void selectAgent(e.target.value)}
-              disabled={
-                sending ||
-                loadingList ||
-                overlordOnly ||
-                !businessId ||
-                pickerAgents.length <= 1
-              }
-              title={
-                overlordOnly
-                  ? "On Business Manager you talk to your Forge Overlord. Hire other agents inside a business to switch."
-                  : "Talk to a hired Hermes agent — each agent has its own conversation threads"
-              }
-            >
-              {pickerAgents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {formatChatbarAgentLabel(a, overlordProfileKey)}
-                </option>
-              ))}
-            </select>
-          )}
+          </button>
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn"
+            onClick={() => void createConversation()}
+            title="New studio chat"
+            aria-label="New studio chat"
+            disabled={!businessId || !activeAgentId}
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="chatbar-panel__header-actions">
+          <span
+            className={`chatbar-panel__pill chatbar-panel__pill--${conn.kind}`}
+            title={status.error || conn.text}
+            role="status"
+          >
+            {conn.text}
+          </span>
+          <button
+            type="button"
+            className="chatbar-panel__icon-btn"
+            onClick={openHermesConnection}
+            title="Hermes connection"
+            aria-label="Hermes connection"
+          >
+            <PlugZap className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -1941,6 +1919,15 @@ export function ChatbarPanel() {
               messageCount: messages.length,
             }}
             disabled={!businessId}
+            agentPicker={{
+              agents: pickerAgents,
+              activeAgentId,
+              overlordProfileKey,
+              loading: loadingList,
+              overlordOnly,
+              disabled: sending || !businessId,
+              onSelectAgent: (id) => void selectAgent(id),
+            }}
           />
           <div className="chatbar-panel__bottom-row">
             <button
@@ -1958,7 +1945,7 @@ export function ChatbarPanel() {
                   ? "Stop · Steer · Queue while busy · "
                   : "Stop ends the run · Enter queues while busy · "
                 : "Enter sends · "}
-              Scope chip · model dock · <kbd>Alt</kbd>+<kbd>H</kbd>
+              Agent · Model · <kbd>Alt</kbd>+<kbd>H</kbd>
             </p>
           </div>
         </div>

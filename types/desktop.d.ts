@@ -14,6 +14,13 @@ declare global {
       downloadUpdate?: () => Promise<DesktopUpdateStatus>;
       installUpdate?: () => void;
       onUpdateStatus?: (callback: (status: DesktopUpdateStatus) => void) => () => void;
+      window?: {
+        minimize: () => Promise<void>;
+        maximizeToggle: () => Promise<boolean>;
+        close: () => Promise<void>;
+        isMaximized: () => Promise<boolean>;
+        onMaximizedChange: (callback: (maximized: boolean) => void) => () => void;
+      };
     };
   }
 }

@@ -59,11 +59,11 @@ The extension’s “Follow active tab” becomes Forge’s **“Follow active p
 ### 3.1 Layout
 
 ```text
-┌────┬──────────────────────────────┬──────────────────┐
-│    │  AppTopBar                   │                  │
-│ N  ├──────────────────────────────┤  Global Chatbar  │
-│ a  │                              │  (right dock)    │
-│ v  │  Page content (children)     │                  │
+┌────┬─────────────────────────────────────────────────┐
+│    │  Title chrome (tabs + AppTopBar + window ctrls) │  full width of main
+│ N  ├──────────────────────────────┬──────────────────┤
+│ a  │  Page content (children)     │  Global Chatbar  │
+│ v  │                              │  (right dock)    │
 │    │                              │  [collapse ▸]    │
 │ R  │                              │                  │
 │ a  │                              │                  │
@@ -71,8 +71,10 @@ The extension’s “Follow active tab” becomes Forge’s **“Follow active p
 │ l  │                              │                  │
 └────┴──────────────────────────────┴──────────────────┘
          ▲                                    ▲
-   existing shell                      new shell citizen
+   existing shell              docks under title chrome only
 ```
+
+**Layout note (frameless desktop):** Chat lives in `app-shell-layout__body` under the tab/top bars so min/max/close stay pinned top-right and are not pushed when the dock opens.
 
 **Mount point:** `AppShell` / `app/(shell)/layout.tsx` — **not** per-page.
 

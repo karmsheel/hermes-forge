@@ -13,7 +13,20 @@ import {
   copyTextToClipboard,
   type DiagnosticsInput,
 } from "@/lib/chatbar/diagnostics";
+import { formatChatbarAgentLabel } from "@/lib/chatbar/agent-label";
 import { formatModelLabel, resolveHermesModel } from "@/lib/hermes-models";
+import type { ChatbarAgentOption } from "@/lib/types";
+
+export type ChatbarAgentPickerProps = {
+  agents: ChatbarAgentOption[];
+  activeAgentId: string | null;
+  overlordProfileKey?: string | null;
+  loading?: boolean;
+  /** When true, only Overlord is selectable (Business Manager). */
+  overlordOnly?: boolean;
+  disabled?: boolean;
+  onSelectAgent: (agentId: string) => void;
+};
 
 export type ChatbarDesktopBarProps = {
   meterInput: ContextMeterInput;
@@ -22,15 +35,20 @@ export type ChatbarDesktopBarProps = {
     "hermesBaseUrl" | "hermesModel" | "hermesFeatures" | "connectionState" | "connectionKind" | "connectionError" | "latencyMs" | "userAgent" | "platform"
   >;
   disabled?: boolean;
+  /** Studio mode: hired agents + Overlord. Omitted in process/automation docks. */
+  agentPicker?: ChatbarAgentPickerProps | null;
 };
 
 /**
- * Footer dock: model picker, context meter, copy diagnostics (PR-6).
+ * Footer dock: agent picker + model picker + context meter (PR-6).
+ * Agent and Model are separate controls — agents are hired personas;
+ * models are LLM backends for the active session.
  */
 export function ChatbarDesktopBar({
   meterInput,
   diagnosticsInput,
   disabled = false,
+  agentPicker = null,
 }: ChatbarDesktopBarProps) {
   const {
     isConnected,
@@ -58,6 +76,9 @@ export function ChatbarDesktopBar({
     return list;
   }, [availableModels, selectedModel, config]);
 
+  /** Prefer the real selected model; never fall back to option[0] while empty. */
+  const modelSelectValue = selectedModel || (config ? resolveHermesModel(config) : "") || "";
+
   const onModelChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
       const next = event.target.value;
@@ -65,6 +86,15 @@ export function ChatbarDesktopBar({
       setModel(next);
     },
     [setModel],
+  );
+
+  const onAgentChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const next = event.target.value;
+      if (!next || !agentPicker) return;
+      agentPicker.onSelectAgent(next);
+    },
+    [agentPicker],
   );
 
   const onCopyDiagnostics = useCallback(async () => {
@@ -90,8 +120,52 @@ export function ChatbarDesktopBar({
     }
   }, [diagnosticsInput, config, status, selectedModel]);
 
+  const agentDisabled =
+    disabled ||
+    !agentPicker ||
+    agentPicker.disabled ||
+    agentPicker.loading ||
+    agentPicker.overlordOnly ||
+    agentPicker.agents.length <= 1;
+
   return (
-    <div className="chatbar-desktop-bar" aria-label="Model and context">
+    <div className="chatbar-desktop-bar" aria-label="Agent, model, and context">
+      {agentPicker ? (
+        <div className="chatbar-desktop-bar__agent">
+          <label className="chatbar-desktop-bar__label" htmlFor="chatbar-agent">
+            Agent
+          </label>
+          {agentPicker.loading && agentPicker.agents.length === 0 ? (
+            <span className="chatbar-desktop-bar__empty" aria-live="polite">
+              Loading…
+            </span>
+          ) : !agentPicker.loading && agentPicker.agents.length === 0 ? (
+            <a href="/setup/overlord" className="chatbar-desktop-bar__empty-link">
+              Set Overlord
+            </a>
+          ) : (
+            <select
+              id="chatbar-agent"
+              className="chatbar-desktop-bar__select"
+              value={agentPicker.activeAgentId || agentPicker.agents[0]?.id || ""}
+              disabled={agentDisabled}
+              onChange={onAgentChange}
+              title={
+                agentPicker.overlordOnly
+                  ? "On Business Manager you talk to your Forge Overlord. Hire other agents inside a business to switch."
+                  : "Talk to a hired Hermes agent — each agent has its own conversation threads"
+              }
+            >
+              {agentPicker.agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {formatChatbarAgentLabel(a, agentPicker.overlordProfileKey)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      ) : null}
+
       <div className="chatbar-desktop-bar__model">
         <label className="chatbar-desktop-bar__label" htmlFor="chatbar-model">
           Model
@@ -99,7 +173,11 @@ export function ChatbarDesktopBar({
         <select
           id="chatbar-model"
           className="chatbar-desktop-bar__select"
-          value={selectedModel || modelOptions[0]?.id || ""}
+          value={
+            modelOptions.some((m) => m.id === modelSelectValue)
+              ? modelSelectValue
+              : modelOptions[0]?.id || ""
+          }
           disabled={disabled || !isConnected || modelOptions.length === 0}
           onChange={onModelChange}
           onFocus={() => {
@@ -107,7 +185,7 @@ export function ChatbarDesktopBar({
               void refreshModels();
             }
           }}
-          title="Model for this Forge session (does not change Hermes global default beyond your saved config)"
+          title="LLM model for this Forge session (independent of which agent you are talking to)"
         >
           {modelOptions.length === 0 ? (
             <option value="">{isConnected ? "No models" : "Connect Hermes"}</option>

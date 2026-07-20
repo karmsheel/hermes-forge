@@ -9,6 +9,7 @@ import {
   type MouseEvent,
 } from "react";
 import { Copy, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
+import { DesktopWindowControls } from "@/components/desktop/DesktopWindowControls";
 import { FORGE_TABS_MAX } from "@/lib/forge-tabs";
 import { BusinessAvatarMark } from "./BusinessAvatarMark";
 import { NotificationBell } from "./NotificationBell";
@@ -68,9 +69,13 @@ export function ForgeTabBar() {
   const menuTab = menu ? tabs.find((t) => t.id === menu.tabId) : null;
 
   return (
-    <div className="forge-tab-bar" role="tablist" aria-label="Open sessions">
+    <div
+      className="forge-tab-bar desktop-drag-region"
+      role="tablist"
+      aria-label="Open sessions"
+    >
       {/* Single-line strip: tabs then + immediately after last tab */}
-      <div className="forge-tab-bar__tabs-row">
+      <div className="forge-tab-bar__tabs-row desktop-no-drag">
         {tabs.map((tab, index) => {
           const active = tab.id === activeTabId;
           const unloaded = isSessionUnloaded(tab.id);
@@ -172,15 +177,16 @@ export function ForgeTabBar() {
         </button>
       </div>
 
-      {/* Trailing chrome — top-right of the multi-tab strip (not AppTopBar) */}
-      <div className="forge-tab-bar__actions">
+      {/* Trailing chrome — bell + window controls (topmost row when multi-tab) */}
+      <div className="forge-tab-bar__actions desktop-no-drag">
         <NotificationBell />
+        <DesktopWindowControls />
       </div>
 
       {menu && menuTab ? (
         <div
           ref={menuRef}
-          className="forge-tab-bar__menu"
+          className="forge-tab-bar__menu desktop-no-drag"
           role="menu"
           style={{ top: menu.y, left: menu.x }}
         >

@@ -703,6 +703,22 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+### 4.15b Custom frameless title bar — **DONE**
+
+**Goal:** Remove the standard Windows title bar and fold min / maximize / restore / close into the topmost shell chrome (multi-tab strip or `AppTopBar`), reclaiming ~28–32px vertical space (Obsidian / Hermes Desktop style).
+
+**Status:** Shipped. `frame: false` on `BrowserWindow`; `DesktopWindowControls` + drag regions; full-bleed and outside-shell fallback strips.
+
+**Key deliverables:**
+- [x] `electron/main.mjs` frameless window + window IPC
+- [x] `forgeDesktop.window.*` preload bridge
+- [x] Controls on `ForgeTabBar` (≥2 tabs) or `AppTopBar` (1 tab)
+- [x] `DesktopDragChrome` for full-bleed + auth/startup
+
+**Reference:** [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) § Electron layer
+
+---
+
 ### 4.16 Windows installer code signing — **PLANNED**
 
 **Goal:** Sign the NSIS installer and all bundled Windows executables so SmartScreen shows a verified publisher instead of "unknown publisher," and so `electron-updater` can verify update signatures.
@@ -1151,6 +1167,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 4.13 | God Mode overview | 4 | Done (dev-gated) |
 | 4.14 | Cronalytics | 4 | Done (dev-gated) |
 | 4.15 | Desktop multi-tab shell | 4 | **Done** (Phase 1–3) — see [`DESKTOP_MULTI_TAB_SHELL.md`](DESKTOP_MULTI_TAB_SHELL.md) |
+| 4.15b | Custom frameless title bar | 4 | **Done** — controls on tab/top bar; see multi-tab ref § Electron |
 | 4.16 | Windows installer code signing | 4 | **Planned** — see [`WINDOWS_CODE_SIGNING.md`](WINDOWS_CODE_SIGNING.md) |
 | 4.17 | Global chatbar (shell Hermes co-pilot) | 4 | **Done** (PR-1–6) — see [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md) |
 | 4.18 | Business Documents / knowledge layer | 4 | **Done** (foundation) — see [`BUSINESS_DOCUMENTS.md`](BUSINESS_DOCUMENTS.md) |
