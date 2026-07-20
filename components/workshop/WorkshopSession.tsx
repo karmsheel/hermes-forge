@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast as sonnerToast } from "sonner";
-import { CheckCircle2, Scissors, Zap } from "lucide-react";
+import { Activity, CheckCircle2, Scissors, Unlock, Zap } from "lucide-react";
 import { useShell } from "@/components/shell/ShellContext";
 import { canApproveForAutomation, PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { serializeNodeCommentSummary } from "@/lib/node-comment";
@@ -104,6 +104,7 @@ export function WorkshopSession({
   const [diagramStreaming, setDiagramStreaming] = useState(false);
   const [streamingDiagram, setStreamingDiagram] = useState<string | null>(null);
     const [approving, setApproving] = useState(false);
+    const [unforging, setUnforging] = useState(false);
     const [composerFocusKey, setComposerFocusKey] = useState(0);
     // 3.2 Node-level comments
     const [selectedNode, setSelectedNode] = useState<MermaidNodeInfo | null>(null);
@@ -597,6 +598,35 @@ export function WorkshopSession({
       toast.error(error instanceof Error ? error.message : "Could not forge process");
     } finally {
       setApproving(false);
+    }
+  }
+
+  async function handleUnforgeProcess() {
+    if (!activeId || !activeProcess) return;
+    const ok = window.confirm(
+      "Reopen this process as draft? Agents can edit the map again."
+    );
+    if (!ok) return;
+    setUnforging(true);
+    try {
+      const res = await apiFetch(`/api/processes/${activeId}/unforge`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Unforge failed");
+      }
+      const data = await res.json();
+      const updated = data.process ?? data;
+      setActiveProcess((prev) => (prev ? { ...prev, ...updated } : prev));
+      await loadProcessList();
+      toast.success("Process reopened as draft");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not unforge process"
+      );
+    } finally {
+      setUnforging(false);
     }
   }
 
@@ -1231,13 +1261,34 @@ export function WorkshopSession({
                 </button>
               )}
               {isApproved && (
-                <Link
-                  href="/automations"
-                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-green"
-                >
-                  <Zap className="w-3.5 h-3.5" />
-                  Open in Automations
-                </Link>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleUnforgeProcess}
+                    disabled={unforging}
+                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                    title="Reopen as draft so agents can edit again"
+                  >
+                    <Unlock className="w-3.5 h-3.5" />
+                    {unforging ? "Unforging…" : "Unforge"}
+                  </button>
+                  <Link
+                    href={`/metrics?fromProcess=${encodeURIComponent(activeProcess!.id)}`}
+                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                    title="Instrument this process in Monitor"
+                  >
+                    <Activity className="w-3.5 h-3.5" />
+                    Attach Measurement
+                  </Link>
+                  <Link
+                    href="/automations"
+                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-green"
+                    title="Open Automations list"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Automate
+                  </Link>
+                </div>
               )}
               {agentsRunning && (
                 <div className="text-[10px] text-green flex items-center gap-1.5">
