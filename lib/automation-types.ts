@@ -156,3 +156,10 @@ export function automationStatusToDeployStatus(
 
   return automation.type === 'n8n_workflow' ? 'deployed_n8n' : 'deployed_cron';
 }
+
+/** True when automation has been deployed externally (blocks process unforge). */
+export function isAutomationLiveDeployed(
+  automation: { externalId?: string | null } | null | undefined
+): boolean {
+  return Boolean(automation?.externalId?.trim());
+}
