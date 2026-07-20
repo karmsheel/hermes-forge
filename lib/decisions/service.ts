@@ -1,3 +1,4 @@
+import { isAutomationLiveDeployed } from '@/lib/automation-types';
 import { prisma } from '@/lib/prisma';
 import { liveOccurredNow, recordBusinessEvent } from '@/lib/business-log';
 import { BUSINESS_EVENT_TYPES } from '@/lib/business-log-types';
@@ -11,6 +12,7 @@ import type {
   DecisionRequestRecord,
   ProposedAction,
 } from '@/lib/decision-types';
+import { isProcessForged } from '@/lib/process-status';
 
 function parseOptions(json: string): DecisionOption[] {
   try {
@@ -493,6 +495,71 @@ export async function forgeProcessDirect(input: {
     entityId: process.id,
     entityName: process.name,
     summary: `Forged process "${process.name}"`,
+    ...liveOccurredNow(),
+  });
+}
+
+export class UnforgeProcessError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status = 400, code?: string) {
+    super(message);
+    this.name = 'UnforgeProcessError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** Human reopens a forged process as draft (blocked when automation is live). */
+export async function unforgeProcessDirect(input: {
+  businessId: string;
+  userId: string;
+  processId: string;
+}): Promise<void> {
+  const process = await prisma.process.findFirst({
+    where: { id: input.processId, businessId: input.businessId },
+  });
+  if (!process) throw new UnforgeProcessError('Process not found', 404);
+  if (!isProcessForged(process.status)) {
+    throw new UnforgeProcessError('Process is not forged', 400);
+  }
+
+  const automation = await prisma.automation.findUnique({
+    where: { processId: process.id },
+    select: { externalId: true },
+  });
+  if (isAutomationLiveDeployed(automation)) {
+    throw new UnforgeProcessError(
+      'Pause or remove the live automation before unforging this process.',
+      409,
+      'AUTOMATION_LIVE'
+    );
+  }
+
+  await prisma.process.update({
+    where: { id: process.id },
+    data: { status: 'draft', approvedAt: null },
+  });
+
+  await createDecisionRecord({
+    businessId: input.businessId,
+    userId: input.userId,
+    title: `Unforge process: ${process.name}`,
+    statement: `Owner reopened process "${process.name}" as draft`,
+    kind: 'change',
+    relatedEntityType: 'process',
+    relatedEntityId: process.id,
+  });
+
+  await recordBusinessEvent({
+    businessId: input.businessId,
+    userId: input.userId,
+    type: BUSINESS_EVENT_TYPES.PROCESS_UNFORGED,
+    entityType: 'process',
+    entityId: process.id,
+    entityName: process.name,
+    summary: `Unforged process "${process.name}"`,
     ...liveOccurredNow(),
   });
 }

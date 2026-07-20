@@ -45,4 +45,9 @@ describe("business log event types", () => {
     assert.equal(BUSINESS_EVENT_TYPES.DOCUMENT_CREATED, "document.created");
     assert.equal(eventCategory(BUSINESS_EVENT_TYPES.DOCUMENT_UPDATED), "document");
   });
+
+  it("includes process.unforged for reopening forged maps", () => {
+    assert.equal(BUSINESS_EVENT_TYPES.PROCESS_UNFORGED, "process.unforged");
+    assert.equal(eventCategory(BUSINESS_EVENT_TYPES.PROCESS_UNFORGED), "process");
+  });
 });

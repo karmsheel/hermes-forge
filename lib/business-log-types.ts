@@ -9,6 +9,7 @@ export const BUSINESS_EVENT_TYPES = {
   PROCESS_DELETED: 'process.deleted',
   PROCESS_SPLIT: 'process.split',
   PROCESS_APPROVED: 'process.approved',
+  PROCESS_UNFORGED: 'process.unforged',
   PROCESS_DIAGRAM_UPDATED: 'process.diagram_updated',
   PROCESS_NAME_CONFIRMED: 'process.name_confirmed',
   /** Plant edge between processes (6.5) */
