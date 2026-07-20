@@ -86,15 +86,18 @@ function AppShellFrame({ children }: { children: ReactNode }) {
       <NavRail />
       <div className="app-shell-layout__main">
         {/*
-          Title chrome spans the full main column (window width minus nav).
-          Chat docks in the body row below so it never steals top-right caption space.
+          Multi-tab strip stays full-width (window controls top-right).
+          Chat docks beside the room navbar + page column so its top aligns with
+          the business picker / room pills — left dock shifts that column right.
         */}
         <ForgeTabBar />
-        <AppTopBar />
         <div className="app-shell-layout__body">
           {isLeft ? chat : null}
-          <div className="app-shell-layout__content">
-            <ForgeTabOutlet>{children}</ForgeTabOutlet>
+          <div className="app-shell-layout__workspace">
+            <AppTopBar />
+            <div className="app-shell-layout__content">
+              <ForgeTabOutlet>{children}</ForgeTabOutlet>
+            </div>
           </div>
           {!isLeft ? chat : null}
         </div>

@@ -37,19 +37,28 @@ export type ChatbarDesktopBarProps = {
   disabled?: boolean;
   /** Studio mode: hired agents + Overlord. Omitted in process/automation docks. */
   agentPicker?: ChatbarAgentPickerProps | null;
+  /**
+   * When false, hide the model picker (studio composer places it under the
+   * textarea on the left next to send actions). Default true for process/automation docks.
+   */
+  showModel?: boolean;
+};
+
+export type ChatbarModelSelectProps = {
+  disabled?: boolean;
+  /** Optional id suffix so multiple mounts never collide. */
+  id?: string;
+  className?: string;
 };
 
 /**
- * Footer dock: agent picker + model picker + context meter (PR-6).
- * Agent and Model are separate controls — agents are hired personas;
- * models are LLM backends for the active session.
+ * Standalone model picker for the studio composer toolbar (under textarea, left).
  */
-export function ChatbarDesktopBar({
-  meterInput,
-  diagnosticsInput,
+export function ChatbarModelSelect({
   disabled = false,
-  agentPicker = null,
-}: ChatbarDesktopBarProps) {
+  id = "chatbar-model",
+  className,
+}: ChatbarModelSelectProps) {
   const {
     isConnected,
     availableModels,
@@ -57,12 +66,8 @@ export function ChatbarDesktopBar({
     selectedModel,
     setModel,
     config,
-    status,
     refreshModels,
   } = useHermesConnection();
-  const [copied, setCopied] = useState(false);
-
-  const meter = useMemo(() => contextMeterDisplay(meterInput), [meterInput]);
 
   const modelOptions = useMemo(() => {
     const list = [...availableModels];
@@ -87,6 +92,68 @@ export function ChatbarDesktopBar({
     },
     [setModel],
   );
+
+  return (
+    <div
+      className={["chatbar-desktop-bar__model", className].filter(Boolean).join(" ")}
+    >
+      <label className="chatbar-desktop-bar__label" htmlFor={id}>
+        Model
+      </label>
+      <select
+        id={id}
+        className="chatbar-desktop-bar__select"
+        value={
+          modelOptions.some((m) => m.id === modelSelectValue)
+            ? modelSelectValue
+            : modelOptions[0]?.id || ""
+        }
+        disabled={disabled || !isConnected || modelOptions.length === 0}
+        onChange={onModelChange}
+        onFocus={() => {
+          if (isConnected && availableModels.length === 0 && !modelsLoading) {
+            void refreshModels();
+          }
+        }}
+        title="LLM model for this Forge session (independent of which agent you are talking to)"
+      >
+        {modelOptions.length === 0 ? (
+          <option value="">{isConnected ? "No models" : "Connect Hermes"}</option>
+        ) : (
+          modelOptions.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+            </option>
+          ))
+        )}
+      </select>
+      {modelsLoading ? (
+        <Loader2 className="chatbar-desktop-bar__spin w-3 h-3 animate-spin" aria-hidden />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Footer dock: agent picker + model picker + context meter (PR-6).
+ * Agent and Model are separate controls — agents are hired personas;
+ * models are LLM backends for the active session.
+ */
+export function ChatbarDesktopBar({
+  meterInput,
+  diagnosticsInput,
+  disabled = false,
+  agentPicker = null,
+  showModel = true,
+}: ChatbarDesktopBarProps) {
+  const {
+    selectedModel,
+    config,
+    status,
+  } = useHermesConnection();
+  const [copied, setCopied] = useState(false);
+
+  const meter = useMemo(() => contextMeterDisplay(meterInput), [meterInput]);
 
   const onAgentChange = useCallback(
     (event: ChangeEvent<HTMLSelectElement>) => {
@@ -166,41 +233,7 @@ export function ChatbarDesktopBar({
         </div>
       ) : null}
 
-      <div className="chatbar-desktop-bar__model">
-        <label className="chatbar-desktop-bar__label" htmlFor="chatbar-model">
-          Model
-        </label>
-        <select
-          id="chatbar-model"
-          className="chatbar-desktop-bar__select"
-          value={
-            modelOptions.some((m) => m.id === modelSelectValue)
-              ? modelSelectValue
-              : modelOptions[0]?.id || ""
-          }
-          disabled={disabled || !isConnected || modelOptions.length === 0}
-          onChange={onModelChange}
-          onFocus={() => {
-            if (isConnected && availableModels.length === 0 && !modelsLoading) {
-              void refreshModels();
-            }
-          }}
-          title="LLM model for this Forge session (independent of which agent you are talking to)"
-        >
-          {modelOptions.length === 0 ? (
-            <option value="">{isConnected ? "No models" : "Connect Hermes"}</option>
-          ) : (
-            modelOptions.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))
-          )}
-        </select>
-        {modelsLoading ? (
-          <Loader2 className="chatbar-desktop-bar__spin w-3 h-3 animate-spin" aria-hidden />
-        ) : null}
-      </div>
+      {showModel ? <ChatbarModelSelect disabled={disabled} /> : null}
 
       <div
         className={`chatbar-desktop-bar__meter chatbar-desktop-bar__meter--${meter.level}`}

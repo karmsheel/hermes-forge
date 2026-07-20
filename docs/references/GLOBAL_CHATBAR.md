@@ -60,21 +60,19 @@ The extension’s “Follow active tab” becomes Forge’s **“Follow active p
 
 ```text
 ┌────┬─────────────────────────────────────────────────┐
-│    │  Title chrome (tabs + AppTopBar + window ctrls) │  full width of main
+│    │  Multi-tab strip (+ window controls)            │  full width when ≥2 tabs
 │ N  ├──────────────────────────────┬──────────────────┤
-│ a  │  Page content (children)     │  Global Chatbar  │
-│ v  │                              │  (right dock)    │
-│    │                              │  [collapse ▸]    │
-│ R  │                              │                  │
+│ a  │  AppTopBar (rooms / picker)  │  Global Chatbar  │  tops aligned
+│ v  ├──────────────────────────────┤  (right dock)    │
+│    │  Page content (children)     │                  │
+│ R  │                              │  [collapse ▸]    │
 │ a  │                              │                  │
 │ i  │                              │                  │
 │ l  │                              │                  │
 └────┴──────────────────────────────┴──────────────────┘
-         ▲                                    ▲
-   existing shell              docks under title chrome only
 ```
 
-**Layout note (frameless desktop):** Chat lives in `app-shell-layout__body` under the tab/top bars so min/max/close stay pinned top-right and are not pushed when the dock opens.
+**Layout note:** Chat lives in `app-shell-layout__body` beside `app-shell-layout__workspace` (room navbar + content). Left dock shifts the room navbar right. Multi-tab strip stays full-width above so caption buttons stay top-right.
 
 **Mount point:** `AppShell` / `app/(shell)/layout.tsx` — **not** per-page.
 

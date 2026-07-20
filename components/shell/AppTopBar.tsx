@@ -39,7 +39,7 @@ export function AppTopBar() {
   return (
     <header
       className={[
-        "app-topbar shrink-0 bg-bg",
+        "app-topbar shrink-0",
         isTopmostChrome ? "desktop-drag-region" : "",
       ]
         .filter(Boolean)
