@@ -6,7 +6,7 @@ import steampunkGirl from "@/assets/girl_steampunk.svg";
 import nousForgeArt from "@/assets/girl_nous.png";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Building2, GitBranch, Hammer, Loader2, Upload } from "lucide-react";
+import { Building2, ChevronRight, GitBranch, Hammer, Loader2, Upload } from "lucide-react";
 import { BusinessTileCard } from "@/components/business-manager/BusinessTileCard";
 import { useShell } from "@/components/shell/ShellContext";
 import { useShellNavigate } from "@/components/shell/useShellNavigate";
@@ -256,6 +256,9 @@ export default function BusinessManagerPage() {
               <span className="business-manager__forge-btn-body">
                 <span className="business-manager__forge-btn-label">Forge new business</span>
                 <span className="business-manager__forge-btn-meta">Start with a blank workspace</span>
+              </span>
+              <span className="business-manager__forge-btn-chevron" aria-hidden>
+                <ChevronRight className="w-5 h-5" strokeWidth={2.5} />
               </span>
             </button>
 

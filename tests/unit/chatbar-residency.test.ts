@@ -26,6 +26,7 @@ import {
   snapEdgeOffset,
   toggleChatbarResidency,
   toggleChatbarSide,
+  topPxToEdgeOffset,
 } from "../../lib/chatbar/residency.ts";
 
 describe("chatbar residency", () => {
@@ -126,6 +127,19 @@ describe("chatbar edge placement", () => {
     assert.equal(edgeOffsetToTopPx(0.5, 1000, 100, 100), 500);
     assert.equal(edgeOffsetToTopPx(0, 1000, 100, 100), 100);
     assert.equal(edgeOffsetToTopPx(1, 1000, 100, 100), 900);
+  });
+
+  it("inverts top px back to edge offset (round-trip)", () => {
+    const vh = 1000;
+    const safeTop = 100;
+    const safeBottom = 100;
+    for (const o of [0, 0.12, 0.35, 0.5, 0.88, 1]) {
+      const top = edgeOffsetToTopPx(o, vh, safeTop, safeBottom);
+      assert.ok(Math.abs(topPxToEdgeOffset(top, vh, safeTop, safeBottom) - o) < 1e-9);
+    }
+    // Clamps outside usable range
+    assert.equal(topPxToEdgeOffset(0, vh, safeTop, safeBottom), 0);
+    assert.equal(topPxToEdgeOffset(2000, vh, safeTop, safeBottom), 1);
   });
 
   it("persists edge offset and align", () => {

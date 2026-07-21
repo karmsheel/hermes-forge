@@ -2372,6 +2372,8 @@ body {
   background: var(--bg);
   color: var(--text);
   --chatbar-width: 22.5rem;
+  /* Keep nav rail + left collapsed tab flush (see .nav-rail, .chatbar-collapsed-tab--left) */
+  --nav-rail-width: 3.5rem;
 }
 
 .app-shell-layout__row {
@@ -2474,7 +2476,9 @@ body {
  * Frameless desktop: strip is a drag region; interactive children use .desktop-no-drag.
  */
 
-/* Electron frameless window — drag the chrome row; never drag buttons/tabs */
+/* Electron frameless window — drag the chrome row; never drag buttons/tabs.
+ * Critical: only mark *interactive islands* as .desktop-no-drag. Full-width
+ * section wrappers with no-drag leave zero surface to move the window. */
 .desktop-drag-region {
   -webkit-app-region: drag;
   app-region: drag;
@@ -2743,7 +2747,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   flex-wrap: nowrap;
   align-items: flex-end;
   gap: 0.2rem;
-  flex: 1 1 auto;
+  /* Size to tabs; spacer after this row is the frameless window drag handle */
+  flex: 0 1 auto;
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
@@ -2757,9 +2762,12 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   white-space: nowrap;
 }
 
-/* Pushes profile/settings to the trailing edge of the bar */
+/* Flexible empty strip between tabs and trailing chrome — window drag region */
 .forge-tab-bar__spacer {
-  display: none; /* tabs-row flexes; actions stay at end via order */
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0.75rem;
+  height: 100%;
 }
 
 .forge-tab-bar__actions {
@@ -4415,7 +4423,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 
 .chatbar-collapsed-tab {
   position: fixed;
-  /* Default middle; overrides via --align-top / --align-bottom */
+  /* Default middle; Phase B sets inline top via edgeOffset (see --offset) */
   top: 50%;
   z-index: 40;
   transform: translateY(-50%);
@@ -4444,7 +4452,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
       color-mix(in srgb, var(--bg-panel) 94%, #000 6%) 100%
     );
   color: var(--text-muted);
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   transition:
     color var(--dur-quick, 120ms) var(--ease-out, ease),
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
@@ -4453,7 +4462,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     top var(--dur-normal, 180ms) var(--ease-out, ease);
 }
 
-/* Named vertical positions (prefs / context menu) */
+/* Named vertical positions (legacy / fallback if inline top missing) */
 .chatbar-collapsed-tab--align-top {
   top: 18%;
 }
@@ -4464,6 +4473,12 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 
 .chatbar-collapsed-tab--align-bottom {
   top: 82%;
+}
+
+.chatbar-collapsed-tab--dragging {
+  cursor: grabbing;
+  transition: none;
+  filter: brightness(1.04);
 }
 
 .chatbar-collapsed-tab--right {
@@ -4480,13 +4495,14 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .chatbar-collapsed-tab--left {
-  /* Sit just past the nav rail so primary chrome stays free */
-  left: 3.5rem;
+  /* Flush with the nav rail’s right edge (never into the rail) */
+  left: var(--nav-rail-width, 3.5rem);
   right: auto;
+  /* Open edge toward the rail (mirror of --right) */
   border-left: none;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  border-left-color: color-mix(in srgb, #fff 12%, var(--border));
   border-right-color: color-mix(in srgb, #000 12%, var(--border));
+  /* Cast only into the content (positive x) so glow doesn’t paint over the rail */
   box-shadow:
     2px 2px 6px color-mix(in srgb, var(--accent) 28%, transparent),
     4px 6px 14px color-mix(in srgb, var(--accent) 16%, transparent),
@@ -4515,6 +4531,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .chatbar-collapsed-tab--right:hover {
+  border-right: none;
   box-shadow:
     -2px 3px 8px color-mix(in srgb, var(--accent) 36%, transparent),
     -5px 8px 18px color-mix(in srgb, var(--accent) 22%, transparent),
@@ -4523,6 +4540,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .chatbar-collapsed-tab--left:hover {
+  border-left: none;
   box-shadow:
     2px 3px 8px color-mix(in srgb, var(--accent) 36%, transparent),
     5px 8px 18px color-mix(in srgb, var(--accent) 22%, transparent),
@@ -4556,7 +4574,11 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   /* 2px frame in the same accent as the mask-tinted mark */
   border: 2px solid var(--accent);
   border-radius: var(--radius-sm);
-  background: transparent;
+  /*
+   * Opaque underlay — mark uses a CSS mask with cutouts (e.g. Nous face).
+   * transparent here let page chrome (scrollbars, BM content) show through.
+   */
+  background: var(--bg-panel);
   filter: none;
   color: inherit;
   /* Clip mark to the rounded frame — image cannot bleed past the border */
@@ -4570,12 +4592,39 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
     box-shadow var(--dur-quick, 120ms) var(--ease-out, ease),
     transform var(--dur-quick, 120ms) var(--ease-out, ease),
-    top var(--dur-normal, 180ms) var(--ease-out, ease);
+    top var(--dur-normal, 180ms) var(--ease-out, ease),
+    background-color var(--dur-quick, 120ms) var(--ease-out, ease);
 }
 
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab) {
-  /* Past the edge a touch — SVG has transparent padding */
+  /* Hang past the viewport edge a touch — open side clips cleanly */
   right: -0.45rem;
+  /* Open into the viewport edge (mark rule above re-applies full border) */
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  /* Hover scale grows into the page, not off the window */
+  transform-origin: right center;
+}
+
+.chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
+  /* Flush with rail — no left hang (right dock uses right: -0.45rem off-window) */
+  left: var(--nav-rail-width, 3.5rem);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  /* Hover scale grows into content, not over the nav rail */
+  transform-origin: left center;
+  /*
+   * Mark base uses a full outer ring (0 0 0 1px) + soft bloom that paints over the
+   * rail when left-docked. Inset the ring and cast glow only into content.
+   */
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent),
+    4px 2px 10px color-mix(in srgb, var(--accent) 28%, transparent),
+    6px 4px 14px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.app-shell-layout--business-manager .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
+  left: 0;
 }
 
 .chatbar-collapsed-tab__icon.hermes-forge-mark--tab {
@@ -4603,7 +4652,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover {
-  background: transparent;
+  /* Keep opaque underlay on hover (see base rule) */
+  background: var(--bg-panel);
   border-color: var(--accent);
   filter: none;
   color: inherit;
@@ -4616,10 +4666,20 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     0 4px 12px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
-.chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab):hover,
+.chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab):hover {
+  border-color: var(--accent);
+  border-right: none;
+  background: var(--bg-panel);
+}
+
 .chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab):hover {
   border-color: var(--accent);
-  background: transparent;
+  border-left: none;
+  background: var(--bg-panel);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #fff 50%, transparent),
+    4px 4px 14px color-mix(in srgb, var(--accent) 40%, transparent),
+    8px 6px 22px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):hover .chatbar-collapsed-tab__icon {
@@ -5190,8 +5250,9 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     max-width: 92vw;
   }
 
+  /* Keep flush with nav rail (was 3rem and overlapped the 3.5rem rail) */
   .chatbar-collapsed-tab--left {
-    left: 3rem;
+    left: var(--nav-rail-width, 3.5rem);
   }
 }
 
@@ -5258,13 +5319,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
-  /* Carry title-strip / chatbar panel color through the full-bleed BM shell */
-  background: var(--bg-panel);
+  /* Match Home / app canvas (--bg), not elevated panel chrome */
+  background: var(--bg);
 }
 
 .app-shell-layout--business-manager .app-shell-layout__main {
   min-height: 0;
-  background: var(--bg-panel);
+  background: var(--bg);
 }
 
 .app-shell-layout--business-manager .app-shell-layout__body {
@@ -5278,7 +5339,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   flex-direction: column;
   width: 100%;
   min-height: 0;
-  overflow: auto;
+  /* BM fills this pane; only .business-manager scrolls when content is long */
+  overflow: hidden;
 }
 
 /*
@@ -5635,8 +5697,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* Keep in sync with .forge-tab-bar__home width */
-  width: 3.5rem;
+  /* Keep in sync with --nav-rail-width / left collapsed tab / .forge-tab-bar__home */
+  width: var(--nav-rail-width, 3.5rem);
   flex-shrink: 0;
   padding: 0.75rem 0;
   border-right: 1px solid var(--border);
@@ -5854,14 +5916,22 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 
 /* Business Manager — full-screen workspace hub.
  * Panel surface matches multi-tab title strip + Hermes global chatbar.
- * Content block is vertically centered; comfortable spacing without feeling sparse. */
+ * Fills the shell content pane (below DesktopDragChrome), not 100vh —
+ * min-height: 100vh under the title strip always overflowed and showed a
+ * useless scrollbar on the right edge.
+ */
 .business-manager {
   flex: 1;
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 100vh;
-  background: var(--bg-panel);
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Same canvas as Home (var(--bg)); panels/tiles stay on --bg-elevated */
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -6015,16 +6085,21 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__forge-btn--primary {
-  padding: 1.25rem 1.4rem;
-  border-color: var(--accent-soft);
+  align-items: center;
+  padding: 1.25rem 1.25rem 1.25rem 1.4rem;
+  /* Transparent border keeps layout stable; true 1px stroke via box-shadow only */
+  border: 1px solid transparent;
   background: var(--accent-tint);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .business-manager__forge-btn--primary:hover:not(:disabled) {
-  border-color: var(--accent);
+  border-color: transparent;
   background: var(--accent-soft);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* Hover thickens to ~2px + lift so rest→hover delta stays obvious */
+  box-shadow:
+    0 0 0 2px var(--accent-strong),
+    0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
 }
 
@@ -6043,11 +6118,31 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__forge-btn--primary .business-manager__forge-btn-body {
+  flex: 1 1 auto;
   gap: 0.3rem;
 }
 
 .business-manager__forge-btn--primary .business-manager__forge-btn-meta {
   font-size: 0.875rem;
+}
+
+.business-manager__forge-btn-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--accent);
+  opacity: 0.9;
+  transition:
+    transform var(--dur-quick) var(--ease-out),
+    opacity var(--dur-quick) var(--ease-out);
+}
+
+.business-manager__forge-btn--primary:hover:not(:disabled) .business-manager__forge-btn-chevron {
+  opacity: 1;
+  transform: translateX(2px);
+  color: var(--accent-strong);
 }
 
 .business-manager__forge-btn--import {
@@ -6256,10 +6351,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   font-size: 1.2rem;
   letter-spacing: -0.02em;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
 
 .business-manager__tile-initial {
-  opacity: 0.95;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  opacity: 1;
 }
 
 .business-manager__tile-emoji {
@@ -6271,10 +6369,6 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   width: 1.625rem;
   height: 1.625rem;
   color: var(--accent);
-}
-
-.business-manager__tile-thumb:not([style]) {
-  background: var(--bg-subtle);
 }
 
 .business-manager__tile-body {

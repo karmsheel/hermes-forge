@@ -100,9 +100,19 @@ export function resolveBusinessIcon(iconKey: string | null | undefined): LucideI
   return null;
 }
 
+/** First letter of each whitespace-separated word (e.g. "Hermes Forge" → "HF"). */
 export function businessInitial(name: string) {
   const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+  if (!trimmed) return "?";
+  const initials = trimmed
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const ch = word.match(/[\p{L}\p{N}]/u)?.[0];
+      return ch ? ch.toUpperCase() : "";
+    })
+    .join("");
+  return initials || "?";
 }
 
 export type BusinessAvatarDisplay =

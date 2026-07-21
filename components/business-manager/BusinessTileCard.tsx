@@ -15,7 +15,6 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useTheme } from "@/components/theme/ThemeProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import type { BusinessGitStatus } from "@/lib/business-git";
 import {
@@ -30,7 +29,6 @@ import {
   resolveBusinessIcon,
   type BusinessIconKey,
 } from "@/lib/business-avatar";
-import { getProjectCardThumbStyle } from "@/lib/home/project-card-thumb";
 import { timeAgo } from "@/lib/time-ago";
 import type { BusinessSummary } from "@/lib/types";
 import { BusinessAvatarPicker } from "./BusinessAvatarPicker";
@@ -57,7 +55,6 @@ export function BusinessTileCard({
   onUpdate,
   onDelete,
 }: BusinessTileCardProps) {
-  const { skin, resolved } = useTheme();
   const { currentBusiness, refreshCurrentBusiness } = useShell();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{
@@ -458,15 +455,7 @@ export function BusinessTileCard({
               : "Open business"
           }
         >
-          <div
-            className="business-manager__tile-thumb"
-            style={
-              avatar.kind === "initial"
-                ? getProjectCardThumbStyle(business.name, skin, resolved)
-                : undefined
-            }
-            aria-hidden
-          >
+          <div className="business-manager__tile-thumb" aria-hidden>
             {avatar.kind === "emoji" ? (
               <span className="business-manager__tile-emoji">{avatar.value}</span>
             ) : avatar.kind === "icon" && AvatarIcon ? (

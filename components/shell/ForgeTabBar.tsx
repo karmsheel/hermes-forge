@@ -121,8 +121,9 @@ export function ForgeTabBar() {
         </Link>
       )}
 
-      {/* Single-line strip: tabs then + immediately after last tab */}
-      <div className="forge-tab-bar__tabs-row desktop-no-drag">
+      {/* Single-line strip: tabs then + immediately after last tab.
+          Tabs/new are no-drag; the flex spacer after this row is the drag handle. */}
+      <div className="forge-tab-bar__tabs-row">
         {tabs.map((tab, index) => {
           const active = tab.id === activeTabId;
           const unloaded = isSessionUnloaded(tab.id);
@@ -134,7 +135,7 @@ export function ForgeTabBar() {
               aria-selected={active}
               draggable
               className={[
-                "forge-tab-bar__tab",
+                "forge-tab-bar__tab desktop-no-drag",
                 active ? " is-active" : "",
                 unloaded ? " is-unloaded" : "",
                 dragOver === index ? " is-drag-over" : "",
@@ -214,7 +215,7 @@ export function ForgeTabBar() {
         })}
         <button
           type="button"
-          className="forge-tab-bar__new"
+          className="forge-tab-bar__new desktop-no-drag"
           onClick={onNew}
           disabled={atMax}
           title={atMax ? `Maximum ${FORGE_TABS_MAX} tabs` : "New tab (Ctrl+T)"}
@@ -223,6 +224,9 @@ export function ForgeTabBar() {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Empty flex region inherits -webkit-app-region: drag from the bar */}
+      <div className="forge-tab-bar__spacer" aria-hidden="true" />
 
       {/* Trailing chrome — theme + bell + window controls (topmost row when multi-tab) */}
       <div className="forge-tab-bar__actions desktop-no-drag">

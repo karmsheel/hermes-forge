@@ -47,13 +47,12 @@ export function AppTopBar() {
     >
       <div className="app-topbar__inner">
         {/*
-          Leading half: [business picker] ··· [Foundation | Inventory] ···
-          Leading rooms are always centered in the free space (equal flex on both sides).
-          Right side paints dots only when MMA rooms are unlocked — otherwise an
-          invisible spacer keeps balance without a line into blank space.
+          Leading: [picker] ··· [Foundation | Inventory] ···
+          Only interactive islands use desktop-no-drag so bridges / empty flex
+          remain window-drag surfaces on the frameless desktop shell.
         */}
-        <div className="app-topbar__leading desktop-no-drag">
-          <div className="app-topbar__workspace">
+        <div className="app-topbar__leading">
+          <div className="app-topbar__workspace desktop-no-drag">
             <BusinessSwitcher />
             {showNewTab ? (
               <button
@@ -87,7 +86,7 @@ export function AppTopBar() {
           sides keeps the pill centered; the left side is a dotted bridge so the
           line from Foundation continues all the way to the pill edge (no gap).
         */}
-        <div className="app-topbar__stages desktop-no-drag">
+        <div className="app-topbar__stages">
           {hasOpsRooms ? (
             <div className="app-topbar__bridge" aria-hidden="true" />
           ) : null}
@@ -97,10 +96,13 @@ export function AppTopBar() {
           ) : null}
         </div>
 
-        {/* Trailing actions — equal 1fr track balances the leading half */}
-        <div className="app-topbar__actions desktop-no-drag">
+        {/* Trailing actions — equal 1fr track balances the leading half; empty
+            space left of the controls stays a drag region. */}
+        <div className="app-topbar__actions">
           {showHermesModelSwitcher && (
-            <HermesModelSwitcher onOpenConnection={openHermesConnection} />
+            <div className="desktop-no-drag">
+              <HermesModelSwitcher onOpenConnection={openHermesConnection} />
+            </div>
           )}
           {/*
             Theme + bell live on the multi-tab strip when visible; otherwise here.
@@ -110,7 +112,7 @@ export function AppTopBar() {
           {workshopRefreshAvailable ? (
             <button
               type="button"
-              className="app-topbar__refresh"
+              className="app-topbar__refresh desktop-no-drag"
               onClick={() => requestWorkshopRefresh()}
               title="Refresh workshop"
               aria-label="Refresh workshop"
@@ -119,9 +121,15 @@ export function AppTopBar() {
             </button>
           ) : null}
           {showTrailingChrome ? (
-            <NavThemeModeToggle className="theme-mode-toggle--chrome" />
+            <div className="desktop-no-drag">
+              <NavThemeModeToggle className="theme-mode-toggle--chrome" />
+            </div>
           ) : null}
-          {showTrailingChrome ? <NotificationBell /> : null}
+          {showTrailingChrome ? (
+            <div className="desktop-no-drag">
+              <NotificationBell />
+            </div>
+          ) : null}
           {/* Window controls only on the topmost chrome row (not under the tab strip) */}
           {isTopmostChrome ? <DesktopWindowControls /> : null}
         </div>

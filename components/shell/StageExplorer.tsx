@@ -66,7 +66,7 @@ export function StageExplorerFoundation() {
 
   return (
     <div
-      className="shell-chrome stage-explorer stage-explorer--leading"
+      className="shell-chrome stage-explorer stage-explorer--leading desktop-no-drag"
       role="tablist"
       aria-label="Foundation and Inventory rooms"
     >
@@ -91,7 +91,7 @@ export function StageExplorerOps() {
 
   return (
     <div
-      className="shell-chrome stage-explorer stage-explorer--ops"
+      className="shell-chrome stage-explorer stage-explorer--ops desktop-no-drag"
       role="tablist"
       aria-label="Operating rooms"
     >

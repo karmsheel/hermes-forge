@@ -255,6 +255,10 @@ export function saveChatbarEdgeAlign(
   }
 }
 
+/** Default vertical safe insets for the collapsed edge tab (title bar / OS chrome). */
+export const CHATBAR_EDGE_SAFE_TOP = 48;
+export const CHATBAR_EDGE_SAFE_BOTTOM = 24;
+
 /**
  * CSS `top` (px) for the collapsed tab center point.
  * Usable range is [safeTop, viewportHeight - safeBottom]; offset 0..1 maps within that range.
@@ -262,8 +266,8 @@ export function saveChatbarEdgeAlign(
 export function edgeOffsetToTopPx(
   offset: number,
   viewportHeight: number,
-  safeTop = 48,
-  safeBottom = 24,
+  safeTop: number = CHATBAR_EDGE_SAFE_TOP,
+  safeBottom: number = CHATBAR_EDGE_SAFE_BOTTOM,
 ): number {
   const o = normalizeChatbarEdgeOffset(offset);
   const vh = Math.max(0, viewportHeight);
@@ -272,4 +276,22 @@ export function edgeOffsetToTopPx(
   const usable = Math.max(0, vh - top - bottom);
   if (usable <= 0) return vh / 2;
   return top + o * usable;
+}
+
+/**
+ * Inverse of {@link edgeOffsetToTopPx}: map a viewport Y (tab center) to 0..1 edge offset.
+ */
+export function topPxToEdgeOffset(
+  topPx: number,
+  viewportHeight: number,
+  safeTop: number = CHATBAR_EDGE_SAFE_TOP,
+  safeBottom: number = CHATBAR_EDGE_SAFE_BOTTOM,
+): number {
+  const vh = Math.max(0, viewportHeight);
+  const top = Math.max(0, safeTop);
+  const bottom = Math.max(0, safeBottom);
+  const usable = Math.max(0, vh - top - bottom);
+  if (usable <= 0) return DEFAULT_CHATBAR_EDGE_OFFSET;
+  const y = typeof topPx === "number" && Number.isFinite(topPx) ? topPx : top + usable / 2;
+  return normalizeChatbarEdgeOffset((y - top) / usable);
 }

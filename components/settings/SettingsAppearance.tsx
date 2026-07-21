@@ -151,8 +151,8 @@ export function SettingsAppearance() {
               <div className="min-w-0">
                 <div className="text-sm font-medium text-text">Collapsed chat tab</div>
                 <p className="mt-1 text-xs text-text-muted max-w-md">
-                  Where the Hermes mark sits when chat is hidden. You can also right-click the tab
-                  for position options.
+                  Where the Hermes mark sits when chat is hidden. Drag the tab along the edge for a
+                  custom spot (snaps near top/middle/bottom), or right-click for presets.
                 </p>
               </div>
               <div className="flex flex-col items-stretch sm:items-end gap-3 shrink-0">
