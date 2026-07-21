@@ -41,7 +41,6 @@ export function ForgeToaster() {
       position="top-center"
       theme={resolved}
       richColors
-      closeButton
       offset={16}
     />
   );

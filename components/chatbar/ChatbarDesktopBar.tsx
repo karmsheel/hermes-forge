@@ -23,7 +23,7 @@ export type ChatbarAgentPickerProps = {
   activeAgentId: string | null;
   overlordProfileKey?: string | null;
   loading?: boolean;
-  /** When true, only Overlord is selectable (Business Manager). */
+  /** When true, only Overlord is selectable (Business Manager, Workshop). */
   overlordOnly?: boolean;
   disabled?: boolean;
   onSelectAgent: (agentId: string) => void;
@@ -221,7 +221,7 @@ export function ChatbarDesktopBar({
               onChange={onAgentChange}
               title={
                 agentPicker.overlordOnly
-                  ? "On Business Manager you talk to your Forge Overlord. Hire other agents inside a business to switch."
+                  ? "This page is locked to your Forge Overlord. On other rooms you can switch hired agents."
                   : "Talk to a hired Hermes agent — each agent has its own conversation threads"
               }
             >

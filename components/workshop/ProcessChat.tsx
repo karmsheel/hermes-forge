@@ -316,7 +316,13 @@ export function ProcessChat({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-border">
+      <div
+        className={
+          embedded
+            ? "process-chat__composer"
+            : "p-4 border-t border-border"
+        }
+      >
         <MessageQueue
           items={queuedMessages}
           busyLabel={agentBusyLabel}
@@ -334,6 +340,7 @@ export function ProcessChat({
           willQueue={Boolean(agentBusyLabel)}
           isConnected={isConnected}
           onOpenConnection={onOpenConnection}
+          studioChrome={embedded}
         />
       </div>
     </div>

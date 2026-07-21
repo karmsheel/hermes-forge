@@ -66,7 +66,12 @@ describe("isChatbarOverlordOnlyPath", () => {
     assert.equal(isChatbarOverlordOnlyPath("/business-manager/"), true);
   });
 
-  it("false inside a business room", () => {
+  it("true for workshop (process mapping locked to Overlord)", () => {
+    assert.equal(isChatbarOverlordOnlyPath("/workshop"), true);
+    assert.equal(isChatbarOverlordOnlyPath("/workshop/"), true);
+  });
+
+  it("false inside other business rooms", () => {
     assert.equal(isChatbarOverlordOnlyPath("/foundation"), false);
     assert.equal(isChatbarOverlordOnlyPath("/home"), false);
     assert.equal(isChatbarOverlordOnlyPath("/personnel"), false);

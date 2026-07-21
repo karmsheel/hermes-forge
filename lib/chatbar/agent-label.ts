@@ -27,11 +27,14 @@ export function sortChatbarAgentsWithOverlordFirst<
 }
 
 /**
- * On Business Manager the user only talks to the Forge Overlord.
- * Inside a business, hired agents become selectable.
+ * Routes where the agent picker is locked to the Forge Overlord
+ * (Business Manager, Workshop process mapping). Other rooms allow hired agents.
  */
 export function isChatbarOverlordOnlyPath(pathname: string): boolean {
-  return pathname.startsWith("/business-manager");
+  return (
+    pathname.startsWith("/business-manager") ||
+    pathname.startsWith("/workshop")
+  );
 }
 
 export function isChatbarHiddenPath(pathname: string): boolean {
