@@ -21,7 +21,7 @@ type HermesForgeMarkProps = {
 };
 
 /**
- * Shared brand mark (Business Manager header, chatbar collapsed tab).
+ * Shared brand mark (chatbar collapsed tab).
  */
 export function HermesForgeMark({ className, variant = "default" }: HermesForgeMarkProps) {
   const { skinName } = useTheme();

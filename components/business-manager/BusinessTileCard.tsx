@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   CloudUpload,
   Download,
@@ -35,6 +36,8 @@ import type { BusinessSummary } from "@/lib/types";
 import { BusinessAvatarPicker } from "./BusinessAvatarPicker";
 
 const MENU_WIDTH = 13.5 * 16;
+/** Approximate popover height (7–8 items + padding) for flip-above logic. */
+const MENU_ESTIMATED_HEIGHT = 320;
 
 interface BusinessTileCardProps {
   business: BusinessSummary;
@@ -57,7 +60,12 @@ export function BusinessTileCard({
   const { skin, resolved } = useTheme();
   const { currentBusiness, refreshCurrentBusiness } = useShell();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuAnchor, setMenuAnchor] = useState<{ top: number; left: number } | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    maxHeight: number;
+  } | null>(null);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(business.name);
   const [avatarOpen, setAvatarOpen] = useState(false);
@@ -111,9 +119,14 @@ export function BusinessTileCard({
       if (e.key === "Escape") closeMenu();
     }
 
-    document.addEventListener("mousedown", onClickOutside);
-    document.addEventListener("keydown", onKeyDown);
+    // Defer so the opening click does not immediately dismiss the menu
+    const timer = window.setTimeout(() => {
+      document.addEventListener("mousedown", onClickOutside);
+      document.addEventListener("keydown", onKeyDown);
+    }, 0);
+
     return () => {
+      window.clearTimeout(timer);
       document.removeEventListener("mousedown", onClickOutside);
       document.removeEventListener("keydown", onKeyDown);
     };
@@ -142,6 +155,7 @@ export function BusinessTileCard({
   }, [business.id]);
 
   function toggleMenu(e: React.MouseEvent) {
+    e.preventDefault();
     e.stopPropagation();
     if (menuOpen) {
       closeMenu();
@@ -149,10 +163,35 @@ export function BusinessTileCard({
     }
     const rect = menuTriggerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setMenuAnchor({
-      top: rect.bottom + 6,
-      left: Math.max(8, rect.right - MENU_WIDTH),
-    });
+
+    const gap = 6;
+    const edge = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = rect.right - MENU_WIDTH;
+    if (left < edge) left = edge;
+    if (left + MENU_WIDTH > vw - edge) left = Math.max(edge, vw - edge - MENU_WIDTH);
+
+    const spaceBelow = vh - rect.bottom - gap - edge;
+    const spaceAbove = rect.top - gap - edge;
+    // Prefer opening above near the bottom of the viewport so all items stay visible
+    const openAbove =
+      spaceBelow < MENU_ESTIMATED_HEIGHT && spaceAbove > spaceBelow;
+
+    if (openAbove) {
+      setMenuAnchor({
+        // Anchor to the trigger from below; height grows upward
+        bottom: Math.max(edge, vh - rect.top + gap),
+        left,
+        maxHeight: Math.max(120, spaceAbove),
+      });
+    } else {
+      setMenuAnchor({
+        top: rect.bottom + gap,
+        left,
+        maxHeight: Math.max(120, spaceBelow),
+      });
+    }
     setMenuOpen(true);
   }
 
@@ -480,15 +519,39 @@ export function BusinessTileCard({
         )}
       </div>
 
-      {menuOpen && menuAnchor && (
-        <div
-          ref={menuRef}
-          className="workflow-menu__popover workflow-menu__popover--fixed"
-          role="menu"
-          aria-label={`Options for ${business.name}`}
-          style={{ top: menuAnchor.top, left: menuAnchor.left, width: MENU_WIDTH }}
-        >
-          {onOpenInNewTab ? (
+      {menuOpen &&
+        menuAnchor &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="workflow-menu__popover workflow-menu__popover--fixed"
+            role="menu"
+            aria-label={`Options for ${business.name}`}
+            style={{
+              top: menuAnchor.top ?? "auto",
+              bottom: menuAnchor.bottom ?? "auto",
+              left: menuAnchor.left,
+              right: "auto",
+              width: MENU_WIDTH,
+              maxHeight: menuAnchor.maxHeight,
+              overflowY: "auto",
+            }}
+          >
+            {onOpenInNewTab ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="workflow-menu__item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeMenu();
+                  onOpenInNewTab();
+                }}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                Open in new tab
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -496,129 +559,116 @@ export function BusinessTileCard({
               onClick={(e) => {
                 e.stopPropagation();
                 closeMenu();
-                onOpenInNewTab();
+                setRenameOpen(true);
               }}
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Open in new tab
+              <Pencil className="w-3.5 h-3.5" />
+              Rename
             </button>
-          ) : null}
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              setRenameOpen(true);
-            }}
-          >
-            <Pencil className="w-3.5 h-3.5" />
-            Rename
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              setAvatarOpen(true);
-            }}
-          >
-            <Smile className="w-3.5 h-3.5" />
-            Set emoji or icon
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            disabled={downloading}
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              void handleDownloadZip();
-            }}
-          >
-            {downloading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Download className="w-3.5 h-3.5" />
-            )}
-            Download ZIP
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            disabled={gitBusy || gitStatus?.gitAvailable === false}
-            title="Materialize and commit to local Git repo"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              void handleGitSync();
-            }}
-          >
-            {syncingGit ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <GitBranch className="w-3.5 h-3.5" />
-            )}
-            Sync Git
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            disabled={
-              gitBusy || gitStatus?.gitAvailable === false || !gitStatus?.remoteUrl
-            }
-            title={
-              gitStatus?.remoteUrl
-                ? "Sync local repo then push to remote"
-                : "Configure a remote first"
-            }
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              void handleGitPush(true);
-            }}
-          >
-            {pushingGit ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <CloudUpload className="w-3.5 h-3.5" />
-            )}
-            Push to remote
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              openGitPanel();
-            }}
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            Git remote settings
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="workflow-menu__item workflow-menu__item--danger"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeMenu();
-              setDeleteOpen(true);
-            }}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                setAvatarOpen(true);
+              }}
+            >
+              <Smile className="w-3.5 h-3.5" />
+              Set emoji or icon
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={downloading}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                void handleDownloadZip();
+              }}
+            >
+              {downloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Download ZIP
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={gitBusy || gitStatus?.gitAvailable === false}
+              title="Materialize and commit to local Git repo"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                void handleGitSync();
+              }}
+            >
+              {syncingGit ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <GitBranch className="w-3.5 h-3.5" />
+              )}
+              Sync Git
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              disabled={
+                gitBusy || gitStatus?.gitAvailable === false || !gitStatus?.remoteUrl
+              }
+              title={
+                gitStatus?.remoteUrl
+                  ? "Sync local repo then push to remote"
+                  : "Configure a remote first"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                void handleGitPush(true);
+              }}
+            >
+              {pushingGit ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CloudUpload className="w-3.5 h-3.5" />
+              )}
+              Push to remote
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                openGitPanel();
+              }}
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Git remote settings
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="workflow-menu__item workflow-menu__item--danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                closeMenu();
+                setDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </button>
+          </div>,
+          document.body
+        )}
 
       {renameOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

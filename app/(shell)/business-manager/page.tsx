@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Building2, GitBranch, Hammer, Loader2, Upload } from "lucide-react";
 import { BusinessTileCard } from "@/components/business-manager/BusinessTileCard";
-import { HermesForgeMark } from "@/components/brand/HermesForgeMark";
 import { useShell } from "@/components/shell/ShellContext";
 import { useShellNavigate } from "@/components/shell/useShellNavigate";
 import { useTheme } from "@/components/theme/ThemeProvider";
@@ -63,7 +62,8 @@ export default function BusinessManagerPage() {
     if (!actionsEl) return;
 
     const syncArtSize = () => {
-      setForgeArtSize(actionsEl.getBoundingClientRect().height);
+      // Keep art slightly smaller than the action column so the panel stays balanced
+      setForgeArtSize(actionsEl.getBoundingClientRect().height * 0.88);
     };
 
     syncArtSize();
@@ -204,9 +204,6 @@ export default function BusinessManagerPage() {
     <main className="business-manager">
       <div className="business-manager__inner">
         <header className="business-manager__header">
-          <div className="business-manager__brand" aria-hidden>
-            <HermesForgeMark className="hermes-forge-mark" />
-          </div>
           <div className="business-manager__header-text">
             <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Hermes Forge</div>
             <h1 className="business-manager__title">Business Manager</h1>
@@ -232,8 +229,8 @@ export default function BusinessManagerPage() {
                 className="business-manager__forge-art business-manager__forge-art--raster"
                 src={nousForgeArt}
                 alt=""
-                width={280}
-                height={280}
+                width={220}
+                height={220}
               />
             ) : (
               <div
@@ -248,66 +245,68 @@ export default function BusinessManagerPage() {
           </div>
 
           <div ref={forgeActionsRef} className="business-manager__forge-actions">
-          <button
-            type="button"
-            onClick={openNewBusiness}
-            className="business-manager__forge-btn business-manager__forge-btn--primary"
-          >
-            <span className="business-manager__forge-btn-icon" aria-hidden>
-              <Hammer className="w-6 h-6" />
-            </span>
-            <span className="business-manager__forge-btn-body">
-              <span className="business-manager__forge-btn-label">Forge new business</span>
-              <span className="business-manager__forge-btn-meta">Start with a blank workspace</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={triggerImport}
-            disabled={importing || importingGit}
-            className="business-manager__forge-btn business-manager__forge-btn--import"
-          >
-            <span className="business-manager__forge-btn-icon" aria-hidden>
-              {importing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Upload className="w-5 h-5" />
-              )}
-            </span>
-            <span className="business-manager__forge-btn-body">
-              <span className="business-manager__forge-btn-label">Forge existing business</span>
-              <span className="business-manager__forge-btn-meta">Import a business export (ZIP)</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setGitImportOpen((v) => !v)}
-            disabled={importing || importingGit}
-            className="business-manager__forge-btn business-manager__forge-btn--import"
-          >
-            <span className="business-manager__forge-btn-icon" aria-hidden>
-              {importingGit ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <GitBranch className="w-5 h-5" />
-              )}
-            </span>
-            <span className="business-manager__forge-btn-body">
-              <span className="business-manager__forge-btn-label">Import from Git</span>
-              <span className="business-manager__forge-btn-meta">
-                Restore from a local path or remote repo
+            <button
+              type="button"
+              onClick={openNewBusiness}
+              className="business-manager__forge-btn business-manager__forge-btn--primary"
+            >
+              <span className="business-manager__forge-btn-icon" aria-hidden>
+                <Hammer className="w-6 h-6" />
               </span>
-            </span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".zip,application/zip"
-            className="sr-only"
-            onChange={onFileChange}
-          />
+              <span className="business-manager__forge-btn-body">
+                <span className="business-manager__forge-btn-label">Forge new business</span>
+                <span className="business-manager__forge-btn-meta">Start with a blank workspace</span>
+              </span>
+            </button>
+
+            <div className="business-manager__forge-secondary">
+              <button
+                type="button"
+                onClick={triggerImport}
+                disabled={importing || importingGit}
+                className="business-manager__forge-btn business-manager__forge-btn--import"
+              >
+                <span className="business-manager__forge-btn-icon" aria-hidden>
+                  {importing ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Upload className="w-5 h-5" />
+                  )}
+                </span>
+                <span className="business-manager__forge-btn-body">
+                  <span className="business-manager__forge-btn-label">Forge existing business</span>
+                  <span className="business-manager__forge-btn-meta">Import a business export (ZIP)</span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGitImportOpen((v) => !v)}
+                disabled={importing || importingGit}
+                className="business-manager__forge-btn business-manager__forge-btn--import"
+              >
+                <span className="business-manager__forge-btn-icon" aria-hidden>
+                  {importingGit ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <GitBranch className="w-5 h-5" />
+                  )}
+                </span>
+                <span className="business-manager__forge-btn-body">
+                  <span className="business-manager__forge-btn-label">Import from Git</span>
+                  <span className="business-manager__forge-btn-meta">
+                    Restore from a local path or remote repo
+                  </span>
+                </span>
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="sr-only"
+              onChange={onFileChange}
+            />
           </div>
         </div>
 
@@ -401,7 +400,7 @@ export default function BusinessManagerPage() {
           <h2 id="business-manager-your-businesses" className="business-manager__section-title">
             Your businesses
           </h2>
-          <p className="text-sm text-text-muted mb-3">
+          <p className="business-manager__section-hint">
             Open a business to enter the studio. Use the ⋮ menu for rename, avatar, ZIP export, Git
             sync / push, and delete.
           </p>
