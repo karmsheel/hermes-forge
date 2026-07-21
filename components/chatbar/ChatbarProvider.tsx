@@ -23,18 +23,32 @@ import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session"
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import { isChatbarHiddenPath } from "@/lib/chatbar/agent-label";
 import {
+  CHATBAR_EDGE_ALIGNS,
+  CHATBAR_EDGE_PRESET_OFFSETS,
+  CHATBAR_PREFS_CHANGED_EVENT,
   CHATBAR_RESIDENCY_MODES,
   CHATBAR_SIDES,
+  DEFAULT_CHATBAR_EDGE_ALIGN,
+  DEFAULT_CHATBAR_EDGE_OFFSET,
   DEFAULT_CHATBAR_RESIDENCY,
   DEFAULT_CHATBAR_SIDE,
+  loadChatbarEdgeAlign,
+  loadChatbarEdgeOffset,
   loadChatbarResidency,
   loadChatbarSide,
+  normalizeChatbarEdgeAlign,
+  normalizeChatbarEdgeOffset,
   normalizeChatbarResidency,
   normalizeChatbarSide,
+  offsetForEdgeAlign,
+  saveChatbarEdgeAlign,
+  saveChatbarEdgeOffset,
   saveChatbarResidency,
   saveChatbarSide,
+  snapEdgeOffset,
   toggleChatbarResidency,
   toggleChatbarSide,
+  type ChatbarEdgeAlign,
   type ChatbarResidency,
   type ChatbarSide,
 } from "@/lib/chatbar/residency";
@@ -52,6 +66,19 @@ interface ChatbarContextValue {
   collapse: () => void;
   /** Flip dock between left and right of the main content. */
   swapSide: () => void;
+
+  /** Vertical position of the collapsed edge tab (0 = top of range, 1 = bottom). */
+  edgeOffset: number;
+  edgeAlign: ChatbarEdgeAlign;
+  /** Snap to a named preset (top / middle / bottom) or set custom via offset. */
+  setEdgeAlign: (align: Exclude<ChatbarEdgeAlign, "custom">) => void;
+  /**
+   * Free edge position. When `snap` is true (default on drag end), magnetically
+   * snaps to nearby presets; otherwise stores as custom.
+   */
+  setEdgeOffset: (offset: number, opts?: { snap?: boolean }) => void;
+  /** Middle align + default offset. */
+  resetEdgePosition: () => void;
 
   /** PR-3: context scope mode */
   contextMode: ChatbarContextMode;
@@ -109,6 +136,8 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const chatbarHidden = isChatbarHiddenPath(pathname);
   const [residency, setResidencyState] = useState<ChatbarResidency>(DEFAULT_CHATBAR_RESIDENCY);
   const [side, setSideState] = useState<ChatbarSide>(DEFAULT_CHATBAR_SIDE);
+  const [edgeOffset, setEdgeOffsetState] = useState(DEFAULT_CHATBAR_EDGE_OFFSET);
+  const [edgeAlign, setEdgeAlignState] = useState<ChatbarEdgeAlign>(DEFAULT_CHATBAR_EDGE_ALIGN);
   const [contextMode, setContextModeState] = useState<ChatbarContextMode>(
     DEFAULT_CHATBAR_CONTEXT_MODE,
   );
@@ -136,8 +165,22 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setResidencyState(loadChatbarResidency());
     setSideState(loadChatbarSide());
+    setEdgeOffsetState(loadChatbarEdgeOffset());
+    setEdgeAlignState(loadChatbarEdgeAlign());
     setContextModeState(loadChatbarContextMode());
     setHydrated(true);
+  }, []);
+
+  // Settings (and other external writers) live outside this provider — rehydrate.
+  useEffect(() => {
+    function onPrefsChanged() {
+      setResidencyState(loadChatbarResidency());
+      setSideState(loadChatbarSide());
+      setEdgeOffsetState(loadChatbarEdgeOffset());
+      setEdgeAlignState(loadChatbarEdgeAlign());
+    }
+    window.addEventListener(CHATBAR_PREFS_CHANGED_EVENT, onPrefsChanged);
+    return () => window.removeEventListener(CHATBAR_PREFS_CHANGED_EVENT, onPrefsChanged);
   }, []);
 
   useEffect(() => {
@@ -152,6 +195,16 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
+    saveChatbarEdgeOffset(edgeOffset);
+  }, [edgeOffset, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    saveChatbarEdgeAlign(edgeAlign);
+  }, [edgeAlign, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     saveChatbarContextMode(contextMode);
   }, [contextMode, hydrated]);
 
@@ -161,6 +214,30 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
 
   const setSide = useCallback((next: ChatbarSide) => {
     setSideState(normalizeChatbarSide(next));
+  }, []);
+
+  const setEdgeAlign = useCallback((align: Exclude<ChatbarEdgeAlign, "custom">) => {
+    const next = normalizeChatbarEdgeAlign(align);
+    if (next === CHATBAR_EDGE_ALIGNS.CUSTOM) return;
+    setEdgeAlignState(next);
+    setEdgeOffsetState(offsetForEdgeAlign(next));
+  }, []);
+
+  const setEdgeOffset = useCallback((offset: number, opts?: { snap?: boolean }) => {
+    const raw = normalizeChatbarEdgeOffset(offset);
+    if (opts?.snap === false) {
+      setEdgeOffsetState(raw);
+      setEdgeAlignState(CHATBAR_EDGE_ALIGNS.CUSTOM);
+      return;
+    }
+    const snapped = snapEdgeOffset(raw);
+    setEdgeOffsetState(snapped.offset);
+    setEdgeAlignState(snapped.align);
+  }, []);
+
+  const resetEdgePosition = useCallback(() => {
+    setEdgeAlignState(CHATBAR_EDGE_ALIGNS.MIDDLE);
+    setEdgeOffsetState(CHATBAR_EDGE_PRESET_OFFSETS.middle);
   }, []);
 
   const setContextMode = useCallback((next: ChatbarContextMode) => {
@@ -279,6 +356,11 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       open,
       collapse,
       swapSide,
+      edgeOffset,
+      edgeAlign,
+      setEdgeAlign,
+      setEdgeOffset,
+      resetEdgePosition,
       contextMode,
       setContextMode,
       pageRegistration,
@@ -305,6 +387,11 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       open,
       collapse,
       swapSide,
+      edgeOffset,
+      edgeAlign,
+      setEdgeAlign,
+      setEdgeOffset,
+      resetEdgePosition,
       contextMode,
       setContextMode,
       pageRegistration,

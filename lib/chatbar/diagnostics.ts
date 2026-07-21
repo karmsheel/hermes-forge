@@ -13,6 +13,8 @@ export type DiagnosticsInput = {
   contextMode?: string;
   residency?: string;
   side?: string;
+  edgeAlign?: string;
+  edgeOffset?: number | string | null;
   isProcessScoped?: boolean;
   processId?: string | null;
   processName?: string | null;
@@ -61,6 +63,13 @@ export function buildChatbarDiagnostics(input: DiagnosticsInput = {}): string {
     bullet("Route", input.route || "unknown"),
     bullet("Residency", input.residency || "unknown"),
     bullet("Dock side", input.side || "unknown"),
+    bullet("Edge align", input.edgeAlign || "unknown"),
+    bullet(
+      "Edge offset",
+      input.edgeOffset == null || input.edgeOffset === ""
+        ? "unknown"
+        : String(input.edgeOffset),
+    ),
     bullet("Process scoped", input.isProcessScoped ? "yes" : "no"),
     "",
     "## Business / session",

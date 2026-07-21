@@ -1,10 +1,27 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { Monitor, Moon, Palette, Sun } from "lucide-react";
 import { ListRow, SegmentedControl } from "@/components/ui";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme";
 import { useLocale } from "@/components/i18n/LocaleProvider";
+import {
+  CHATBAR_EDGE_ALIGNS,
+  CHATBAR_PREFS_CHANGED_EVENT,
+  CHATBAR_SIDES,
+  DEFAULT_CHATBAR_EDGE_ALIGN,
+  DEFAULT_CHATBAR_SIDE,
+  loadChatbarEdgeAlign,
+  loadChatbarSide,
+  notifyChatbarPrefsChanged,
+  offsetForEdgeAlign,
+  saveChatbarEdgeAlign,
+  saveChatbarEdgeOffset,
+  saveChatbarSide,
+  type ChatbarEdgeAlign,
+  type ChatbarSide,
+} from "@/lib/chatbar/residency";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { SkinPicker } from "./SkinPicker";
 
@@ -26,9 +43,60 @@ const THEME_OPTIONS = [
   },
 ];
 
+const SIDE_OPTIONS: { value: ChatbarSide; label: string }[] = [
+  { value: CHATBAR_SIDES.LEFT, label: "Left" },
+  { value: CHATBAR_SIDES.RIGHT, label: "Right" },
+];
+
+type EdgeAlignPreset = Exclude<ChatbarEdgeAlign, "custom">;
+
+const EDGE_ALIGN_OPTIONS: { value: EdgeAlignPreset; label: string }[] = [
+  { value: CHATBAR_EDGE_ALIGNS.TOP, label: "Top" },
+  { value: CHATBAR_EDGE_ALIGNS.MIDDLE, label: "Middle" },
+  { value: CHATBAR_EDGE_ALIGNS.BOTTOM, label: "Bottom" },
+];
+
 export function SettingsAppearance() {
   const { preference, setPreference } = useTheme();
   const { isSavingLocale } = useLocale();
+  const [chatSide, setChatSide] = useState<ChatbarSide>(DEFAULT_CHATBAR_SIDE);
+  const [edgeAlign, setEdgeAlign] = useState<EdgeAlignPreset>(
+    DEFAULT_CHATBAR_EDGE_ALIGN === CHATBAR_EDGE_ALIGNS.CUSTOM
+      ? CHATBAR_EDGE_ALIGNS.MIDDLE
+      : (DEFAULT_CHATBAR_EDGE_ALIGN as EdgeAlignPreset),
+  );
+
+  const hydrateChatPrefs = useCallback(() => {
+    setChatSide(loadChatbarSide());
+    const loaded = loadChatbarEdgeAlign();
+    setEdgeAlign(
+      loaded === CHATBAR_EDGE_ALIGNS.TOP || loaded === CHATBAR_EDGE_ALIGNS.BOTTOM
+        ? loaded
+        : CHATBAR_EDGE_ALIGNS.MIDDLE,
+    );
+  }, []);
+
+  useEffect(() => {
+    hydrateChatPrefs();
+    function onPrefs() {
+      hydrateChatPrefs();
+    }
+    window.addEventListener(CHATBAR_PREFS_CHANGED_EVENT, onPrefs);
+    return () => window.removeEventListener(CHATBAR_PREFS_CHANGED_EVENT, onPrefs);
+  }, [hydrateChatPrefs]);
+
+  const onSideChange = useCallback((next: ChatbarSide) => {
+    setChatSide(next);
+    saveChatbarSide(next);
+    notifyChatbarPrefsChanged();
+  }, []);
+
+  const onEdgeAlignChange = useCallback((next: EdgeAlignPreset) => {
+    setEdgeAlign(next);
+    saveChatbarEdgeAlign(next);
+    saveChatbarEdgeOffset(offsetForEdgeAlign(next));
+    notifyChatbarPrefsChanged();
+  }, []);
 
   return (
     <section>
@@ -38,7 +106,7 @@ export function SettingsAppearance() {
         </div>
         <div>
           <h2 className="text-lg font-medium">Appearance</h2>
-          <p className="text-xs text-text-soft">Language, color mode, and themes</p>
+          <p className="text-xs text-text-soft">Language, color mode, themes, and chat tab</p>
         </div>
       </div>
 
@@ -75,6 +143,32 @@ export function SettingsAppearance() {
             </div>
             <div className="mt-4">
               <SkinPicker />
+            </div>
+          </div>
+
+          <div className="py-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-text">Collapsed chat tab</div>
+                <p className="mt-1 text-xs text-text-muted max-w-md">
+                  Where the Hermes mark sits when chat is hidden. You can also right-click the tab
+                  for position options.
+                </p>
+              </div>
+              <div className="flex flex-col items-stretch sm:items-end gap-3 shrink-0">
+                <SegmentedControl
+                  value={chatSide}
+                  options={SIDE_OPTIONS}
+                  ariaLabel="Chat dock side"
+                  onChange={onSideChange}
+                />
+                <SegmentedControl
+                  value={edgeAlign}
+                  options={EDGE_ALIGN_OPTIONS}
+                  ariaLabel="Chat tab vertical position"
+                  onChange={onEdgeAlignChange}
+                />
+              </div>
             </div>
           </div>
         </div>

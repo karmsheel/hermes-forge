@@ -485,9 +485,14 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+/* Portaled / fixed menus must not inherit absolute top/right from .workflow-menu__popover */
 .workflow-menu__popover--fixed {
   position: fixed;
-  z-index: 40;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  z-index: 100;
 }
 
 .workflow-menu__item {
@@ -608,17 +613,6 @@ body {
 
 [data-sonner-toast][data-styled="true"] [data-description] {
   color: var(--text-muted);
-}
-
-[data-sonner-toast][data-styled="true"] [data-close-button] {
-  color: var(--text-muted);
-  background: var(--bg-elevated);
-  border-color: var(--border);
-}
-
-[data-sonner-toast][data-styled="true"]:hover [data-close-button]:hover {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
 }
 
 /* Settings popover — Open Design–style appearance menu */
@@ -3576,6 +3570,36 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   min-height: 0;
 }
 
+/* Match studio footer chrome when ProcessChat is docked in the global chatbar */
+.process-chat--embedded > .process-chat__composer {
+  border-top: 1px solid var(--border);
+  padding: 0.75rem;
+  background: var(--bg-elevated);
+  /* Shared model (toolbar) + agent (desktop bar) select geometry */
+  --chatbar-studio-label-width: 2.5rem;
+  --chatbar-studio-select-width: 9.5rem;
+}
+
+.chatbar-panel__process-dock {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0 0.75rem 0.75rem;
+  border-top: none;
+  background: var(--bg-elevated);
+  /* Agent select width matches studio (model lives under process composer) */
+  --chatbar-studio-label-width: 2.5rem;
+  --chatbar-studio-select-width: 9.5rem;
+}
+
+.chatbar-panel__process-dock .chatbar-desktop-bar {
+  margin: 0;
+  padding: 0.15rem 0 0.25rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: transparent;
+}
+
 .chatbar-panel__composer-row {
   display: flex;
   flex-direction: column;
@@ -4391,6 +4415,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 
 .chatbar-collapsed-tab {
   position: fixed;
+  /* Default middle; overrides via --align-top / --align-bottom */
   top: 50%;
   z-index: 40;
   transform: translateY(-50%);
@@ -4424,7 +4449,21 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     color var(--dur-quick, 120ms) var(--ease-out, ease),
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
     box-shadow var(--dur-quick, 120ms) var(--ease-out, ease),
-    filter var(--dur-quick, 120ms) var(--ease-out, ease);
+    filter var(--dur-quick, 120ms) var(--ease-out, ease),
+    top var(--dur-normal, 180ms) var(--ease-out, ease);
+}
+
+/* Named vertical positions (prefs / context menu) */
+.chatbar-collapsed-tab--align-top {
+  top: 18%;
+}
+
+.chatbar-collapsed-tab--align-middle {
+  top: 50%;
+}
+
+.chatbar-collapsed-tab--align-bottom {
+  top: 82%;
 }
 
 .chatbar-collapsed-tab--right {
@@ -4530,16 +4569,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   transition:
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
     box-shadow var(--dur-quick, 120ms) var(--ease-out, ease),
-    transform var(--dur-quick, 120ms) var(--ease-out, ease);
+    transform var(--dur-quick, 120ms) var(--ease-out, ease),
+    top var(--dur-normal, 180ms) var(--ease-out, ease);
 }
 
 .chatbar-collapsed-tab--right:has(.hermes-forge-mark--tab) {
   /* Past the edge a touch — SVG has transparent padding */
   right: -0.45rem;
-}
-
-.chatbar-collapsed-tab--left:has(.hermes-forge-mark--tab) {
-  /* keep shared box-shadow */
 }
 
 .chatbar-collapsed-tab__icon.hermes-forge-mark--tab {
@@ -4601,6 +4637,65 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 
 .chatbar-collapsed-tab:has(.hermes-forge-mark--tab):focus-visible .chatbar-collapsed-tab__icon {
   filter: brightness(1.04);
+}
+
+/* Collapsed tab position menu — portaled to document.body (escape shell overflow) */
+.chatbar-collapsed-tab__menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 11.5rem;
+  max-width: min(16rem, calc(100vw - 1rem));
+  max-height: min(20rem, calc(100vh - 1rem));
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: var(--bg-elevated);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.chatbar-collapsed-tab__menu-label {
+  padding: 0.35rem 0.55rem 0.2rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-soft, var(--text-muted));
+}
+
+.chatbar-collapsed-tab__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chatbar-collapsed-tab__menu-item:hover {
+  background: var(--bg-subtle);
+}
+
+.chatbar-collapsed-tab__menu-item.is-active {
+  background: var(--accent-tint, var(--bg-subtle));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.chatbar-collapsed-tab__menu-sep {
+  height: 1px;
+  margin: 0.2rem 0.35rem;
+  background: var(--border-soft, var(--border));
 }
 
 /* —— PR-3: context chip, receipt, intro —— */
@@ -5758,7 +5853,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 /* Business Manager — full-screen workspace hub.
- * Panel surface matches multi-tab title strip + Hermes global chatbar. */
+ * Panel surface matches multi-tab title strip + Hermes global chatbar.
+ * Content block is vertically centered; comfortable spacing without feeling sparse. */
 .business-manager {
   flex: 1;
   display: flex;
@@ -5779,8 +5875,9 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 .business-manager__header {
   display: flex;
   align-items: flex-start;
+  flex-shrink: 0;
   gap: 1.25rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: clamp(1.25rem, 2.5vh, 1.75rem);
 }
 
 .business-manager__header-text {
@@ -5809,50 +5906,34 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   color: var(--text);
 }
 
-.business-manager__brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 4rem;
-  height: 4rem;
-  padding: 0.65rem;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-subtle);
-}
-
-.business-manager__brand .hermes-forge-mark {
-  width: 2.5rem;
-  height: 2.5rem;
-}
-
 .business-manager__title {
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
 
 .business-manager__subtitle {
-  margin-top: 0.5rem;
+  margin-top: 0.45rem;
   max-width: 36rem;
-  font-size: 0.9375rem;
-  line-height: 1.55;
+  font-size: 0.9rem;
+  line-height: 1.5;
   color: var(--text-muted);
 }
 
 .business-manager__forge-panel {
   display: flex;
   align-items: stretch;
-  gap: 1.25rem;
-  margin-bottom: 2.5rem;
+  flex-shrink: 0;
+  gap: 1.15rem;
+  margin-bottom: clamp(1.25rem, 2.5vh, 1.75rem);
 }
 
 .business-manager__forge-art-wrap {
   flex: 0 0 auto;
-  min-width: 5.5rem;
-  min-height: 5.5rem;
+  align-self: center;
+  min-width: 4.5rem;
+  min-height: 4.5rem;
 }
 
 .business-manager__forge-art {
@@ -5891,12 +5972,25 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   min-width: 0;
 }
 
+.business-manager__forge-secondary {
+  display: flex;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+@media (max-width: 40rem) {
+  .business-manager__forge-secondary {
+    flex-direction: column;
+  }
+}
+
 .business-manager__forge-btn {
   display: flex;
   align-items: flex-start;
   gap: 0.875rem;
   width: 100%;
-  padding: 1.125rem 1.25rem;
+  padding: 1rem 1.15rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-elevated);
@@ -5921,7 +6015,7 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__forge-btn--primary {
-  padding: 1.5rem 1.625rem;
+  padding: 1.25rem 1.4rem;
   border-color: var(--accent-soft);
   background: var(--accent-tint);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -5935,15 +6029,15 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__forge-btn--primary .business-manager__forge-btn-icon {
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 3rem;
+  height: 3rem;
   background: var(--accent-soft);
   border-color: transparent;
   color: var(--accent-strong);
 }
 
 .business-manager__forge-btn--primary .business-manager__forge-btn-label {
-  font-size: 1.1875rem;
+  font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -5957,9 +6051,9 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__forge-btn--import {
-  align-self: flex-start;
+  flex: 1 1 0;
   width: auto;
-  max-width: 18rem;
+  min-width: 0;
   padding: 0.8125rem 1.125rem;
   gap: 0.75rem;
   border: 1.5px dashed var(--border);
@@ -6021,12 +6115,27 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   color: var(--text-muted);
 }
 
+.business-manager__section {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
 .business-manager__section-title {
-  margin-bottom: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.business-manager__section-hint {
+  flex-shrink: 0;
+  margin: 0 0 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
   color: var(--text-muted);
 }
 
@@ -6050,7 +6159,9 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 .business-manager__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.875rem;
+  gap: 0.75rem;
+  align-content: start;
+  flex: 0 0 auto;
 }
 
 @media (min-width: 768px) {
@@ -6136,13 +6247,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__tile-thumb {
-  height: 72px;
+  height: 3.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   letter-spacing: -0.02em;
   border-bottom: 1px solid var(--border);
 }
@@ -6152,13 +6263,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__tile-emoji {
-  font-size: 1.75rem;
+  font-size: 1.625rem;
   line-height: 1;
 }
 
 .business-manager__tile-icon {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.625rem;
+  height: 1.625rem;
   color: var(--accent);
 }
 
@@ -6167,31 +6278,30 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 .business-manager__tile-body {
-  padding: 0.75rem 0.875rem 0.875rem;
-  min-height: 4.5rem;
+  padding: 0.65rem 0.85rem 0.75rem;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
 }
 
 .business-manager__tile-name {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-strong);
-  line-height: 1.2;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .business-manager__tile-meta {
-  font-size: 0.6875rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
   line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .business-manager__tile-loading {

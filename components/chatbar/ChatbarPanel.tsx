@@ -132,6 +132,8 @@ export function ChatbarPanel() {
     swapSide,
     side,
     residency,
+    edgeOffset,
+    edgeAlign,
     contextMode,
     setContextMode,
     pageRegistration,
@@ -207,9 +209,13 @@ export function ChatbarPanel() {
   const overlordOnly = isChatbarOverlordOnlyPath(pathname);
   const overlordAgent =
     hiredAgents.find((a) => a.profileKey === overlordProfileKey) || null;
-  /** On Business Manager only the Overlord is available; inside a business all hired agents. */
+  /** Business Manager + Workshop lock to Overlord; other rooms list hired agents. */
   const pickerAgents = sortChatbarAgentsWithOverlordFirst(
-    overlordOnly && overlordAgent ? [overlordAgent] : hiredAgents,
+    overlordOnly
+      ? overlordAgent
+        ? [overlordAgent]
+        : []
+      : hiredAgents,
     overlordProfileKey,
   );
   const activeAgent =
@@ -701,7 +707,7 @@ export function ChatbarPanel() {
     ],
   );
 
-  // Returning to Business Manager always selects the Overlord
+  // Business Manager + Workshop always lock the picker to Overlord
   useEffect(() => {
     if (!isChatbarOverlordOnlyPath(pathname)) return;
     if (!overlordAgent || !businessId) return;
@@ -1273,6 +1279,8 @@ export function ChatbarPanel() {
     contextMode,
     residency,
     side,
+    edgeAlign,
+    edgeOffset,
     isProcessScoped: true,
     processId: processSession?.processId ?? null,
     processName: processSession?.processName ?? null,
@@ -1299,6 +1307,8 @@ export function ChatbarPanel() {
       contextMode,
       residency,
       side,
+      edgeAlign,
+      edgeOffset,
       isProcessScoped: false,
       processId: automationSession.processId,
       processName: automationSession.processName,
@@ -1508,21 +1518,42 @@ export function ChatbarPanel() {
           />
         </div>
 
-        <div className="chatbar-panel__bottom-row chatbar-panel__bottom-row--dock">
-          <button
-            type="button"
-            className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
-            onClick={collapse}
-            title="Hide chat (Alt+H)"
-            aria-label="Hide chat"
-          >
-            <CollapseIcon className="w-4 h-4" />
-          </button>
+        <div className="chatbar-panel__process-dock">
           <ChatbarDesktopBar
+            showModel={false}
             meterInput={processMeterInput}
             diagnosticsInput={processDiagnosticsInput}
             disabled={!businessId}
+            agentPicker={{
+              agents: pickerAgents,
+              activeAgentId: overlordAgent?.id ?? activeAgentId,
+              overlordProfileKey,
+              loading: loadingList,
+              overlordOnly: true,
+              disabled: !businessId,
+              onSelectAgent: () => {
+                /* locked to Overlord on Workshop */
+              },
+            }}
           />
+          <div className="chatbar-panel__bottom-row">
+            <button
+              type="button"
+              className="chatbar-panel__icon-btn chatbar-panel__collapse-btn"
+              onClick={collapse}
+              title="Hide chat (Alt+H)"
+              aria-label="Hide chat"
+            >
+              <CollapseIcon className="w-4 h-4" />
+            </button>
+            <div className="chatbar-panel__bottom-row-end">
+              <ChatbarContextChip
+                mode={contextMode}
+                onChange={setContextMode}
+                disabled={!businessId}
+              />
+            </div>
+          </div>
         </div>
       </aside>
     );
@@ -1949,6 +1980,8 @@ export function ChatbarPanel() {
               contextMode,
               residency,
               side,
+              edgeAlign,
+              edgeOffset,
               isProcessScoped: false,
               conversationId: activeConversationId,
               messageCount: messages.length,
