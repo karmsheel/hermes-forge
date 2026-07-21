@@ -2626,10 +2626,14 @@ html:not(.is-forge-desktop) .desktop-drag-chrome {
   /* Leading home control sits in the nav-rail column; tabs start after a small gap.
    * Right: window controls hang flush (web adds --shell-chrome-end-inset). */
   padding: 0;
-  /* Match Hermes global chatbar panel surface */
-  background: var(--bg-panel);
-  /* Continuous rule under inactive tabs; active tab paints over it (see tabs-row). */
-  border-bottom: 1px solid var(--border);
+  /*
+   * Bottom rule is a background line (not border-bottom) so the active tab’s
+   * solid --bg fill can paint over it and join the page without a gap.
+   */
+  border-bottom: none;
+  background:
+    linear-gradient(var(--border), var(--border)) left bottom / 100% 1px no-repeat,
+    var(--bg-panel);
   box-shadow: none;
   user-select: none;
   /* Not sticky: tab bar is a flex sibling of the scroll region, already fixed at top of main */
@@ -2737,16 +2741,15 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 /*
- * Tabs sit on the bottom edge. padding-bottom + margin-bottom pull the row 1px
- * over the bar’s border so the active tab can cover that segment without being
- * clipped by the horizontal scroller (overlap lives in padding, not outside).
+ * Notion-style tabs: full bar height, flat (no radius / top border / hatch).
+ * Active tab’s solid fill covers the strip’s bottom background-line.
  */
 .forge-tab-bar__tabs-row {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  align-items: flex-end;
-  gap: 0.2rem;
+  align-items: stretch;
+  gap: 0;
   /* Size to tabs; spacer after this row is the frameless window drag handle */
   flex: 0 1 auto;
   min-width: 0;
@@ -2754,8 +2757,6 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   box-sizing: border-box;
   /* Small gap past the home/rail column so the first tab doesn’t kiss the icon */
   padding-left: 0.5rem;
-  padding-bottom: 1px;
-  margin-bottom: -1px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -2943,6 +2944,13 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   z-index: 60;
 }
 
+/*
+ * Notion-style session tabs:
+ * - Full strip height; square corners; no top border
+ * - Single vertical rule between tabs (right border)
+ * - Inactive: solid dark strip color + muted text (no hatch / shading)
+ * - Active: page fill (--bg), full-height L/R borders, covers strip bottom rule
+ */
 .forge-tab-bar__tab {
   display: inline-flex;
   flex: 0 0 auto;
@@ -2950,44 +2958,21 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   gap: 0.35rem;
   max-width: 14rem;
   min-width: 5.5rem;
-  height: 1.85rem;
-  /* Stay in the content box so the bar border shows under inactive tabs */
-  margin-bottom: 0;
-  padding: 0 0.35rem 0 0.5rem;
-  border: 1px solid var(--border);
-  border-bottom: none;
-  border-radius: 0.4rem 0.4rem 0 0;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0 0.4rem 0 0.55rem;
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--border);
   position: relative;
   z-index: 0;
   box-sizing: border-box;
-  /*
-   * Inactive: thatched / pixel hatch — base is lighter than the dark title
-   * strip so tabs read as raised chips on the chrome.
-   */
-  --forge-tab-hatch: color-mix(in srgb, var(--accent-soft) 58%, var(--text) 8%);
-  --forge-tab-hatch-grid: color-mix(in srgb, var(--text) 10%, transparent);
-  background-color: var(--bg-subtle);
-  background-image:
-    /* diagonal thatch */
-    repeating-linear-gradient(
-      -45deg,
-      transparent 0 2px,
-      var(--forge-tab-hatch) 2px 3px
-    ),
-    /* pixel grid (horizontal + vertical) */
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 2px,
-      var(--forge-tab-hatch-grid) 2px 3px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 2px,
-      var(--forge-tab-hatch-grid) 2px 3px
-    );
-  background-size: auto, 3px 3px, 3px 3px;
+  background: transparent;
+  background-image: none;
   color: var(--text-muted);
   font-size: 0.75rem;
+  font-weight: 400;
   line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
@@ -2995,31 +2980,46 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
     background-color var(--dur-quick, 120ms) var(--ease-out, ease),
     color var(--dur-quick, 120ms) var(--ease-out, ease),
     border-color var(--dur-quick, 120ms) var(--ease-out, ease),
-    filter var(--dur-quick, 120ms) var(--ease-out, ease);
+    font-weight var(--dur-quick, 120ms) var(--ease-out, ease);
+}
+
+/* Leading edge of the tab strip (first tab, active or not) */
+.forge-tab-bar__tab:first-child {
+  border-left: 1px solid var(--border);
 }
 
 .forge-tab-bar__tab:hover:not(.is-active) {
-  --forge-tab-hatch: color-mix(in srgb, var(--accent-soft) 72%, var(--text) 10%);
-  --forge-tab-hatch-grid: color-mix(in srgb, var(--text) 14%, transparent);
-  background-color: color-mix(in srgb, var(--bg-subtle) 70%, var(--bg-elevated) 30%);
-  border-color: var(--border-strong);
   color: var(--text);
+  /* Bright lift off the dark strip; keep the bottom rule via inset shadow */
+  background-color: color-mix(in srgb, var(--bg) 48%, var(--bg-panel));
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 /*
- * Active tab “connects” to the room navbar / page (Obsidian style):
- * same fill as .app-topbar (--bg), drops 1px over the dark strip border.
+ * Active tab connects to the room navbar / page:
+ * same fill as .app-topbar (--bg); L/R borders full height; no bottom edge —
+ * solid fill covers the strip’s background-line so the tab joins the page.
  */
 .forge-tab-bar__tab.is-active {
-  --forge-tab-hatch: transparent;
-  --forge-tab-hatch-grid: transparent;
   z-index: 1;
-  margin-bottom: -1px;
   background-color: var(--bg);
   background-image: none;
-  border-color: var(--border);
-  border-bottom: 1px solid var(--bg);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-top: none;
+  border-bottom: none;
+  box-shadow: none;
   color: var(--text);
+  font-weight: 700;
+}
+
+.forge-tab-bar__tab.is-active .forge-tab-bar__title {
+  font-weight: 700;
+}
+
+/* Single vertical rule into the active tab (drop previous tab’s right edge) */
+.forge-tab-bar__tab:has(+ .forge-tab-bar__tab.is-active) {
+  border-right: none;
 }
 
 .forge-tab-bar__avatar {
@@ -3116,15 +3116,16 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.85rem;
+  height: 100%;
+  min-height: 100%;
   margin: 0;
-  border: 1px solid transparent;
-  border-radius: 0.35rem;
+  border: none;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  align-self: center;
+  align-self: stretch;
 }
 
 .forge-tab-bar__new:hover:not(:disabled) {
