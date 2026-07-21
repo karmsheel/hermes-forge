@@ -54,6 +54,7 @@ Key files:
 - `PRODUCT_BACKLOG.md` — The source of truth for what to build next
 - `audit.md` — Canonical project audit (mistakes, gaps, redundancy, remediation status)
 - `BUSINESS_PLANT_PFD.md` — Phase 6 rooms, soft unlock, plant PFD, Foundation / Overlord (read when touching shell IA or Map/Foundation)
+- `HERMES_API_SERVER.md` — Hermes API server capability audit vs Forge (context meter, usage, sessions, inefficiencies); source link + local upstream snapshot
 
 ---
 
