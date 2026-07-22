@@ -14,6 +14,7 @@ import { ForgeTabBar } from "./ForgeTabBar";
 import { ForgeTabOutlet } from "./ForgeTabOutlet";
 import { ForgeTabProvider, useForgeTabs } from "./ForgeTabProvider";
 import { NavRail } from "./NavRail";
+import { PageName } from "./PageName";
 import { ShellProvider } from "./ShellContext";
 import { StageProvider } from "./StageProvider";
 
@@ -122,7 +123,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
             {isLeft ? chat : null}
             <div className="app-shell-layout__workspace">
               <AppTopBar />
-              <div className="app-shell-layout__content">
+              <PageName />
+              <div
+                className="app-shell-layout__content"
+                aria-labelledby="shell-page-name"
+              >
                 <ForgeTabOutlet>{children}</ForgeTabOutlet>
               </div>
             </div>
