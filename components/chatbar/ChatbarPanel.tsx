@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent,
 } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -13,17 +12,13 @@ import {
   Crosshair,
   Hammer,
   Info,
-  ListPlus,
   Loader2,
   MessageSquare,
-  Navigation,
   PanelLeftClose,
   PanelRightClose,
   Plus,
   PlugZap,
-  Send,
   Sparkles,
-  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AutomationChat } from "@/components/automations/AutomationChat";
@@ -56,7 +51,6 @@ import {
 } from "@/lib/chatbar/capabilities";
 import {
   composerControlState,
-  composerKeyAction,
   resolveComposerSubmitAction,
   shouldAutoFlushQueuedTurn,
 } from "@/lib/chatbar/composer-state";
@@ -95,8 +89,9 @@ import {
 } from "@/lib/plant-apply";
 import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import type { NormalizedHermesUsage } from "@/lib/chatbar/usage";
+import { ChatbarComposer } from "./ChatbarComposer";
 import { ChatbarContextChip } from "./ChatbarContextChip";
-import { ChatbarDesktopBar, ChatbarModelSelect } from "./ChatbarDesktopBar";
+import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
 import { CollapsibleAgentView } from "./CollapsibleAgentView";
 import { ContextReceipt } from "./ContextReceipt";
 import { ToolActivityStrip } from "./ToolActivityStrip";
@@ -1243,30 +1238,34 @@ export function ChatbarPanel() {
     return () => window.clearTimeout(id);
   }, [composerFocusRequest?.key, isProcessScoped, isAutomationScoped]);
 
-  const handleComposerSubmit = useCallback(() => {
-    const text = draft.trim();
-    if (!text) return;
+  const handleComposerSubmit = useCallback(
+    (overrideText?: string) => {
+      const text = (overrideText ?? draft).trim();
+      if (!text) return;
 
-    const action = resolveComposerSubmitAction({
-      sending,
-      draftText: text,
-      canSteer,
-    });
+      const action = resolveComposerSubmitAction({
+        sending,
+        draftText: text,
+        canSteer,
+      });
 
-    if (action === "ignore") return;
-    if (action === "steer") {
-      void steerCurrentDraft();
-      return;
-    }
-    if (action === "queue") {
-      enqueueDraft(text);
-      return;
-    }
+      if (action === "ignore") return;
+      if (action === "steer") {
+        void steerCurrentDraft();
+        return;
+      }
+      if (action === "queue") {
+        enqueueDraft(text);
+        setDraft("");
+        return;
+      }
 
-    // send
-    setDraft("");
-    void sendMessageNow(text);
-  }, [draft, sending, canSteer, enqueueDraft, sendMessageNow, steerCurrentDraft]);
+      // send
+      setDraft("");
+      void sendMessageNow(text);
+    },
+    [draft, sending, canSteer, enqueueDraft, sendMessageNow, steerCurrentDraft],
+  );
 
   const drainMessageQueue = useCallback(async () => {
     if (isDrainingQueueRef.current) return;
@@ -1303,32 +1302,6 @@ export function ChatbarPanel() {
     setDraft("What am I looking at on this page? Summarize what is here and what I can do next.");
     textareaRef.current?.focus();
   }, []);
-
-  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    const action = composerKeyAction(
-      {
-        key: event.key,
-        shiftKey: event.shiftKey,
-        ctrlKey: event.ctrlKey,
-        metaKey: event.metaKey,
-        isComposing: event.nativeEvent.isComposing,
-      },
-      { sending, draftText: draft, canSteer },
-    );
-    if (action === "none") return;
-    event.preventDefault();
-    if (action === "submit") {
-      handleComposerSubmit();
-      return;
-    }
-    if (action === "steer") {
-      void steerCurrentDraft();
-      return;
-    }
-    if (action === "queue") {
-      if (draft.trim()) enqueueDraft(draft);
-    }
-  };
 
   const busyLabel = sending
     ? "Hermes is thinking — new messages will queue"
@@ -1909,123 +1882,58 @@ export function ChatbarPanel() {
             onRemove={removeQueuedMessage}
             onClear={clearMessageQueue}
           />
-          <div className="chatbar-panel__composer-row">
-            <div className="chatbar-panel__composer-box">
-              {contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&
+          <ChatbarComposer
+            value={draft}
+            onChange={setDraft}
+            onSubmit={handleComposerSubmit}
+            disabled={!businessId}
+            textareaRef={textareaRef}
+            composerState={composerState}
+            sending={sending}
+            canSteer={canSteer}
+            isLoading={sending}
+            willQueue={Boolean(busyLabel && draft.trim())}
+            onStop={stopCurrentTurn}
+            onSteer={() => void steerCurrentDraft()}
+            onQueue={() => {
+              if (draft.trim()) enqueueDraft(draft);
+            }}
+            ariaLabel={
+              activeAgentLabel ? `Message ${activeAgentLabel}` : "Message Hermes"
+            }
+            placeholder={
+              !businessId
+                ? "Select a business to start chatting…"
+                : !isConnected
+                  ? "Connect Hermes, then ask about this page…"
+                  : sending
+                    ? "Type to queue a follow-up while Hermes replies…"
+                    : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
+                      ? "Chat only — no page snapshot…"
+                      : "Ask about this page or your business…"
+            }
+            selectionPills={
+              contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&
               pageRegistration?.selection?.summary ? (
-                <div
-                  className="chatbar-panel__composer-pills"
-                  role="status"
-                  title="Included in Hermes context for this chat"
+                <span
+                  className={`chatbar-panel__selection-pill chatbar-panel__selection-pill--compact${
+                    pageRegistration.selection.type === "process"
+                      ? " chatbar-panel__selection-pill--process"
+                      : ""
+                  }`}
                 >
-                  <span
-                    className={`chatbar-panel__selection-pill chatbar-panel__selection-pill--compact${
-                      pageRegistration.selection.type === "process"
-                        ? " chatbar-panel__selection-pill--process"
-                        : ""
-                    }`}
-                  >
-                    {pageRegistration.selection.type === "process" ? (
-                      <Hammer className="w-3 h-3 shrink-0" aria-hidden />
-                    ) : (
-                      <Crosshair className="w-3 h-3 shrink-0" aria-hidden />
-                    )}
-                    <span className="chatbar-panel__selection-pill-value">
-                      {pageRegistration.selection.summary}
-                    </span>
+                  {pageRegistration.selection.type === "process" ? (
+                    <Hammer className="w-3 h-3 shrink-0" aria-hidden />
+                  ) : (
+                    <Crosshair className="w-3 h-3 shrink-0" aria-hidden />
+                  )}
+                  <span className="chatbar-panel__selection-pill-value">
+                    {pageRegistration.selection.summary}
                   </span>
-                </div>
-              ) : null}
-              <textarea
-                id="chatbar-input"
-                ref={textareaRef}
-                className="chatbar-panel__composer-input chatbar-panel__composer-input--live chatbar-panel__composer-input--in-box"
-                rows={5}
-                value={draft}
-                disabled={!businessId}
-                aria-label={
-                  activeAgentLabel ? `Message ${activeAgentLabel}` : "Message Hermes"
-                }
-                placeholder={
-                  !businessId
-                    ? "Select a business to start chatting…"
-                    : !isConnected
-                      ? "Connect Hermes, then ask about this page…"
-                      : sending
-                        ? "Type to queue a follow-up while Hermes replies…"
-                        : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
-                          ? "Chat only — no page snapshot…"
-                          : "Ask about this page or your business…"
-                }
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onComposerKeyDown}
-              />
-            </div>
-            <div className="chatbar-panel__composer-toolbar">
-              <ChatbarModelSelect
-                disabled={!businessId}
-                id="chatbar-model-studio"
-                className="chatbar-panel__composer-model"
-              />
-              <div className="chatbar-panel__composer-actions chatbar-panel__composer-actions--row">
-                {!composerState.controls.stop.hidden ? (
-                  <button
-                    type="button"
-                    className="chatbar-panel__stop"
-                    disabled={composerState.controls.stop.disabled}
-                    onClick={stopCurrentTurn}
-                    title={composerState.controls.stop.label || "Stop"}
-                    aria-label={composerState.controls.stop.label || "Stop Hermes"}
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                  </button>
-                ) : null}
-                {!composerState.controls.steer.hidden ? (
-                  <button
-                    type="button"
-                    className="chatbar-panel__steer"
-                    disabled={composerState.controls.steer.disabled || !businessId}
-                    onClick={() => void steerCurrentDraft()}
-                    title={composerState.controls.steer.label || "Steer"}
-                    aria-label={composerState.controls.steer.label || "Steer run"}
-                  >
-                    <Navigation className="w-4 h-4" />
-                  </button>
-                ) : null}
-                {!composerState.controls.queue.hidden ? (
-                  <button
-                    type="button"
-                    className="chatbar-panel__queue"
-                    disabled={composerState.controls.queue.disabled || !businessId}
-                    onClick={() => {
-                      if (draft.trim()) enqueueDraft(draft);
-                    }}
-                    title={composerState.controls.queue.label || "Queue"}
-                    aria-label={composerState.controls.queue.label || "Queue message"}
-                  >
-                    <ListPlus className="w-4 h-4" />
-                  </button>
-                ) : null}
-                {!composerState.controls.inlineSend.hidden ? (
-                  <button
-                    type="button"
-                    className="chatbar-panel__send"
-                    disabled={
-                      composerState.controls.inlineSend.disabled ||
-                      !draft.trim() ||
-                      !businessId
-                    }
-                    onClick={handleComposerSubmit}
-                    title="Send (Enter)"
-                    aria-label="Send message"
-                  >
-                    <Send className="w-3.5 h-3.5" aria-hidden />
-                    Send
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </div>
+                </span>
+              ) : null
+            }
+          />
           <ChatbarDesktopBar
             showModel={false}
             meterInput={{

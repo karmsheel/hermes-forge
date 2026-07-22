@@ -11,9 +11,10 @@ import {
   type ChangeEvent,
 } from "react";
 import { Send, Loader2, AtSign, Command, ListPlus } from "lucide-react";
-import { ChatbarModelSelect } from "@/components/chatbar/ChatbarDesktopBar";
+import { ChatbarComposer } from "@/components/chatbar/ChatbarComposer";
 import { NodeContextPill } from "@/components/workshop/DiagramComments";
 import type { MermaidNodeInfo } from "@/components/workshop/MermaidDiagram";
+import { composerControlState } from "@/lib/chatbar/composer-state";
 import { filterMentionables, filterSlashCommands, SLASH_COMMANDS, findSlashCommand } from "./commands";
 import { getCaretCoordinates } from "./caret";
 import { parseMessage, type Mentionable, type ParsedMessage } from "./parse";
@@ -256,37 +257,40 @@ export function RichComposer({
     [mode, queryStart, value],
   );
 
-  const handleSend = useCallback(() => {
-    const text = value.trim();
-    if (!text || (isLoading && !willQueue)) return;
-    const parsed = parseMessage(text, mentionables);
+  const handleSend = useCallback(
+    (overrideText?: string) => {
+      const text = (overrideText ?? value).trim();
+      if (!text || (isLoading && !willQueue)) return;
+      const parsed = parseMessage(text, mentionables);
 
-    // Built-in slash commands with a handler expand the text before sending.
-    let outgoing = text;
-    if (parsed.slash) {
-      const cmd = findSlashCommand(parsed.slash.command);
-      if (cmd?.handler) {
-        const expanded = cmd.handler(parsed.slash.args);
-        if (expanded) outgoing = expanded;
-      } else if (onSlashCommand) {
-        const handled = onSlashCommand(parsed.slash.command, parsed.slash.args);
-        if (handled) {
-          // Parent handled it (e.g. switched to Export tab). Don't send.
-          setValue("");
-          setMode("idle");
-          setQuery("");
-          setQueryStart(null);
-          return;
+      // Built-in slash commands with a handler expand the text before sending.
+      let outgoing = text;
+      if (parsed.slash) {
+        const cmd = findSlashCommand(parsed.slash.command);
+        if (cmd?.handler) {
+          const expanded = cmd.handler(parsed.slash.args);
+          if (expanded) outgoing = expanded;
+        } else if (onSlashCommand) {
+          const handled = onSlashCommand(parsed.slash.command, parsed.slash.args);
+          if (handled) {
+            // Parent handled it (e.g. switched to Export tab). Don't send.
+            setValue("");
+            setMode("idle");
+            setQuery("");
+            setQueryStart(null);
+            return;
+          }
         }
       }
-    }
 
-    onSend(parseMessage(outgoing, mentionables));
-    setValue("");
-    setMode("idle");
-    setQuery("");
-    setQueryStart(null);
-  }, [value, isLoading, willQueue, mentionables, onSend, onSlashCommand]);
+      onSend(parseMessage(outgoing, mentionables));
+      setValue("");
+      setMode("idle");
+      setQuery("");
+      setQueryStart(null);
+    },
+    [value, isLoading, willQueue, mentionables, onSend, onSlashCommand],
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -347,10 +351,57 @@ export function RichComposer({
   const sendIcon = willQueue ? (
     <ListPlus className="w-4 h-4" />
   ) : isLoading ? (
-    <Loader2 className="w-4 h-4 animate-spin" />
+    <Loader2 className="w-4 h-4" />
   ) : (
     <Send className="w-4 h-4" />
   );
+
+  // Unified dock chrome (Task 3): process embed uses ChatbarComposer.
+  if (studioChrome) {
+    // Process path has no stop/steer yet (Task 4 stream parity) — keep Send visible.
+    const processComposerState = composerControlState({
+      connected: isConnected,
+      sending: false,
+      draftText: value,
+      canSteer: false,
+    });
+
+    return (
+      <div ref={containerRef} className="relative">
+        {!isConnected && onOpenConnection && (
+          <div className="mb-2 text-xs pill pill-amber rounded-lg px-3 py-2">
+            <button type="button" onClick={onOpenConnection} className="hover:underline">
+              Connect to Hermes
+            </button>{" "}
+            to start chatting.
+          </div>
+        )}
+        <ChatbarComposer
+          value={value}
+          onChange={setValue}
+          onSubmit={(text) => handleSend(text)}
+          disabled={!isConnected}
+          textareaRef={textareaRef}
+          modelSelectId="chatbar-model-process"
+          rows={4}
+          placeholder={placeholder}
+          ariaLabel="Message Overlord about this process"
+          composerState={processComposerState}
+          mentionables={mentionables}
+          enableRichTokens
+          onSlashCommand={onSlashCommand}
+          selectedNode={
+            selectedNode ? { label: selectedNode.label } : null
+          }
+          onClearNode={onClearNodeContext}
+          willQueue={willQueue}
+          isLoading={isLoading}
+          sending={isLoading && !willQueue}
+          showHelperHints
+        />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative">
@@ -366,76 +417,34 @@ export function RichComposer({
         <NodeContextPill label={selectedNode.label} onClear={onClearNodeContext} />
       )}
 
-      {studioChrome ? (
-        <div className="chatbar-panel__composer-row">
-          <div className="chatbar-panel__composer-box">
-            <div className="relative">
-              <textarea
-                ref={textareaRef}
-                className="chatbar-panel__composer-input chatbar-panel__composer-input--live chatbar-panel__composer-input--in-box resize-none min-h-[5.5rem] max-h-40"
-                placeholder={placeholder}
-                value={value}
-                onChange={onChange}
-                onKeyDown={handleKeyDown}
-                rows={4}
-                aria-label="Message Overlord about this process"
-              />
-              {suggestionPopover}
-            </div>
-          </div>
-          <div className="chatbar-panel__composer-toolbar">
-            <ChatbarModelSelect
-              disabled={!isConnected}
-              id="chatbar-model-process"
-              className="chatbar-panel__composer-model"
-            />
-            <div className="chatbar-panel__composer-actions chatbar-panel__composer-actions--row">
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={sendDisabled}
-                className="chatbar-panel__send"
-                aria-label={willQueue ? "Queue message" : "Send message"}
-                title={willQueue ? "Queue message" : "Send (Enter)"}
-              >
-                {willQueue ? (
-                  <ListPlus className="w-3.5 h-3.5" aria-hidden />
-                ) : isLoading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <Send className="w-3.5 h-3.5" aria-hidden />
-                )}
-                {willQueue ? "Queue" : "Send"}
-              </button>
-            </div>
-          </div>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <textarea
+            ref={textareaRef}
+            className="input composer-input w-full resize-none min-h-[44px] max-h-32 text-sm"
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            onKeyDown={handleKeyDown}
+            rows={2}
+          />
+          {suggestionPopover}
         </div>
-      ) : (
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <textarea
-              ref={textareaRef}
-              className="input composer-input w-full resize-none min-h-[44px] max-h-32 text-sm"
-              placeholder={placeholder}
-              value={value}
-              onChange={onChange}
-              onKeyDown={handleKeyDown}
-              rows={2}
-            />
-            {suggestionPopover}
-          </div>
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={sendDisabled}
-            className="btn-primary self-end"
-            aria-label={willQueue ? "Queue message" : "Send message"}
-            title={willQueue ? "Queue message" : "Send message"}
-          >
-            {sendIcon}
-          </button>
-        </div>
-      )}
+        <button
+          type="button"
+          onClick={() => handleSend()}
+          disabled={sendDisabled}
+          className="btn-primary self-end"
+          aria-label={willQueue ? "Queue message" : "Send message"}
+          title={willQueue ? "Queue message" : "Send message"}
+        >
+          {isLoading && !willQueue ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            sendIcon
+          )}
+        </button>
+      </div>
 
       {showHelper && (
         <p className="text-[10px] text-text-soft mt-2 flex items-center gap-3 flex-wrap">
