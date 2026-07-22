@@ -12,7 +12,7 @@ async function requireStudioConversation(request: NextRequest, id: string) {
   const conversation = await prisma.conversation.findFirst({
     where: {
       id,
-      kind: "studio",
+      kind: { in: ["studio", "process"] },
       business: { userId: session.userId },
     },
     include: {

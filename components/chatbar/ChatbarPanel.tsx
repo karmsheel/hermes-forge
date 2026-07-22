@@ -137,11 +137,17 @@ export function ChatbarPanel() {
     introRequestKey,
     processSession,
     isProcessScoped,
+    pageModule,
+    isProcessPinned,
     automationSession,
     isAutomationScoped,
     composerFocusRequest,
     decisionSessionRequest,
   } = useChatbar();
+  const processPin =
+    isProcessPinned && pageModule?.pin?.type === "process"
+      ? pageModule.pin
+      : null;
   const { isConnected, status, config, setModel } = useHermesConnection();
   const { openHermesConnection, currentBusiness } = useShell();
 
@@ -228,8 +234,11 @@ export function ChatbarPanel() {
     ? formatChatbarAgentLabel(activeAgent, overlordProfileKey)
     : null;
 
-  const activeTitle =
-    conversations.find((c) => c.id === activeConversationId)?.title || "Studio chat";
+  const activeConversationTitle =
+    conversations.find((c) => c.id === activeConversationId)?.title || null;
+  const activeTitle = processPin
+    ? processPin.label
+    : activeConversationTitle || "Studio chat";
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -490,6 +499,105 @@ export function ChatbarPanel() {
     [],
   );
 
+  /** Task 5: load process-kind threads for Workshop pin (unified tree). */
+  const loadProcessScopedThreads = useCallback(
+    async (processId: string) => {
+      if (!businessId || !processId) return;
+      setLoadingList(true);
+      try {
+        await fetch("/api/overlord/ensure-hired", { method: "POST" });
+        const agentsRes = await fetch("/api/personnel/agents");
+        const agentsData = agentsRes.ok ? await agentsRes.json() : {};
+        const hired: ChatbarAgentOption[] = (agentsData.hired || []).map(
+          (a: ChatbarAgentOption) => ({
+            id: a.id,
+            displayName: a.displayName,
+            description: a.description,
+            model: a.model,
+            profileKey: a.profileKey,
+            iconKey: a.iconKey,
+            isDefault: a.isDefault,
+            hiredAt: a.hiredAt,
+          }),
+        );
+        setHiredAgents(hired);
+
+        const overlordRes = await fetch("/api/overlord");
+        let overlordKey: string | null = null;
+        if (overlordRes.ok) {
+          const od = await overlordRes.json();
+          overlordKey =
+            typeof od.overlord?.profileKey === "string"
+              ? od.overlord.profileKey
+              : null;
+        }
+        setOverlordProfileKey(overlordKey);
+        const overlordHired =
+          (overlordKey && hired.find((a) => a.profileKey === overlordKey)) ||
+          null;
+        if (overlordHired) {
+          setActiveAgentId(overlordHired.id);
+          saveActiveChatbarAgentId(businessId, overlordHired.id);
+        }
+
+        const res = await fetch(`/api/processes/${processId}/conversations`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to load process chats");
+        }
+        const data = await res.json();
+        let list: StudioListItem[] = (data.conversations || []).map(
+          (c: StudioListItem & { kind?: string }) => ({
+            ...c,
+            kind: c.kind || "process",
+            businessId: c.businessId || businessId,
+            processId: c.processId || processId,
+          }),
+        );
+
+        if (list.length === 0) {
+          const createdRes = await fetch(
+            `/api/processes/${processId}/conversations`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: "Main" }),
+            },
+          );
+          if (createdRes.ok) {
+            const created = await createdRes.json();
+            list = [
+              {
+                ...created,
+                kind: "process",
+                businessId,
+                processId,
+              },
+            ];
+          }
+        }
+
+        setConversations(list);
+        const pick = list[0]?.id || null;
+        setActiveConversationId(pick);
+        if (pick) {
+          await loadConversationMessages(pick);
+        } else {
+          setMessages([]);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not load process chat",
+        );
+        setConversations([]);
+        setMessages([]);
+      } finally {
+        setLoadingList(false);
+      }
+    },
+    [businessId, loadConversationMessages],
+  );
+
   const loadConversations = useCallback(
     async (agentIdOverride?: string | null) => {
       // Always resolve Overlord identity for picker labels (even with no business yet)
@@ -699,12 +807,18 @@ export function ChatbarPanel() {
     [businessId, loadConversationMessages, pathname],
   );
 
+  // Studio threads OR process-pinned Workshop threads (Task 5 unified tree)
   useEffect(() => {
+    if (processPin) {
+      void loadProcessScopedThreads(processPin.id);
+      return;
+    }
     void loadConversations();
-  }, [loadConversations]);
+  }, [processPin?.id, loadConversations, loadProcessScopedThreads]);
 
   // Home Send opens chat after seeding; re-load so the pending studio thread is selected
   useEffect(() => {
+    if (processPin) return;
     if (!isOpen || !businessId) return;
     const pending = peekPendingStudioReply();
     if (!pending || pending.businessId !== businessId) return;
@@ -714,7 +828,7 @@ export function ChatbarPanel() {
     void loadConversations(pending.hermesAgentProfileId);
     // Only when dock opens or business changes — avoid loops on every message update
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: open handoff
-  }, [isOpen, businessId]);
+  }, [isOpen, businessId, processPin?.id]);
 
   // Decision redirect: switch agent + conversation when requested
   useEffect(() => {
@@ -785,6 +899,32 @@ export function ChatbarPanel() {
 
   const createConversation = useCallback(async () => {
     try {
+      if (processPin) {
+        const res = await fetch(
+          `/api/processes/${processPin.id}/conversations`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: "New chat" }),
+          },
+        );
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to create chat");
+        }
+        const created = await res.json();
+        const item = {
+          ...created,
+          kind: "process",
+          businessId: businessId || "",
+          processId: processPin.id,
+        } as StudioListItem;
+        setConversations((prev) => [item, ...prev]);
+        await selectConversation(created.id);
+        textareaRef.current?.focus();
+        return;
+      }
+
       const res = await fetch("/api/studio/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -804,7 +944,7 @@ export function ChatbarPanel() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create chat");
     }
-  }, [selectConversation, activeAgentId]);
+  }, [selectConversation, activeAgentId, processPin, businessId]);
 
   const sendMessageNow = useCallback(
     async (text: string, options?: { replyOnly?: boolean; route?: string }) => {
@@ -819,7 +959,9 @@ export function ChatbarPanel() {
       }
 
       if (!activeConversationId) {
-        toast.error("No studio conversation open");
+        toast.error(
+          processPin ? "No process conversation open" : "No studio conversation open",
+        );
         return;
       }
 
@@ -996,6 +1138,9 @@ export function ChatbarPanel() {
                 title?: string;
                 receipt?: ContextReceiptData;
                 stopped?: boolean;
+                runBackgroundAgents?: boolean;
+                processId?: string;
+                kind?: string;
                 plantApply?: {
                   result?: PlantApplyResult;
                   summary?: string | null;
@@ -1003,16 +1148,28 @@ export function ChatbarPanel() {
               }>(block.data);
               if (payload?.stopped) stopped = true;
               if (payload?.message) {
-                setMessages((prev) =>
-                  prev.map((m) =>
+                setMessages((prev) => {
+                  const next = prev.map((m) =>
                     m.id === tempAssistantId || m.id === payload.message!.id
                       ? {
                           ...payload.message!,
                           processId: payload.message!.processId ?? null,
                         }
                       : m,
-                  ),
-                );
+                  );
+                  pageModule?.onMessagesSynced?.(next);
+                  return next;
+                });
+                if (
+                  payload.runBackgroundAgents &&
+                  (payload.processId || processPin?.id)
+                ) {
+                  pageModule?.onProcessTurnComplete?.({
+                    processId: payload.processId || processPin!.id,
+                    runBackgroundAgents: true,
+                    conversationId,
+                  });
+                }
                 // Fallback: if server did not auto-apply (e.g. chat-only mode),
                 // still offer Foundation review for forge-drafts fences.
                 const assistantText = payload.message.content || streamed;
@@ -1178,6 +1335,8 @@ export function ChatbarPanel() {
       businessId,
       blurb.routeKey,
       introBanner,
+      processPin,
+      pageModule,
     ],
   );
 
@@ -1638,7 +1797,18 @@ export function ChatbarPanel() {
             title="Switch studio conversation"
           >
             <MessageSquare className="chatbar-panel__brand-icon" aria-hidden />
-            <span className="chatbar-panel__session-title">{activeTitle}</span>
+            <span
+              className="chatbar-panel__session-title"
+              title={
+                processPin && activeConversationTitle
+                  ? `${processPin.label} · ${activeConversationTitle}`
+                  : activeTitle
+              }
+            >
+              {processPin && activeConversationTitle
+                ? `${processPin.label}`
+                : activeTitle}
+            </span>
             <span className="chatbar-panel__session-caret" aria-hidden>
               ⌄
             </span>
@@ -1898,19 +2068,47 @@ export function ChatbarPanel() {
             onQueue={() => {
               if (draft.trim()) enqueueDraft(draft);
             }}
+            enableRichTokens={Boolean(processPin)}
+            mentionables={
+              processPin && pageModule?.mentionables
+                ? [...pageModule.mentionables]
+                : undefined
+            }
+            onSlashCommand={
+              processPin ? pageModule?.onSlashCommand : undefined
+            }
+            selectedNode={
+              processPin &&
+              pageModule?.composerChrome?.kind === "node-target"
+                ? { label: pageModule.composerChrome.label }
+                : null
+            }
+            onClearNode={
+              processPin &&
+              pageModule?.composerChrome?.kind === "node-target"
+                ? pageModule.composerChrome.onClear
+                : undefined
+            }
+            showHelperHints={Boolean(processPin)}
             ariaLabel={
-              activeAgentLabel ? `Message ${activeAgentLabel}` : "Message Hermes"
+              processPin
+                ? `Message Overlord about ${processPin.label}`
+                : activeAgentLabel
+                  ? `Message ${activeAgentLabel}`
+                  : "Message Hermes"
             }
             placeholder={
               !businessId
                 ? "Select a business to start chatting…"
                 : !isConnected
                   ? "Connect Hermes, then ask about this page…"
-                  : sending
-                    ? "Type to queue a follow-up while Hermes replies…"
-                    : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
-                      ? "Chat only — no page snapshot…"
-                      : "Ask about this page or your business…"
+                  : processPin
+                    ? "Describe steps, actors, tools… try / or @"
+                    : sending
+                      ? "Type to queue a follow-up while Hermes replies…"
+                      : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
+                        ? "Chat only — no page snapshot…"
+                        : "Ask about this page or your business…"
             }
             selectionPills={
               contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&

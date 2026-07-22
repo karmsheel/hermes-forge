@@ -21,6 +21,11 @@ import {
 } from "@/lib/chatbar/context-scope";
 import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
+import type { PageChatModule } from "@/lib/chatbar/page-module";
+import {
+  isProcessPin,
+  isUnifiedWorkshopChatEnabled,
+} from "@/lib/chatbar/page-module";
 import { isChatbarHiddenPath } from "@/lib/chatbar/agent-label";
 import {
   CHATBAR_EDGE_ALIGNS,
@@ -93,12 +98,21 @@ interface ChatbarContextValue {
   requestPageIntro: (routeKey?: string) => void;
 
   /**
-   * PR-5: when set, chatbar is process-scoped (workshop mapping).
-   * Studio threads are hidden; ProcessChat mounts inside the dock.
+   * PR-5 legacy: process-scoped ProcessChat mount.
+   * Task 5: ignored when unified workshop chat + pageModule process pin.
    */
   processSession: ProcessSessionBinding | null;
   registerProcessSession: (session: ProcessSessionBinding | null) => void;
   isProcessScoped: boolean;
+
+  /**
+   * Task 5: page module injection (pin, mentions, slash, callbacks).
+   * Preferred over processSession for Workshop.
+   */
+  pageModule: PageChatModule | null;
+  registerPageModule: (module: PageChatModule | null) => void;
+  /** Unified process pin mode (single panel tree). */
+  isProcessPinned: boolean;
 
   /**
    * When set, chatbar is automation-studio scoped.
@@ -147,6 +161,7 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const [processSession, setProcessSession] = useState<ProcessSessionBinding | null>(
     null,
   );
+  const [pageModule, setPageModule] = useState<PageChatModule | null>(null);
   const [automationSession, setAutomationSession] =
     useState<AutomationSessionBinding | null>(null);
   const [composerFocusRequest, setComposerFocusRequest] = useState<{
@@ -252,12 +267,23 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
     setProcessSession(session);
   }, []);
 
+  const registerPageModule = useCallback((module: PageChatModule | null) => {
+    setPageModule(module);
+  }, []);
+
   const registerAutomationSession = useCallback(
     (session: AutomationSessionBinding | null) => {
       setAutomationSession(session);
     },
     [],
   );
+
+  const isProcessPinned = Boolean(
+    isUnifiedWorkshopChatEnabled() && isProcessPin(pageModule?.pin),
+  );
+  /** Legacy ProcessChat tree only when not using unified pin mode. */
+  const isProcessScoped =
+    Boolean(processSession) && !isProcessPinned;
 
   const requestPageIntro = useCallback((_routeKey?: string) => {
     setIntroRequestKey((k) => k + 1);
@@ -369,7 +395,10 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       requestPageIntro,
       processSession,
       registerProcessSession,
-      isProcessScoped: Boolean(processSession),
+      isProcessScoped,
+      pageModule,
+      registerPageModule,
+      isProcessPinned,
       automationSession,
       registerAutomationSession,
       isAutomationScoped: Boolean(automationSession),
@@ -400,6 +429,10 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       requestPageIntro,
       processSession,
       registerProcessSession,
+      isProcessScoped,
+      pageModule,
+      registerPageModule,
+      isProcessPinned,
       automationSession,
       registerAutomationSession,
       focusComposer,

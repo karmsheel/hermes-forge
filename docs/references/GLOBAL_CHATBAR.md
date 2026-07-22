@@ -560,7 +560,8 @@ Hermes API research: `docs/references/HERMES_API_SERVER.md`.
 - **Task 2 (shipped):** `X-Hermes-Session-Key` / `X-Hermes-Session-Id` on studio, process, and automation chat (`lib/chatbar/session-headers.ts`).
 - **Task 3 (shipped):** Unified `ChatbarComposer` (studio chrome + optional @ / slash); studio panel + process embed use it.
 - **Task 4 (shipped):** Process chat streams via `streamProcessChatTurn` / SSE (`lib/chatbar/process-chat-turn.ts`); studio route accepts `kind=process`; Workshop client parses deltas.
-- Remaining: Workshop cutover, automation cutover, approvals, Responses pilot.
+- **Task 5 (shipped):** Workshop cutover — `registerPageModule` + process pin; single ChatbarPanel tree; roll back with `localStorage forge.chatbar.unifiedWorkshop=0`.
+- Remaining: automation cutover, approvals, Responses pilot.
 
 ---
 

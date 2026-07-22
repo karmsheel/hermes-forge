@@ -27,8 +27,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 }
 
-const ForkSchema = z.object({
-  forkFromConversationId: z.string(),
+const CreateOrForkSchema = z.object({
+  /** When set, fork from this conversation (optional message id). */
+  forkFromConversationId: z.string().optional(),
   forkAtMessageId: z.string().optional(),
   title: z.string().max(120).optional(),
 });
@@ -39,7 +40,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const result = await requireProcessAccess(request, id);
     if ('error' in result) return result.error;
 
-    const body = ForkSchema.parse(await request.json());
+    const body = CreateOrForkSchema.parse(await request.json());
+    const businessId = result.process.businessId;
+
+    // Plain new thread (unified chatbar "New chat")
+    if (!body.forkFromConversationId) {
+      const title = body.title?.trim() || 'New chat';
+      const conv = await prisma.conversation.create({
+        data: {
+          businessId,
+          processId: id,
+          kind: 'process',
+          title,
+        },
+        include: { _count: { select: { messages: true } } },
+      });
+      return NextResponse.json(conv);
+    }
 
     // Verify source conversation exists and belongs to this process
     const sourceConversation = await prisma.conversation.findFirst({
@@ -68,8 +85,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const title =
       body.title?.trim() ||
       defaultForkTitle(sourceConversation.title, Boolean(body.forkAtMessageId));
-
-    const businessId = result.process.businessId;
 
     const newConversation = await prisma.$transaction(async (tx) => {
       const conv = await tx.conversation.create({

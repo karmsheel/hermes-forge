@@ -18,9 +18,14 @@ import { QuestionsPanel } from "@/components/workshop/QuestionsPanel";
 import { ExportMenu } from "@/components/export/ExportMenu";
 import { SplitProcessDialog } from "@/components/workshop/SplitProcessDialog";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
+import {
+  isUnifiedWorkshopChatEnabled,
+  type PageChatModule,
+} from "@/lib/chatbar/page-module";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { parseSseBlocks, parseSseJson } from "@/lib/chatbar/parse-studio-sse";
 import { hermesApiBody } from "@/lib/hermes-models";
+
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { analyzeSplitCandidates } from "@/lib/mermaid-graph";
 import {
@@ -136,7 +141,12 @@ export function WorkshopSession({
     registerWorkshopRefresh,
   } = useShell();
   const { config: hermesConfig } = useHermesConnection();
-  const { registerProcessSession, open: openChatbar, focusComposer } = useChatbar();
+  const {
+    registerProcessSession,
+    registerPageModule,
+    open: openChatbar,
+    focusComposer,
+  } = useChatbar();
   // Only the initially active session consumes one-shot pending flags
   const pendingReplyProcessIdRef = useRef<string | null>(
     isActive ? consumePendingHermesReply() : null,
@@ -1183,6 +1193,28 @@ export function WorkshopSession({
     [],
   );
 
+  /** Rebuild diagram comment dots from chatbar message list (unified tree). */
+  const handleCommentsChangeFromMessages = useCallback(
+    (msgs: ChatMessage[]) => {
+      const map = new Map<string, { count: number; firstLabel: string }>();
+      for (const m of msgs) {
+        if (m.role !== "user") continue;
+        const match = m.content.match(/^Regarding "([^"]+)": /);
+        if (!match) continue;
+        const label = match[1];
+        const key = label.toLowerCase();
+        const prev = map.get(key);
+        if (!prev) {
+          map.set(key, { firstLabel: label, count: 1 });
+        } else {
+          prev.count += 1;
+        }
+      }
+      handleCommentsChange(map);
+    },
+    [handleCommentsChange],
+  );
+
   const diagramChart = streamingDiagram ?? activeProcess?.diagramMermaid ?? null;
   const processName = activeProcess?.name ?? "Select a process";
   const isApproved =
@@ -1200,15 +1232,60 @@ export function WorkshopSession({
     !diagramStreaming &&
     splitAnalysis.showSplitButton;
 
-  // PR-5: bind process chat into the global chatbar (one surface; no dual column).
-  // Only the active multi-tab session owns the dock binding.
-  // Always clear when inactive so home / other routes never keep process-chat chrome.
+  // Task 5: unified chatbar — page module pin (preferred). Legacy processSession only if flag off.
+  const useUnifiedChat = isUnifiedWorkshopChatEnabled();
+
   useEffect(() => {
     if (!isActive) {
+      registerPageModule(null);
       registerProcessSession(null);
       return;
     }
 
+    if (useUnifiedChat) {
+      registerProcessSession(null);
+      if (!activeProcess) {
+        registerPageModule(null);
+        return;
+      }
+
+      const processId = activeProcess.id;
+      const mod: PageChatModule = {
+        routeKey: "workshop",
+        promptPack: "workshop-process",
+        pin: {
+          type: "process",
+          id: processId,
+          label: activeProcess.name,
+        },
+        mentionables: workshopMentionables,
+        onSlashCommand: handleSlashCommand,
+        composerChrome: selectedNode
+          ? {
+              kind: "node-target",
+              label: selectedNode.label,
+              onClear: clearSelectedNode,
+            }
+          : null,
+        onProcessTurnComplete: ({
+          processId: pid,
+          runBackgroundAgents: shouldRunAgents,
+        }) => {
+          if (shouldRunAgents) {
+            void runBackgroundAgents(pid);
+          }
+          if (businessId) void loadProcess(pid, businessId);
+        },
+        onMessagesSynced: (msgs) => {
+          handleCommentsChangeFromMessages(msgs);
+        },
+      };
+      registerPageModule(mod);
+      return;
+    }
+
+    // Legacy PR-5 process session (opt out: localStorage forge.chatbar.unifiedWorkshop=0)
+    registerPageModule(null);
     if (!activeProcess) {
       registerProcessSession(null);
       return;
@@ -1250,6 +1327,7 @@ export function WorkshopSession({
     registerProcessSession(session);
   }, [
     isActive,
+    useUnifiedChat,
     activeProcess,
     activeConversationId,
     conversationMessages,
@@ -1266,8 +1344,11 @@ export function WorkshopSession({
     clearSelectedNode,
     handleSlashCommand,
     handleCommentsChange,
+    handleCommentsChangeFromMessages,
     openHermesConnection,
     registerProcessSession,
+    registerPageModule,
+    runBackgroundAgents,
     activeId,
     businessId,
     loadProcess,
@@ -1276,9 +1357,10 @@ export function WorkshopSession({
   useEffect(() => {
     if (!isActive) return;
     return () => {
+      registerPageModule(null);
       registerProcessSession(null);
     };
-  }, [isActive, registerProcessSession]);
+  }, [isActive, registerProcessSession, registerPageModule]);
 
   // Open chatbar when a process is selected so mapping chat is discoverable
   useEffect(() => {
@@ -1288,11 +1370,17 @@ export function WorkshopSession({
     }
   }, [isActive, activeProcess?.id, openChatbar]);
 
-  // Node select → focus process composer in chatbar
+  // Node select → focus composer (unified: prefill Regarding prefix)
   useEffect(() => {
     if (!isActive || !selectedNode) return;
-    focusComposer();
-  }, [isActive, selectedNode, focusComposer]);
+    if (useUnifiedChat) {
+      focusComposer({
+        prefill: buildNodeCommentPrefix(selectedNode.label),
+      });
+    } else {
+      focusComposer();
+    }
+  }, [isActive, selectedNode, focusComposer, useUnifiedChat]);
 
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">

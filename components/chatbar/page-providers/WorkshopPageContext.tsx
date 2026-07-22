@@ -15,7 +15,8 @@ type Props = {
 
 /**
  * Registers Workshop live selection (active process / node) for hermes.forge.context.v1.
- * PR-5: process mapping chat lives in the global chatbar via registerProcessSession.
+ * Task 5: process mapping uses pageModule pin + unified ChatbarPanel tree
+ * (registerPageModule from WorkshopSession). Legacy processSession is opt-out only.
  */
 export function WorkshopPageContext({
   processId,
