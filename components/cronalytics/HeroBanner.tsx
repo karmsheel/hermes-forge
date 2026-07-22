@@ -46,13 +46,9 @@ export function HeroBanner({
     <div className="card p-6 mb-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-[0.64rem] font-semibold uppercase tracking-[0.35em] text-accent mb-2">
-            Hermes Plugin
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Cronalytics</h1>
-          <p className="text-sm text-text-muted mt-2 max-w-2xl">
+          <p className="text-sm text-text-muted max-w-2xl">
             Cost and operational observability for your scheduled cron jobs. Reads sessions from
-            Hermes's state.db and attributes token use + estimated cost to each run.
+            Hermes&apos;s state.db and attributes token use + estimated cost to each run.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2 min-w-[200px]">

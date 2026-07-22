@@ -82,16 +82,10 @@ export default function AutomationAnalysisPage() {
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-10 w-full">
-      <div className="mb-8">
-        <div className="text-xs uppercase tracking-widest text-text-muted mb-1">
-          Automate stage
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight">Automation Analysis</h1>
-        <p className="text-sm text-text-muted mt-2 max-w-2xl">
-          Ranked automation opportunities and process scores for the active business. Use this to
-          decide what to design next in Automations.
-        </p>
-      </div>
+      <p className="mb-8 max-w-2xl text-sm text-text-muted">
+        Ranked automation opportunities and process scores for the active business. Use this to
+        decide what to design next in Automations.
+      </p>
 
       {loading ? (
         <div className="text-center py-16 text-text-muted">

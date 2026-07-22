@@ -204,15 +204,11 @@ export default function FunctionsPage() {
         processes={processes}
         functions={functions}
       />
-      <div className="flex items-end justify-between mb-8 gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-widest text-text-muted mb-1">Map stage</div>
-          <h1 className="text-3xl font-semibold tracking-tight">Functions</h1>
-          <p className="text-sm text-text-muted mt-2 max-w-2xl">
-            Business areas and workflows. Click a function to list its workflows; use Move to reassign
-            a workflow to another function.
-          </p>
-        </div>
+      <div className="flex items-start justify-between mb-8 gap-4">
+        <p className="text-sm text-text-muted max-w-2xl">
+          Business areas and workflows. Click a function to list its workflows; use Move to reassign
+          a workflow to another function.
+        </p>
         <button
           type="button"
           onClick={() => setNewOpen(true)}
