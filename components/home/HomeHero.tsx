@@ -111,8 +111,6 @@ export function HomeHero({ room = "foundation" }: HomeHeroProps) {
 
   return (
     <div className="home-page">
-      {/* Top-left under business picker; width matches picker (15rem), text centered */}
-      <p className="home-page__room-badge">{copy.roomBadge}</p>
       <div className="home-page__stack">
         <section className="home-hero">
           <div className="home-hero__intro">

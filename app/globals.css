@@ -6546,11 +6546,6 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   text-overflow: ellipsis;
 }
 
-/* Legacy home badge: no longer used; keep rule inert (Task 3 removes call sites) */
-.home-page__room-badge {
-  display: none;
-}
-
 .home-page__stack {
   display: flex;
   flex-direction: column;
