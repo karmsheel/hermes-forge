@@ -12,8 +12,6 @@ import {
   type RefObject,
 } from "react";
 import {
-  AtSign,
-  Command,
   ListPlus,
   Loader2,
   Navigation,
@@ -88,8 +86,6 @@ export type ChatbarComposerProps = {
   onQueue?: () => void;
   willQueue?: boolean;
   isLoading?: boolean;
-  /** Show @ / / helper when empty (workshop). */
-  showHelperHints?: boolean;
   /** Extra busy-state input for keyboard FSM (studio). */
   sending?: boolean;
   canSteer?: boolean;
@@ -147,7 +143,6 @@ export function ChatbarComposer({
   onQueue,
   willQueue = false,
   isLoading = false,
-  showHelperHints = false,
   sending = false,
   canSteer = false,
   className,
@@ -513,23 +508,6 @@ export function ChatbarComposer({
           ) : null}
         </div>
       </div>
-
-      {showHelperHints && !value ? (
-        <p className="text-[10px] text-text-soft mt-1 flex items-center gap-3 flex-wrap">
-          <span className="flex items-center gap-1">
-            <Command className="w-3 h-3" /> type <kbd className="font-mono">/</kbd> for
-            commands
-          </span>
-          <span className="flex items-center gap-1">
-            <AtSign className="w-3 h-3" /> type <kbd className="font-mono">@</kbd> to
-            mention a step
-          </span>
-          <span>
-            <kbd className="font-mono">Enter</kbd> to send ·{" "}
-            <kbd className="font-mono">Shift+Enter</kbd> for new line
-          </span>
-        </p>
-      ) : null}
     </div>
   );
 }

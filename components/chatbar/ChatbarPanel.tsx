@@ -2165,7 +2165,6 @@ export function ChatbarPanel() {
                 ? pageModule.composerChrome.onClear
                 : undefined
             }
-            showHelperHints={Boolean(processPin)}
             placeholder={
               !businessId
                 ? "Select a business to start chatting…"

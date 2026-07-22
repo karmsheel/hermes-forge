@@ -32,3 +32,16 @@ export function saveActiveStudioConversationId(
     /* ignore */
   }
 }
+
+export function clearActiveStudioConversationId(
+  businessId: string,
+  storage: Pick<Storage, "removeItem"> | null | undefined =
+    typeof window !== "undefined" ? window.localStorage : null,
+): void {
+  if (!storage || !businessId) return;
+  try {
+    storage.removeItem(activeStudioConversationStorageKey(businessId));
+  } catch {
+    /* ignore */
+  }
+}
