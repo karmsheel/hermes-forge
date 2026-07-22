@@ -40,6 +40,7 @@ export function pageNameFromPath(pathname: string): string | null {
     { prefix: "/workshop", name: "Workshop" },
     { prefix: "/personnel", name: "Personnel" },
     { prefix: "/documents", name: "Documents" },
+    { prefix: "/sessions", name: "Sessions" },
     { prefix: "/metrics", name: "Metrics" },
     { prefix: "/content", name: "Content" },
     { prefix: "/automation-analysis", name: "Automation Analysis" },

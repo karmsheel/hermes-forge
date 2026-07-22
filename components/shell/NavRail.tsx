@@ -12,6 +12,7 @@ import {
   Hammer,
   Home,
   Layers,
+  MessagesSquare,
   Newspaper,
   Plus,
   Scale,
@@ -108,6 +109,13 @@ export function NavRail() {
       label: "Documents",
       icon: FileText,
       match: (path) => path.startsWith("/documents"),
+    },
+    {
+      id: "sessions",
+      href: "/sessions",
+      label: "Sessions",
+      icon: MessagesSquare,
+      match: (path) => path.startsWith("/sessions"),
     },
     {
       id: "metrics",

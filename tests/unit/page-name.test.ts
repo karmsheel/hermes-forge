@@ -25,6 +25,7 @@ describe("pageNameFromPath", () => {
     assert.equal(pageNameFromPath("/personnel/hire"), "Personnel");
     assert.equal(pageNameFromPath("/personnel/academy"), "Personnel");
     assert.equal(pageNameFromPath("/documents"), "Documents");
+    assert.equal(pageNameFromPath("/sessions"), "Sessions");
     assert.equal(pageNameFromPath("/metrics"), "Metrics");
     assert.equal(pageNameFromPath("/content"), "Content");
     assert.equal(pageNameFromPath("/automations"), "Automations");

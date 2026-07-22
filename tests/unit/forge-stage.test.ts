@@ -29,6 +29,7 @@ describe("forge-stage (rooms)", () => {
 
   it("infers room from paths", () => {
     assert.equal(stageFromPath("/foundation"), "foundation");
+    assert.equal(stageFromPath("/sessions"), "foundation");
     assert.equal(stageFromPath("/workshop"), "map");
     assert.equal(stageFromPath("/functions"), "map");
     assert.equal(stageFromPath("/god-mode"), "map");
@@ -82,6 +83,13 @@ describe("forge-stage (rooms)", () => {
     assert.equal(isNavIdInStage("automation-analysis", "map"), false);
     assert.equal(isNavIdInStage("documents", "monitor"), false);
     assert.equal(isNavIdInStage("documents", "foundation"), true);
+    assert.equal(isNavIdInStage("documents", "map"), false);
+    assert.equal(isNavIdInStage("sessions", "foundation"), true);
+    assert.equal(isNavIdInStage("sessions", "map"), false);
+    assert.equal(isNavIdInStage("sessions", "monitor"), false);
+    assert.equal(isNavIdInStage("personnel", "foundation"), true);
+    assert.equal(isNavIdInStage("personnel", "map"), false);
+    assert.equal(isNavIdInStage("personnel", "automate"), true);
     // log/decisions are holistic footer items, not room-scoped
     assert.equal(isNavIdInStage("decisions", "map"), false);
     assert.equal(isNavIdInStage("log", "monitor"), false);
@@ -107,7 +115,12 @@ describe("forge-stage (rooms)", () => {
     assert.equal(pathBelongsToStage("/foundation", "map"), false);
     assert.equal(pathBelongsToStage("/god-mode", "map"), true);
     assert.equal(pathBelongsToStage("/documents", "foundation"), true);
-    assert.equal(pathBelongsToStage("/documents", "map"), true);
+    assert.equal(pathBelongsToStage("/documents", "map"), false);
+    assert.equal(pathBelongsToStage("/sessions", "foundation"), true);
+    assert.equal(pathBelongsToStage("/sessions", "map"), false);
+    assert.equal(pathBelongsToStage("/personnel", "foundation"), true);
+    assert.equal(pathBelongsToStage("/personnel", "map"), false);
+    assert.equal(pathBelongsToStage("/personnel", "automate"), true);
     assert.equal(pathBelongsToStage("/decisions", "map"), true);
     assert.equal(pathBelongsToStage("/decisions", "monitor"), true);
     assert.equal(pathBelongsToStage("/decisions", "automate"), true);

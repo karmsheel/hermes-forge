@@ -165,6 +165,21 @@ const PAGE_BLURBS: { match: (path: string) => boolean; blurb: PageBlurb }[] = [
     },
   },
   {
+    match: (p) => p.startsWith("/sessions"),
+    blurb: {
+      routeKey: "sessions",
+      title: "Sessions",
+      purpose:
+        "Foundation room: manage Hermes Agent runtime sessions (list, fork, rename, delete, message history, chat turn) via the API server Sessions API — not Forge studio conversations.",
+      uiHints: [
+        "Browse Hermes /api/sessions for this gateway",
+        "Fork a session to branch like CLI /branch",
+        "Inspect message history and token usage",
+        "Delete or end stale sessions to clean up Hermes state",
+      ],
+    },
+  },
+  {
     match: (p) => p.startsWith("/content"),
     blurb: {
       routeKey: "content",

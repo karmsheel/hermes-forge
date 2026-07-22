@@ -75,9 +75,16 @@ export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
  * Each room has its own Home at the top of the rail (room homes — deferred 6.7 polish).
  */
 export const STAGE_NAV_IDS: Record<ForgeStage, readonly string[]> = {
-  foundation: ["home", "home-combined", "foundation", "documents", "personnel"],
+  foundation: [
+    "home",
+    "home-combined",
+    "foundation",
+    "documents",
+    "personnel",
+    "sessions",
+  ],
   inventory: ["home", "content"],
-  map: ["home", "god-mode", "functions", "workshop", "documents", "personnel"],
+  map: ["home", "god-mode", "functions", "workshop"],
   monitor: ["home", "metrics", "cronalytics"],
   automate: ["home", "automations", "automation-analysis", "personnel"],
 };
@@ -162,7 +169,7 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   if (path === "/monitor/home") return "monitor";
   if (path === "/automate/home") return "automate";
 
-  if (path.startsWith("/foundation")) {
+  if (path.startsWith("/foundation") || path.startsWith("/sessions")) {
     return "foundation";
   }
 
@@ -173,18 +180,17 @@ export function stageFromPath(pathname: string): ForgeStage | null {
   if (
     path.startsWith("/workshop") ||
     path.startsWith("/functions") ||
-    path.startsWith("/god-mode") ||
-    path.startsWith("/documents") ||
-    path.startsWith("/personnel")
+    path.startsWith("/god-mode")
   ) {
-    // personnel appears in Foundation + Map + Automate; hire/academy lean Automate
-    if (path.startsWith("/personnel") && path.includes("hire")) return "automate";
-    if (path.startsWith("/personnel") && path.includes("academy")) return "automate";
-    // documents shared Foundation + Map — prefer foundation for thin entry paths
-    if (path.startsWith("/documents")) return null;
-    if (path.startsWith("/personnel")) return null;
     return "map";
   }
+
+  // personnel hire/academy lean Automate; main roster is Foundation (also listed under Automate)
+  if (path.startsWith("/personnel") && path.includes("hire")) return "automate";
+  if (path.startsWith("/personnel") && path.includes("academy")) return "automate";
+  // documents live in Foundation only; personnel roster is Foundation + Automate
+  if (path.startsWith("/documents")) return null;
+  if (path.startsWith("/personnel")) return null;
 
   if (path.startsWith("/metrics") || path.startsWith("/cronalytics")) {
     return "monitor";
@@ -226,9 +232,10 @@ export function pathBelongsToStage(pathname: string, stage: ForgeStage): boolean
   if (inferred) return inferred === stage;
   // Neutral routes (log, decisions) are valid in every room
   if (path === "/log" || path.startsWith("/decisions")) return true;
-  if (path.startsWith("/documents")) return stage === "foundation" || stage === "map";
+  if (path.startsWith("/documents")) return stage === "foundation";
+  if (path.startsWith("/sessions")) return stage === "foundation";
   if (path.startsWith("/personnel") && !path.includes("hire") && !path.includes("academy")) {
-    return stage === "foundation" || stage === "map" || stage === "automate";
+    return stage === "foundation" || stage === "automate";
   }
   return true;
 }
