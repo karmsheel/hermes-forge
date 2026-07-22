@@ -69,27 +69,3 @@ export function isAutomationPin(
 ): pin is PageChatPin & { type: "automation" } {
   return Boolean(pin && pin.type === "automation" && pin.id);
 }
-
-/** Default on; set localStorage forge.chatbar.unifiedWorkshop=0 to roll back. */
-export function isUnifiedWorkshopChatEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const v = window.localStorage.getItem("forge.chatbar.unifiedWorkshop");
-    if (v === "0" || v === "false") return false;
-  } catch {
-    /* ignore */
-  }
-  return true;
-}
-
-/** Same flag for automation design cutover (Task 6). */
-export function isUnifiedAutomationChatEnabled(): boolean {
-  if (typeof window === "undefined") return true;
-  try {
-    const v = window.localStorage.getItem("forge.chatbar.unifiedWorkshop");
-    if (v === "0" || v === "false") return false;
-  } catch {
-    /* ignore */
-  }
-  return true;
-}

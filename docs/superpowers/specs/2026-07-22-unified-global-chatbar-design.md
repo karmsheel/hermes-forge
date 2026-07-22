@@ -1,9 +1,9 @@
 # Unified Global Chatbar — Design
 
-> **Status:** Proposed  
+> **Status:** **Done** (Tasks 0–7, 9 shipped; Task 8 Responses pilot optional residual)  
 > **Date:** 2026-07-22  
 > **Depends on:** 4.17 Global chatbar (shipped), `GLOBAL_CHATBAR.md`, `HERMES_API_SERVER.md`  
-> **Backlog id (proposed):** **4.19 Unified global chatbar**  
+> **Backlog id:** **4.19 Unified global chatbar**  
 > **Companion plan:** `docs/superpowers/plans/2026-07-22-unified-global-chatbar.md`
 
 ---

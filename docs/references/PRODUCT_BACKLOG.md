@@ -795,6 +795,33 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 
 ---
 
+
+### 4.19 Unified global chatbar — **DONE**
+
+**Goal:** One Hermes chat surface for all shell routes. Workshop and automation design inject via page modules (pins, mentions, slash, callbacks) into a single `ChatbarPanel` tree — no dual ProcessChat/AutomationChat stacks.
+
+**Status:** Shipped (Tasks 0–7, 9). Optional residual: Task 8 Responses/Sessions pilot.
+
+**Reference:** [`GLOBAL_CHATBAR.md`](GLOBAL_CHATBAR.md), design `docs/superpowers/specs/2026-07-22-unified-global-chatbar-design.md`, plan `docs/superpowers/plans/2026-07-22-unified-global-chatbar.md`, [`HERMES_API_SERVER.md`](HERMES_API_SERVER.md)
+
+**Depends on:** 4.17 global chatbar
+
+**Shipped:**
+- [x] Prompt catalog + Settings → Agent prompts
+- [x] Hermes usage plumbing + dual-mode context meter
+- [x] `X-Hermes-Session-Key` / `X-Hermes-Session-Id`
+- [x] Unified `ChatbarComposer` (@ / slash when page injects)
+- [x] Streamed process + automation chat turns
+- [x] Workshop + automation `registerPageModule` pins
+- [x] Tool approval modal + honest model picker copy
+- [x] Removed dual stacks (`process-session` / `automation-session` / embed panels / rollback flag)
+
+**Optional residual:**
+- [ ] Responses/Sessions pilot (Task 8) — measure token reduction
+
+**Do not:** Reintroduce a second permanent chat UI next to the shell chatbar.
+
+---
 ## Phase 5 — Map → Monitor → Automate (M0 operating loop)
 
 Product spine for solo founders: **Map** (understand) → **Monitor** (instrument) → **Automate** (Hermes agents + crons).  

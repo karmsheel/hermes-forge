@@ -48,7 +48,7 @@ export interface RichComposerProps {
   onOpenConnection?: () => void;
 
   /**
-   * When true (global chatbar / ProcessChat embedded), use the studio layout:
+   * When true (global chatbar studio chrome), use the studio layout:
    * full-width input, model picker under the box, labeled Send on the right.
    */
   studioChrome?: boolean;

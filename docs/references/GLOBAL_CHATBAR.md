@@ -459,7 +459,7 @@ components/shell/
   ShellContext.tsx or ChatbarProvider.tsx
 ```
 
-Deprecate **workshop-only** mounting of `ProcessChat` after migration; keep file as thin adapter or delete once chatbar absorbs it.
+**Done (4.19 Task 9):** workshop/automation no longer mount a second chat stack. `ProcessChat` / `AutomationChat` embeds and `registerProcessSession` / `registerAutomationSession` are removed; pages register a `pageModule` pin into the single `ChatbarPanel` tree.
 
 ---
 
@@ -481,13 +481,13 @@ Deprecate **workshop-only** mounting of `ProcessChat` after migration; keep file
 
 ---
 
-## 10. Workshop coexistence plan
+## 10. Workshop coexistence plan — **DONE**
 
-1. **Phase A:** Ship global chatbar on non-workshop routes (Home, Functions, …). Workshop keeps `ProcessChat`.
-2. **Phase B:** Workshop binds chatbar to process conversation; hide duplicate `ProcessChat`.
-3. **Phase C:** Remove dead workshop chat column code; diagram gains horizontal space when chat collapsed.
+1. ~~Phase A:~~ Global chatbar on non-workshop routes.  
+2. ~~Phase B:~~ Workshop / automation bind via `registerPageModule` pin.  
+3. ~~Phase C:~~ Dual stacks removed (Task 9). Diagram already full-width when chat collapsed.
 
-Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongoing co-pilot. Optional later: “Continue in chat” focuses chatbar after brief send.
+Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongoing co-pilot.
 
 ---
 
@@ -530,14 +530,10 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - **Acceptance:** busy send queues; tools render as strip during stream
 - **Shipped surface:** `components/chatbar/ToolActivityStrip.tsx`, ChatbarPanel stop/queue, `streamHermesEvents`
 
-### PR-5 — Workshop absorption — **DONE**
+### PR-5 — Workshop absorption — **DONE** (superseded by 4.19)
 
-- Process-scoped mode via `registerProcessSession` (`lib/chatbar/process-session.ts`)
-- Global chatbar embeds `ProcessChat` (mentions, slash commands, queue, forks)
-- Removed workshop right-column chat; diagram uses full content width
-- Auto-open chatbar on process select; node select focuses composer
-- **Acceptance:** one chat surface for process mapping; studio chat on other routes
-- **Shipped surface:** ChatbarProvider processSession, ChatbarPanel process mode, workshop page binding
+- Originally: process-scoped mode via `registerProcessSession` + embed `ProcessChat`.
+- **4.19:** single `ChatbarPanel` tree with process pin (`registerPageModule`); dual stack deleted (Task 9).
 
 ### PR-6 — Model dock, context meter, steer, polish — **DONE**
 
@@ -549,21 +545,22 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - **Acceptance:** model switchable in dock; meter updates with draft; steer capability-gated
 - **Shipped surface:** `ChatbarDesktopBar`, `context-meter.ts`, `capabilities.ts`, `diagnostics.ts`
 
-### PR-7+ — Unified surface (4.19, in progress)
+### PR-7+ — Unified surface (4.19) — **DONE** (Tasks 0–7, 9)
 
 Design + plan: `docs/superpowers/specs/2026-07-22-unified-global-chatbar-design.md`,  
 `docs/superpowers/plans/2026-07-22-unified-global-chatbar.md`.  
 Hermes API research: `docs/references/HERMES_API_SERVER.md`.
 
-- **Task 0 (shipped):** prompt catalog (`lib/chatbar/prompt-catalog.ts`) + Settings → **Agent prompts** (list + live preview via `/api/settings/prompt-catalog` and `/api/settings/prompt-preview`). Same builders as chat; no dual prompt strings.
-- **Task 1 (shipped):** Hermes usage normalize (`lib/chatbar/usage.ts`), stream/non-stream parse, studio SSE `usage`, optional run poll, dual-mode context meter (estimate + last-turn).
-- **Task 2 (shipped):** `X-Hermes-Session-Key` / `X-Hermes-Session-Id` on studio, process, and automation chat (`lib/chatbar/session-headers.ts`).
-- **Task 3 (shipped):** Unified `ChatbarComposer` (studio chrome + optional @ / slash); studio panel + process embed use it.
-- **Task 4 (shipped):** Process chat streams via `streamProcessChatTurn` / SSE (`lib/chatbar/process-chat-turn.ts`); studio route accepts `kind=process`; Workshop client parses deltas.
-- **Task 5 (shipped):** Workshop cutover — `registerPageModule` + process pin; single ChatbarPanel tree; roll back with `localStorage forge.chatbar.unifiedWorkshop=0`.
-- **Task 6 (shipped):** Automation design pin + streamed automation chat; same unified tree.
-- **Task 7 (shipped):** Tool approval modal on `approval.request` → `POST /v1/runs/{id}/approval`; honest Hermes model picker copy (profile id; server decides real LLM).
-- Remaining: Responses pilot (optional), cleanup.
+- **Task 0:** prompt catalog + Settings → **Agent prompts**
+- **Task 1:** Hermes usage + dual-mode context meter
+- **Task 2:** `X-Hermes-Session-Key` / `X-Hermes-Session-Id`
+- **Task 3:** Unified `ChatbarComposer`
+- **Task 4:** Streamed process chat turns
+- **Task 5:** Workshop page module pin
+- **Task 6:** Automation design pin
+- **Task 7:** Approval modal + honest model picker copy
+- **Task 9:** Removed dual stacks (`process-session` / `automation-session` / ProcessChat·AutomationChat embeds / `forge.chatbar.unifiedWorkshop` flag)
+- **Optional residual:** Task 8 Responses/Sessions pilot
 
 ---
 

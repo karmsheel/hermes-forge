@@ -2,7 +2,7 @@
 
 **Version audited:** v0.3.4 (+ Phase 6 plant / entry)  
 **Audit date:** 2026-07-07  
-**Last remediation update:** 2026-07-19 (Phase 6 close-out + Next 16 proxy; see [Remediation progress](#remediation-progress))
+**Last remediation update:** 2026-07-22 (4.19 unified chatbar dual-stack cleanup; see [Remediation progress](#remediation-progress))
 
 This document is the canonical repo health audit. It complements [`PRODUCT_BACKLOG.md`](PRODUCT_BACKLOG.md) (what to build) with an honest picture of mistakes, gaps, redundancy, and cleanup work.
 
@@ -177,6 +177,7 @@ Skins / VS Code import remain product surface. PROCESS.md, templates, plant expo
 | Duplicate Next config | `next.config.mjs` | **Removed** |
 | `PERSONNEL_REMOVED` event | `lib/business-log-types.ts` | **Removed** |
 | Deprecated `middleware.ts` | root | **Migrated** to `proxy.ts` (AUDIT-11) |
+| Dual chat stacks (`ProcessChat` / `AutomationChat` embeds, `process-session` / `automation-session`, `forge.chatbar.unifiedWorkshop` flag) | chatbar + workshop | **Removed** (4.19 Task 9) — single `ChatbarPanel` + `pageModule` pins |
 | Unused theme exports | `lib/themes/*` | Pending optional prune |
 
 ### Medium confidence

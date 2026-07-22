@@ -12,11 +12,7 @@ import { useChatbar } from "@/components/chatbar/ChatbarProvider";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { automationStatusToDeployStatus } from "@/lib/automation-types";
-import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session";
-import {
-  isUnifiedAutomationChatEnabled,
-  type PageChatModule,
-} from "@/lib/chatbar/page-module";
+import type { PageChatModule } from "@/lib/chatbar/page-module";
 import type { AutomationStudioData } from "@/lib/automation-types";
 
 type PageProps = { params: Promise<{ processId: string }> };
@@ -24,17 +20,15 @@ type PageProps = { params: Promise<{ processId: string }> };
 export default function AutomationStudioPage({ params }: PageProps) {
   const { processId } = use(params);
   const router = useRouter();
-  const { openHermesConnection, currentBusiness } = useShell();
+  const { currentBusiness } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const {
-    registerAutomationSession,
     registerPageModule,
     open: openChatbar,
   } = useChatbar();
 
   const [studio, setStudio] = useState<AutomationStudioData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [chatLoading, setChatLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [n8nConnectionOpen, setN8nConnectionOpen] = useState(false);
   const [credentialMap, setCredentialMap] = useState<AutomationStudioData["credentialMap"]>({});
@@ -183,141 +177,53 @@ export default function AutomationStudioPage({ params }: PageProps) {
     }
   }
 
-  const handleSendMessage = useCallback(
-    async (content: string) => {
-      if (!hermesConfig || !studio) return;
-
-      setChatLoading(true);
-
-      const optimisticUser = {
-        id: `temp-${Date.now()}`,
-        automationId: studio.automation.id,
-        role: "user" as const,
-        content,
-        createdAt: new Date().toISOString(),
-      };
-
-      setStudio((prev) =>
-        prev
-          ? {
-              ...prev,
-              automation: {
-                ...prev.automation,
-                messages: [...prev.automation.messages, optimisticUser],
-              },
-            }
-          : prev
-      );
-
-      try {
-        const res = await fetch(`/api/processes/${processId}/automation/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content,
-            ...hermesApiBody(hermesConfig),
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || "Chat failed");
-        }
-
-        const data = await res.json();
-        setStudio(data);
-        setChatLoading(false);
-
-        if (data.cronLinked) {
-          toast.success("Detected existing Hermes cron job for this process");
-        }
-
-        if (data.runExtraction) {
-          void runExtraction(processId);
-        }
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Error talking to Hermes");
-        await loadStudio();
-        setChatLoading(false);
-      }
-    },
-    [hermesConfig, studio, processId, runExtraction, loadStudio]
-  );
-
-  // Task 6: unified chatbar page module (preferred). Legacy session if flag off.
-  const useUnifiedChat = isUnifiedAutomationChatEnabled();
-
+  // Unified chatbar — automation design pin + page module.
   useEffect(() => {
     if (!studio) {
       registerPageModule(null);
-      registerAutomationSession(null);
       return;
     }
 
-    if (useUnifiedChat) {
-      registerAutomationSession(null);
-      const mod: PageChatModule = {
-        routeKey: "automation-studio",
-        promptPack: "automation-architect",
-        pin: {
-          type: "automation",
-          id: processId,
-          label: studio.process.name,
-        },
-        statusLabel: extracting ? "Updating plan…" : null,
-        onAutomationTurnComplete: ({
-          processId: pid,
-          runExtraction: shouldExtract,
-          cronLinked,
-          studio: studioPayload,
-        }) => {
-          if (
-            studioPayload &&
-            typeof studioPayload === "object" &&
-            "automation" in studioPayload
-          ) {
-            setStudio(studioPayload as AutomationStudioData);
-            const map = (studioPayload as AutomationStudioData).credentialMap;
-            if (map) setCredentialMap(map);
-          } else {
-            void loadStudio();
-          }
-          if (cronLinked) {
-            toast.success("Detected existing Hermes cron job for this process");
-          }
-          if (shouldExtract) {
-            void runExtraction(pid);
-          }
-        },
-      };
-      registerPageModule(mod);
-      return;
-    }
-
-    registerPageModule(null);
-    const session: AutomationSessionBinding = {
-      processId,
-      processName: studio.process.name,
-      messages: studio.automation.messages,
-      isLoading: chatLoading,
-      extractingLabel: extracting ? "Updating plan…" : null,
-      onSend: (content) => {
-        void handleSendMessage(content);
+    const mod: PageChatModule = {
+      routeKey: "automation-studio",
+      promptPack: "automation-architect",
+      pin: {
+        type: "automation",
+        id: processId,
+        label: studio.process.name,
       },
-      onOpenConnection: openHermesConnection,
+      statusLabel: extracting ? "Updating plan…" : null,
+      onAutomationTurnComplete: ({
+        processId: pid,
+        runExtraction: shouldExtract,
+        cronLinked,
+        studio: studioPayload,
+      }) => {
+        if (
+          studioPayload &&
+          typeof studioPayload === "object" &&
+          "automation" in studioPayload
+        ) {
+          setStudio(studioPayload as AutomationStudioData);
+          const map = (studioPayload as AutomationStudioData).credentialMap;
+          if (map) setCredentialMap(map);
+        } else {
+          void loadStudio();
+        }
+        if (cronLinked) {
+          toast.success("Detected existing Hermes cron job for this process");
+        }
+        if (shouldExtract) {
+          void runExtraction(pid);
+        }
+      },
     };
-
-    registerAutomationSession(session);
+    registerPageModule(mod);
   }, [
     studio,
     processId,
-    chatLoading,
     extracting,
-    handleSendMessage,
-    openHermesConnection,
-    registerAutomationSession,
     registerPageModule,
-    useUnifiedChat,
     loadStudio,
     runExtraction,
   ]);
@@ -325,9 +231,8 @@ export default function AutomationStudioPage({ params }: PageProps) {
   useEffect(() => {
     return () => {
       registerPageModule(null);
-      registerAutomationSession(null);
     };
-  }, [registerAutomationSession, registerPageModule]);
+  }, [registerPageModule]);
 
   // Open chatbar when entering automation studio so design chat is discoverable
   useEffect(() => {

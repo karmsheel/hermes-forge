@@ -17,11 +17,7 @@ import { SourcePanel } from "@/components/workshop/SourcePanel";
 import { QuestionsPanel } from "@/components/workshop/QuestionsPanel";
 import { ExportMenu } from "@/components/export/ExportMenu";
 import { SplitProcessDialog } from "@/components/workshop/SplitProcessDialog";
-import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
-import {
-  isUnifiedWorkshopChatEnabled,
-  type PageChatModule,
-} from "@/lib/chatbar/page-module";
+import type { PageChatModule } from "@/lib/chatbar/page-module";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
 import { parseSseBlocks, parseSseJson } from "@/lib/chatbar/parse-studio-sse";
 import { hermesApiBody } from "@/lib/hermes-models";
@@ -142,7 +138,6 @@ export function WorkshopSession({
   } = useShell();
   const { config: hermesConfig } = useHermesConnection();
   const {
-    registerProcessSession,
     registerPageModule,
     open: openChatbar,
     focusComposer,
@@ -989,38 +984,6 @@ export function WorkshopSession({
     void drainMessageQueue();
   }, [chatLoading, agentsRunning, drainMessageQueue]);
 
-  const handleChatSend = useCallback(
-    (
-      content: string,
-      options?: { nodeContext?: { nodeId?: string; label: string } },
-    ) => {
-      const explicitContext = options?.nodeContext;
-      const nodeContext =
-        explicitContext ??
-        (selectedNodeRef.current
-          ? { nodeId: selectedNodeRef.current.id, label: selectedNodeRef.current.label }
-          : undefined);
-
-      if (chatLoading || agentsRunning) {
-        enqueueChatMessage(content, nodeContext ? { nodeContext } : undefined);
-        if (nodeContext) {
-          setSelectedNode(null);
-        }
-        return;
-      }
-      void handleSendMessage(content, options);
-    },
-    [agentsRunning, chatLoading, enqueueChatMessage, handleSendMessage],
-  );
-
-  const agentBusyLabel =
-    chatLoading && agentsRunning
-      ? "Hermes is replying and updating the diagram — new messages will queue"
-      : agentsRunning
-        ? "Updating diagram and process name — new messages will queue"
-        : chatLoading
-          ? "Hermes is thinking — new messages will queue"
-          : null;
 
   // 3.5: Handle slash commands that the composer couldn't handle itself —
   // e.g. /export switches the workspace tab to the export panel.
@@ -1232,124 +1195,60 @@ export function WorkshopSession({
     !diagramStreaming &&
     splitAnalysis.showSplitButton;
 
-  // Task 5: unified chatbar — page module pin (preferred). Legacy processSession only if flag off.
-  const useUnifiedChat = isUnifiedWorkshopChatEnabled();
-
+  // Unified chatbar — process pin + page module (single ChatbarPanel tree).
   useEffect(() => {
     if (!isActive) {
       registerPageModule(null);
-      registerProcessSession(null);
       return;
     }
 
-    if (useUnifiedChat) {
-      registerProcessSession(null);
-      if (!activeProcess) {
-        registerPageModule(null);
-        return;
-      }
-
-      const processId = activeProcess.id;
-      const mod: PageChatModule = {
-        routeKey: "workshop",
-        promptPack: "workshop-process",
-        pin: {
-          type: "process",
-          id: processId,
-          label: activeProcess.name,
-        },
-        mentionables: workshopMentionables,
-        onSlashCommand: handleSlashCommand,
-        composerChrome: selectedNode
-          ? {
-              kind: "node-target",
-              label: selectedNode.label,
-              onClear: clearSelectedNode,
-            }
-          : null,
-        onProcessTurnComplete: ({
-          processId: pid,
-          runBackgroundAgents: shouldRunAgents,
-        }) => {
-          if (shouldRunAgents) {
-            void runBackgroundAgents(pid);
-          }
-          if (businessId) void loadProcess(pid, businessId);
-        },
-        onMessagesSynced: (msgs) => {
-          handleCommentsChangeFromMessages(msgs);
-        },
-      };
-      registerPageModule(mod);
-      return;
-    }
-
-    // Legacy PR-5 process session (opt out: localStorage forge.chatbar.unifiedWorkshop=0)
-    registerPageModule(null);
     if (!activeProcess) {
-      registerProcessSession(null);
+      registerPageModule(null);
       return;
     }
 
     const processId = activeProcess.id;
-    const session: ProcessSessionBinding = {
-      processId,
-      processName: activeProcess.name,
-      conversationId: activeConversationId,
-      conversations: activeProcess.conversations ?? [],
-      messages: conversationMessages,
-      isLoading: chatLoading,
-      agentBusyLabel,
-      queuedMessages,
-      selectedNode,
+    const mod: PageChatModule = {
+      routeKey: "workshop",
+      promptPack: "workshop-process",
+      pin: {
+        type: "process",
+        id: processId,
+        label: activeProcess.name,
+      },
       mentionables: workshopMentionables,
-      composerFocusKey,
-      scrollToRequest: chatScrollRequest,
-      onSend: handleChatSend,
-      onSelectConversation: (convId) => {
-        setActiveConversationId(convId);
-        activeConversationIdRef.current = convId;
-        persistConversationId(processId, convId);
-        messageQueueRef.current = [];
-        setQueuedMessages([]);
-      },
-      onForked: () => {
-        if (activeId && businessId) void loadProcess(activeId, businessId);
-      },
-      onRemoveQueued: removeQueuedMessage,
-      onClearQueue: clearMessageQueue,
-      onClearNodeContext: clearSelectedNode,
       onSlashCommand: handleSlashCommand,
-      onCommentsChange: handleCommentsChange,
-      onOpenConnection: openHermesConnection,
+      composerChrome: selectedNode
+        ? {
+            kind: "node-target",
+            label: selectedNode.label,
+            onClear: clearSelectedNode,
+          }
+        : null,
+      onProcessTurnComplete: ({
+        processId: pid,
+        runBackgroundAgents: shouldRunAgents,
+      }) => {
+        if (shouldRunAgents) {
+          void runBackgroundAgents(pid);
+        }
+        if (businessId) void loadProcess(pid, businessId);
+      },
+      onMessagesSynced: (msgs) => {
+        handleCommentsChangeFromMessages(msgs);
+      },
     };
-
-    registerProcessSession(session);
+    registerPageModule(mod);
   }, [
     isActive,
-    useUnifiedChat,
     activeProcess,
-    activeConversationId,
-    conversationMessages,
-    chatLoading,
-    agentBusyLabel,
-    queuedMessages,
     selectedNode,
     workshopMentionables,
-    composerFocusKey,
-    chatScrollRequest,
-    handleChatSend,
-    removeQueuedMessage,
-    clearMessageQueue,
     clearSelectedNode,
     handleSlashCommand,
-    handleCommentsChange,
     handleCommentsChangeFromMessages,
-    openHermesConnection,
-    registerProcessSession,
     registerPageModule,
     runBackgroundAgents,
-    activeId,
     businessId,
     loadProcess,
   ]);
@@ -1358,9 +1257,8 @@ export function WorkshopSession({
     if (!isActive) return;
     return () => {
       registerPageModule(null);
-      registerProcessSession(null);
     };
-  }, [isActive, registerProcessSession, registerPageModule]);
+  }, [isActive, registerPageModule]);
 
   // Open chatbar when a process is selected so mapping chat is discoverable
   useEffect(() => {
@@ -1370,17 +1268,13 @@ export function WorkshopSession({
     }
   }, [isActive, activeProcess?.id, openChatbar]);
 
-  // Node select → focus composer (unified: prefill Regarding prefix)
+  // Node select → focus composer with Regarding prefix
   useEffect(() => {
     if (!isActive || !selectedNode) return;
-    if (useUnifiedChat) {
-      focusComposer({
-        prefill: buildNodeCommentPrefix(selectedNode.label),
-      });
-    } else {
-      focusComposer();
-    }
-  }, [isActive, selectedNode, focusComposer, useUnifiedChat]);
+    focusComposer({
+      prefill: buildNodeCommentPrefix(selectedNode.label),
+    });
+  }, [isActive, selectedNode, focusComposer]);
 
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">

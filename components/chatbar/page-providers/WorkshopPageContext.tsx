@@ -15,8 +15,8 @@ type Props = {
 
 /**
  * Registers Workshop live selection (active process / node) for hermes.forge.context.v1.
- * Task 5: process mapping uses pageModule pin + unified ChatbarPanel tree
- * (registerPageModule from WorkshopSession). Legacy processSession is opt-out only.
+ * Process mapping uses pageModule pin + single ChatbarPanel tree
+ * (registerPageModule from WorkshopSession).
  */
 export function WorkshopPageContext({
   processId,
