@@ -162,22 +162,14 @@ export default function AutomationsPage() {
 
   return (
       <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-        <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-between bg-bg">
-          <div>
-            <div className="text-[10px] uppercase tracking-widest text-text-muted">
-              Automate room
-            </div>
-            <h1 className="font-semibold text-sm text-text-strong">Automations</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={load}
-              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
-              disabled={!operateReady}
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh
-            </button>
-          </div>
+        <header className="shrink-0 border-b border-border px-6 py-3 flex items-center justify-end bg-bg">
+          <button
+            onClick={load}
+            className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+            disabled={!operateReady}
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
         </header>
 
       <main className="flex-1 overflow-y-auto max-w-6xl mx-auto px-6 py-10 w-full">

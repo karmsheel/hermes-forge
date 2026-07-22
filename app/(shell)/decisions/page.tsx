@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Loader2,
   MessageSquare,
-  Scale,
   Shield,
 } from "lucide-react";
 import { useChatbar } from "@/components/chatbar/ChatbarProvider";
@@ -94,19 +93,10 @@ export default function DecisionsPage() {
 
   return (
     <main className="max-w-4xl mx-auto px-6 py-10 w-full">
-      <div className="mb-8">
-        <div className="text-xs uppercase tracking-widest text-text-muted mb-1">
-          Governance
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight flex items-center gap-2">
-          <Scale className="w-7 h-7 text-accent" />
-          Decisions
-        </h1>
-        <p className="text-sm text-text-muted mt-3 max-w-2xl">
-          Human-in-the-loop approvals for forged business knowledge. Agents propose;
-          you authorize, reject, or redirect with instructions.
-        </p>
-      </div>
+      <p className="mb-8 max-w-2xl text-sm text-text-muted">
+        Human-in-the-loop approvals for forged business knowledge. Agents propose;
+        you authorize, reject, or redirect with instructions.
+      </p>
 
       {loading ? (
         <div className="flex justify-center py-16">

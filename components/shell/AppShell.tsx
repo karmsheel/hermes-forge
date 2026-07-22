@@ -9,19 +9,24 @@ import { ChatbarProvider, useChatbar } from "@/components/chatbar/ChatbarProvide
 import { DesktopDragChrome } from "@/components/desktop/DesktopDragChrome";
 import { OverlordRequiredGate } from "@/components/overlord/OverlordRequiredGate";
 import { isForgeDesktop } from "@/lib/forge-desktop";
+import { pageNameFromPath } from "@/lib/page-name";
 import { AppTopBar } from "./AppTopBar";
 import { ForgeTabBar } from "./ForgeTabBar";
 import { ForgeTabOutlet } from "./ForgeTabOutlet";
 import { ForgeTabProvider, useForgeTabs } from "./ForgeTabProvider";
 import { NavRail } from "./NavRail";
+import { PageName } from "./PageName";
 import { ShellProvider } from "./ShellContext";
 import { StageProvider } from "./StageProvider";
 
 function AppShellFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isOpen, isLeft, side } = useChatbar();
-  const { enabled: tabsEnabled, tabs } = useForgeTabs();
+  const { enabled: tabsEnabled, tabs, activeTab } = useForgeTabs();
   const tabStripVisible = tabsEnabled && tabs.length > 1;
+  const activePath =
+    tabsEnabled && activeTab ? activeTab.route.split("?")[0]! : pathname || "/";
+  const pageName = pageNameFromPath(activePath);
   const [desktop, setDesktop] = useState(false);
   const isBusinessManager = pathname.startsWith("/business-manager");
   const isSetup = pathname.startsWith("/setup");
@@ -122,7 +127,11 @@ function AppShellFrame({ children }: { children: ReactNode }) {
             {isLeft ? chat : null}
             <div className="app-shell-layout__workspace">
               <AppTopBar />
-              <div className="app-shell-layout__content">
+              <PageName />
+              <div
+                className="app-shell-layout__content"
+                aria-labelledby={pageName ? "shell-page-name" : undefined}
+              >
                 <ForgeTabOutlet>{children}</ForgeTabOutlet>
               </div>
             </div>

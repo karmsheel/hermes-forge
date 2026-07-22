@@ -6516,27 +6516,34 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
 }
 
 /*
- * Room label under the business picker (top-left).
- * Horizontal: same inset as app-topbar__inner (1.25rem) + picker width (15rem).
- * Text is centered within the picker column so it reads as “under” the switcher.
+ * Shell page name — under business picker, left-aligned to picker inset.
+ * Reserved strip so content never collides with the label.
+ * Leading padding 1.25rem matches .app-topbar__inner.
  */
-.home-page__room-badge {
-  position: absolute;
-  top: 0.65rem;
-  left: 1.25rem;
-  width: 15rem;
-  max-width: calc(100% - 2.5rem);
+.shell-page-name-strip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-height: 1.5rem;
+  padding: 0.35rem 1.25rem 0.15rem;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.shell-page-name {
   margin: 0;
   padding: 0;
+  max-width: 100%;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  text-align: center;
+  text-align: left;
   color: var(--text-muted);
   line-height: 1.2;
-  pointer-events: none;
-  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .home-page__stack {

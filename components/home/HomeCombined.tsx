@@ -108,8 +108,6 @@ export function HomeCombined() {
 
   return (
     <div className="home-combined">
-      <p className="home-page__room-badge">Foundation · Home Combined</p>
-
       <div className="home-combined__layout">
         <div className="home-combined__left">
           {/* Same Home stack, width-compressed into the left column (no zoom) */}

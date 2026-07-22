@@ -255,12 +255,9 @@ export default function AutomationStudioPage({ params }: PageProps) {
     <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
       <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center justify-between bg-bg">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-text-muted">
-            Automation studio
-          </div>
-          <h1 className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
+          <p className="font-semibold text-sm text-text-strong truncate max-w-[280px]">
             {studio.process.name}
-          </h1>
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {extracting && (
@@ -309,7 +306,7 @@ export default function AutomationStudioPage({ params }: PageProps) {
             <div className="text-[10px] uppercase tracking-widest text-text-muted">
               Approved process map
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">{studio.process.name}</h1>
+            <p className="text-lg font-semibold tracking-tight">{studio.process.name}</p>
             <p className="text-[11px] text-text-muted mt-1">
               Design the automation in Hermes chat (right dock). Assign an agent and deploy from
               the left panel when the plan is ready.

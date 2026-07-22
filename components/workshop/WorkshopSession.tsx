@@ -1287,11 +1287,6 @@ export function WorkshopSession({
           processCount={processes.length}
           selectedNodeLabel={selectedNode?.label ?? null}
         />
-        <header className="shrink-0 border-b border-border px-4 py-2.5 flex items-center bg-bg">
-          <div className="min-w-0">
-            <h1 className="font-semibold text-sm text-text-strong">Workshop</h1>
-          </div>
-        </header>
 
       <div className="flex-1 flex min-h-0">
         <ProcessSidebar
@@ -1328,9 +1323,9 @@ export function WorkshopSession({
               <div className="text-[10px] uppercase tracking-widest text-text-muted">
                 Process Diagram
               </div>
-              <h1 className="text-lg font-semibold tracking-tight">
+              <p className="text-lg font-semibold tracking-tight">
                 {loadingProcess ? "Loading..." : processName}
-              </h1>
+              </p>
               {agentsRunning ? (
                 <div className="text-[10px] text-green flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-green rounded-full animate-pulse" />
