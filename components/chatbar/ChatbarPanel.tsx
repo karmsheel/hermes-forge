@@ -46,6 +46,7 @@ import {
   peekPendingStudioReply,
 } from "@/lib/chatbar/pending-studio-reply";
 import {
+  approveActiveRun,
   canSteerFromFeatures,
   steerActiveRun,
 } from "@/lib/chatbar/capabilities";
@@ -67,8 +68,12 @@ import {
 import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
 import { parseSseBlocks, parseSseJson } from "@/lib/chatbar/parse-studio-sse";
 import {
+  isApprovalResolvedEvent,
+  parsePendingRunApproval,
   pruneToolActivities,
   reduceToolActivities,
+  type HermesApprovalChoice,
+  type PendingRunApproval,
   type ToolActivity,
 } from "@/lib/chatbar/runtime-events";
 import { hermesApiBody } from "@/lib/hermes-models";
@@ -89,6 +94,7 @@ import {
 } from "@/lib/plant-apply";
 import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
 import type { NormalizedHermesUsage } from "@/lib/chatbar/usage";
+import { ChatbarApprovalModal } from "./ChatbarApprovalModal";
 import { ChatbarComposer } from "./ChatbarComposer";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar } from "./ChatbarDesktopBar";
@@ -181,6 +187,10 @@ export function ChatbarPanel() {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
   const [toolActivities, setToolActivities] = useState<ToolActivity[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  /** Hermes gated tool/command waiting on human decision. */
+  const [pendingApproval, setPendingApproval] =
+    useState<PendingRunApproval | null>(null);
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
   /** Last Hermes-reported turn usage (prompt tokens) for dual-mode meter. */
   const [lastTurnUsage, setLastTurnUsage] = useState<NormalizedHermesUsage | null>(
     null,
@@ -215,6 +225,66 @@ export function ChatbarPanel() {
     draftText: draft,
     canSteer,
   });
+
+  /** Ingest tool/runtime SSE payloads: tool strip + approval modal. */
+  const ingestRuntimePayload = useCallback(
+    (payload: Record<string, unknown>) => {
+      setToolActivities((prev) =>
+        pruneToolActivities(reduceToolActivities(prev, payload)),
+      );
+      const pending = parsePendingRunApproval(payload);
+      if (pending) {
+        setPendingApproval(pending);
+        if (pending.runId) setActiveRunId(pending.runId);
+        return;
+      }
+      if (isApprovalResolvedEvent(payload)) {
+        setPendingApproval(null);
+      }
+    },
+    [],
+  );
+
+  const respondToApproval = useCallback(
+    async (choice: HermesApprovalChoice) => {
+      const approval = pendingApproval;
+      if (!approval) return;
+      const runId = approval.runId || activeRunIdRef.current;
+      if (!runId || !config?.baseUrl) {
+        toast.error("Cannot submit approval", {
+          description: "Missing active Hermes run or connection.",
+        });
+        return;
+      }
+      setApprovalSubmitting(true);
+      try {
+        await approveActiveRun({
+          baseUrl: config.baseUrl,
+          apiKey: config.apiKey,
+          runId,
+          choice,
+        });
+        setPendingApproval(null);
+        toast.success(
+          choice === "deny" ? "Denied — agent will continue" : "Approved",
+          {
+            description:
+              choice === "deny"
+                ? "Hermes was told not to run that action."
+                : `Choice: ${choice}`,
+          },
+        );
+      } catch (err) {
+        toast.error("Approval failed", {
+          description:
+            err instanceof Error ? err.message : "Could not reach Hermes",
+        });
+      } finally {
+        setApprovalSubmitting(false);
+      }
+    },
+    [pendingApproval, config],
+  );
 
   const businessId = currentBusiness?.id ?? null;
   const businessName = currentBusiness?.name ?? "this business";
@@ -291,6 +361,7 @@ export function ChatbarPanel() {
     if (!sendingRef.current) return;
     const runId = activeRunIdRef.current;
     abortRef.current?.abort();
+    setPendingApproval(null);
     // Best-effort Hermes run interrupt when gateway advertises run ids
     if (runId && config?.baseUrl) {
       const base = config.baseUrl.replace(/\/$/, "");
@@ -1085,6 +1156,7 @@ export function ChatbarPanel() {
         setSending(true);
         setToolActivities([]);
         setActiveRunId(null);
+        setPendingApproval(null);
 
         const optimisticUser: ChatMessage = {
           id: `temp-user-${Date.now()}`,
@@ -1172,11 +1244,7 @@ export function ChatbarPanel() {
                 const payload = parseSseJson<Record<string, unknown>>(
                   block.data,
                 );
-                if (payload) {
-                  setToolActivities((prev) =>
-                    pruneToolActivities(reduceToolActivities(prev, payload)),
-                  );
-                }
+                if (payload) ingestRuntimePayload(payload);
               } else if (block.event === "done") {
                 const payload = parseSseJson<{
                   message?: { content?: string };
@@ -1273,6 +1341,7 @@ export function ChatbarPanel() {
       setSending(true);
       setToolActivities([]);
       setActiveRunId(null);
+      setPendingApproval(null);
 
       const optimisticUser: ChatMessage = {
         id: `temp-user-${Date.now()}`,
@@ -1381,11 +1450,7 @@ export function ChatbarPanel() {
               }
             } else if (block.event === "tool" || block.event === "tool_activity") {
               const payload = parseSseJson<Record<string, unknown>>(block.data);
-              if (payload) {
-                setToolActivities((prev) =>
-                  pruneToolActivities(reduceToolActivities(prev, payload)),
-                );
-              }
+              if (payload) ingestRuntimePayload(payload);
             } else if (block.event === "delta") {
               const payload = parseSseJson<{ text?: string }>(block.data);
               if (payload?.text) {
@@ -2057,6 +2122,15 @@ export function ChatbarPanel() {
   }
 
   return (
+    <>
+    <ChatbarApprovalModal
+      approval={pendingApproval}
+      submitting={approvalSubmitting}
+      onDecide={(choice) => void respondToApproval(choice)}
+      onDismiss={() => {
+        if (!approvalSubmitting) setPendingApproval(null);
+      }}
+    />
     <aside
       className={`chatbar-panel chatbar-panel--side-${isLeft ? "left" : "right"}${isOpen ? " is-open" : " is-collapsed"}`}
       aria-label="Hermes chat"
@@ -2500,5 +2574,6 @@ export function ChatbarPanel() {
         </div>
       </footer>
     </aside>
+    </>
   );
 }

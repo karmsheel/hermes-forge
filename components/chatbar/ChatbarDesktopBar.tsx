@@ -94,11 +94,14 @@ export function ChatbarModelSelect({
     [setModel],
   );
 
+  const modelTitle =
+    "Hermes model / profile id. The request model field is cosmetic — the real LLM is set server-side in Hermes (config.yaml / profile), not by this picker alone.";
+
   return (
     <div
       className={["chatbar-desktop-bar__model", className].filter(Boolean).join(" ")}
     >
-      <label className="chatbar-desktop-bar__label" htmlFor={id}>
+      <label className="chatbar-desktop-bar__label" htmlFor={id} title={modelTitle}>
         Model
       </label>
       <select
@@ -116,7 +119,8 @@ export function ChatbarModelSelect({
             void refreshModels();
           }
         }}
-        title="LLM model for this Forge session (independent of which agent you are talking to)"
+        title={modelTitle}
+        aria-description={modelTitle}
       >
         {modelOptions.length === 0 ? (
           <option value="">{isConnected ? "No models" : "Connect Hermes"}</option>

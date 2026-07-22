@@ -3,8 +3,10 @@ import { describe, it } from "node:test";
 import {
   FORGE_RUNTIME_EVENT_NAMES,
   forgeRuntimeEventName,
+  isApprovalResolvedEvent,
   normalizeRuntimeEvent,
   normalizeToolActivity,
+  parsePendingRunApproval,
   pruneToolActivities,
   reduceToolActivities,
   sanitizeToolPreview,
@@ -95,6 +97,73 @@ describe("sanitizeToolPreview", () => {
   it("clamps length", () => {
     const long = "x".repeat(200);
     assert.ok(sanitizeToolPreview(long, 20).length <= 20);
+  });
+});
+
+describe("approval events", () => {
+  it("aliases Hermes approval.request to approval.requested", () => {
+    const n = normalizeRuntimeEvent({
+      type: "approval.request",
+      run_id: "run_1",
+      command: "rm -rf /tmp/x",
+      description: "Destructive delete",
+      choices: ["once", "session", "always", "deny"],
+    });
+    assert.equal(n.name, FORGE_RUNTIME_EVENT_NAMES.approvalRequested);
+  });
+
+  it("parses pending approval with choices and run id", () => {
+    const pending = parsePendingRunApproval({
+      event: "approval.request",
+      run_id: "run_abc",
+      command: "sudo reboot",
+      description: "Host reboot",
+      choices: ["once", "deny"],
+    });
+    assert.ok(pending);
+    assert.equal(pending!.runId, "run_abc");
+    assert.match(pending!.command, /reboot/);
+    assert.deepEqual(pending!.choices, ["once", "deny"]);
+  });
+
+  it("parses studio nested envelope", () => {
+    const pending = parsePendingRunApproval({
+      name: "approval.requested",
+      data: {
+        command: "ls",
+        description: "List files",
+        run_id: "run_nested",
+        choices: ["once", "session", "deny"],
+      },
+      event: {
+        type: "approval.request",
+        run_id: "run_nested",
+        command: "ls",
+      },
+    });
+    assert.ok(pending);
+    assert.equal(pending!.runId, "run_nested");
+  });
+
+  it("detects approval.responded as resolved", () => {
+    assert.equal(
+      isApprovalResolvedEvent({ type: "approval.responded", choice: "once" }),
+      true,
+    );
+    assert.equal(
+      isApprovalResolvedEvent({ type: "tool.started", tool_name: "x" }),
+      false,
+    );
+  });
+
+  it("returns null without run id", () => {
+    assert.equal(
+      parsePendingRunApproval({
+        type: "approval.request",
+        command: "echo hi",
+      }),
+      null,
+    );
   });
 });
 

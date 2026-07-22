@@ -30,6 +30,9 @@ export const TOOL_EVENT_NAME_ALIASES = Object.freeze({
   "tool.call.error": "tool.finished",
   tool: "tool.progress",
   tool_activity: "tool.progress",
+  /** Hermes API server emits `approval.request` / `approval.responded`. */
+  "approval.request": "approval.requested",
+  "approval.responded": "approval.resolved",
 });
 
 const EVENT_NAME_SET = new Set(Object.values(FORGE_RUNTIME_EVENT_NAMES));
@@ -63,6 +66,116 @@ export type NormalizedRuntimeEvent = {
   preview?: string;
   data: Record<string, unknown>;
 };
+
+/** Hermes run approval choices accepted by POST /v1/runs/{id}/approval. */
+export type HermesApprovalChoice = "once" | "session" | "always" | "deny";
+
+export type PendingRunApproval = {
+  runId: string;
+  command: string;
+  description: string;
+  choices: HermesApprovalChoice[];
+  patternKey?: string;
+  smartDenied?: boolean;
+  allowPermanent?: boolean;
+  raw: Record<string, unknown>;
+};
+
+const DEFAULT_APPROVAL_CHOICES: HermesApprovalChoice[] = [
+  "once",
+  "session",
+  "always",
+  "deny",
+];
+
+const APPROVAL_CHOICE_SET = new Set<string>(DEFAULT_APPROVAL_CHOICES);
+
+/**
+ * Extract a pending run-approval prompt from a runtime/SSE payload.
+ * Returns null when the event is not an approval request (or lacks a run id).
+ */
+export function parsePendingRunApproval(
+  event: Record<string, unknown> = {},
+): PendingRunApproval | null {
+  // Studio SSE may nest the original Hermes envelope under `event`.
+  const nestedEnvelope =
+    event.event && typeof event.event === "object" && !Array.isArray(event.event)
+      ? (event.event as Record<string, unknown>)
+      : null;
+  const candidate = nestedEnvelope
+    ? { ...nestedEnvelope, ...event, data: nestedEnvelope.data ?? event.data }
+    : event;
+
+  const normalized = normalizeRuntimeEvent(candidate);
+  const isRequest =
+    normalized.name === FORGE_RUNTIME_EVENT_NAMES.approvalRequested ||
+    /approval\.request/i.test(normalized.rawName) ||
+    /approval\.request/i.test(String(candidate.type || candidate.event || ""));
+  if (!isRequest) return null;
+
+  const data = {
+    ...normalized.data,
+    ...(typeof candidate.run_id === "string" || typeof candidate.runId === "string"
+      ? candidate
+      : {}),
+  };
+  const runId = String(
+    data.run_id ||
+      data.runId ||
+      candidate.run_id ||
+      candidate.runId ||
+      event.run_id ||
+      event.runId ||
+      "",
+  ).trim();
+  if (!runId) return null;
+
+  const command = String(
+    data.command || data.display_command || data.code || data.tool || "",
+  ).trim();
+  const description = String(
+    data.description || data.message || data.reason || data.preview || "",
+  ).trim();
+
+  const rawChoices = Array.isArray(data.choices) ? data.choices : null;
+  let choices: HermesApprovalChoice[] = rawChoices
+    ? rawChoices
+        .map((c) => String(c).trim().toLowerCase())
+        .filter((c): c is HermesApprovalChoice => APPROVAL_CHOICE_SET.has(c))
+    : [...DEFAULT_APPROVAL_CHOICES];
+
+  if (data.smart_denied || data.smartDenied) {
+    choices = choices.filter((c) => c === "once" || c === "deny");
+    if (choices.length === 0) choices = ["once", "deny"];
+  } else if (data.allow_permanent === false || data.allowPermanent === false) {
+    choices = choices.filter((c) => c !== "always");
+  }
+
+  if (choices.length === 0) choices = [...DEFAULT_APPROVAL_CHOICES];
+  if (!choices.includes("deny")) choices = [...choices, "deny"];
+
+  return {
+    runId,
+    command: command.slice(0, 2000),
+    description: description.slice(0, 800),
+    choices,
+    patternKey: String(data.pattern_key || data.patternKey || "").trim() || undefined,
+    smartDenied: Boolean(data.smart_denied || data.smartDenied),
+    allowPermanent: data.allow_permanent !== false && data.allowPermanent !== false,
+    raw: data,
+  };
+}
+
+/** True when the event closes a pending approval (responded / resolved). */
+export function isApprovalResolvedEvent(
+  event: Record<string, unknown> = {},
+): boolean {
+  const normalized = normalizeRuntimeEvent(event);
+  return (
+    normalized.name === FORGE_RUNTIME_EVENT_NAMES.approvalResolved ||
+    /approval\.(responded|resolved)/i.test(normalized.rawName)
+  );
+}
 
 const TOOL_CATEGORY_PATTERNS: Array<[ToolCategory, RegExp]> = [
   ["browser", /browser|click|navigate|scroll|type_text|fill|page\./i],

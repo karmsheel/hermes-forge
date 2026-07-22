@@ -49,7 +49,7 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 | `GET /v1/runs/{id}/events` | SSE tool progress / deltas / lifecycle | 🟡 Studio proxies deltas/tools from chat-completions stream instead |
 | `POST /v1/runs/{id}/stop` | Soft-cancel run | ✅ Chatbar stop |
 | `POST /v1/runs/{id}/steer` | Steer active run | ✅ Capability-gated |
-| `POST /v1/runs/{id}/approval` | Human approval for gated tools | ❌ Events normalized (`approval.requested`) but no approval UI → dead end if Hermes waits |
+| `POST /v1/runs/{id}/approval` | Human approval for gated tools | ✅ Chatbar modal on `approval.request` → Approve once / session / always / Deny |
 | Jobs `/api/jobs/*` | Cron/scheduled jobs CRUD + pause/run | ✅ Cronalytics / automation job surface |
 | Sessions `/api/sessions/*` | List/create/fork/chat/stream Hermes sessions | 🟡 **Foundation → Sessions** (`/sessions`) proxies list/create/get/patch/delete/messages/fork/chat. Forge studio conversations remain separate (no 1:1 runtime map yet). Stream chat not proxied. |
 | `GET /v1/skills` | Enumerate skills metadata | ❌ |
@@ -223,11 +223,9 @@ X-Hermes-Session-Key: forge:{userId}:{businessId}:{agentProfileKey}
 
 **Action:** Settings / agent card: list enabled toolsets + skill names; empty-state coaching when tools missing.
 
-### 4.7 Approvals endpoint unused
+### 4.7 Approvals endpoint — **DONE (Task 7)**
 
-Runtime normalizes `approval.requested` / `approval.resolved`, but no UI calls `POST /v1/runs/{id}/approval`. If Hermes waits on approval, chat can hang.
-
-**Action:** approval modal in chatbar when event arrives; capability-gate on `run_approval`.
+Runtime normalizes Hermes `approval.request` → `approval.requested` and `approval.responded` → `approval.resolved`. Chatbar shows `ChatbarApprovalModal` and POSTs `{ choice }` to `/v1/runs/{id}/approval` (`once` | `session` | `always` | `deny`).
 
 ### 4.8 `/health/detailed` unused
 
@@ -258,17 +256,17 @@ Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {
 | Context meter from last-turn usage | usage objects | Estimate only | **P0** |
 | Context meter from live `context_tokens` | #15618 (future) | N/A | P0 when shipped |
 | Stream studio chat | chat/completions SSE | Yes | Done |
-| Stream process/automation chat | same | No | **P0** |
+| Stream process/automation chat | same | Yes | Done |
 | Tool progress UI | `hermes.tool.progress` | Partial (studio) | P1 process parity |
 | Stop run | `/v1/runs/{id}/stop` | Yes | Done |
 | Steer run | `/v1/runs/{id}/steer` | Capability-gated | Done |
-| Approve tools | `/v1/runs/{id}/approval` | No | **P1** |
+| Approve tools | `/v1/runs/{id}/approval` | Yes (chatbar modal) | Done |
 | Server-side multi-turn | Responses / Sessions | No | **P1** (cost/latency) |
-| Memory scope header | `X-Hermes-Session-Key` | No | **P1** |
+| Memory scope header | `X-Hermes-Session-Key` | Yes | Done |
 | Skills/toolsets catalog | GET endpoints | No | P2 |
 | Health detailed | `/health/detailed` | No | P2 |
 | Jobs API | `/api/jobs` | Yes | Done (cron path) |
-| Honest model UX | docs limitation | Misleading | **P1** copy |
+| Honest model UX | docs limitation | Label “Hermes model” + tooltip (server profile) | Done |
 
 ---
 
@@ -278,7 +276,7 @@ Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {
 2. **Process chat stream parity** — same stream/tool/run_id path as studio.  
 3. **Session-Key header** — business+agent stable memory scope.  
 4. **Responses or Sessions pilot** — one conversation kind (e.g. studio) with `previous_response_id` / named conversation; measure token reduction.  
-5. **Approval UI** — wire `run_approval`.  
+5. ~~**Approval UI** — wire `run_approval`.~~ Done (Task 7).  
 6. **Skills/toolsets panel** — Settings / personnel.  
 7. **Watch #15618** — when `context_tokens` + `context_length` land, switch meter primary source.
 

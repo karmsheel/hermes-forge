@@ -3,9 +3,14 @@
  * Features arrive from probe as a string[] of enabled capability names.
  */
 
+import type { HermesApprovalChoice } from "./runtime-events";
+
+export type { HermesApprovalChoice };
+
 export type ChatbarCapabilities = {
   runStop: boolean;
   runSteer: boolean;
+  runApproval: boolean;
   models: boolean;
   sessions: boolean;
   raw: string[];
@@ -21,6 +26,14 @@ const STEER_NAMES = [
 
 const STOP_NAMES = ["run_stop", "runStop", "stop"];
 
+const APPROVAL_NAMES = [
+  "run_approval",
+  "runApproval",
+  "run_approval_response",
+  "runApprovalResponse",
+  "approval",
+];
+
 function hasAny(features: readonly string[], names: string[]): boolean {
   const set = new Set(features.map((f) => f.toLowerCase()));
   return names.some((n) => set.has(n.toLowerCase()));
@@ -30,6 +43,8 @@ function hasAny(features: readonly string[], names: string[]): boolean {
  * Normalize Hermes probe `features` into chatbar capability flags.
  * When features are missing/empty (legacy gateway), stop is assumed available
  * via AbortController; steer stays off until advertised.
+ * Approval stays optimistic (true when features empty) so an `approval.request`
+ * event can still be answered if the probe list is incomplete.
  */
 export function parseChatbarCapabilities(
   features: readonly string[] | null | undefined,
@@ -39,6 +54,7 @@ export function parseChatbarCapabilities(
     return {
       runStop: true,
       runSteer: false,
+      runApproval: true,
       models: true,
       sessions: true,
       raw,
@@ -48,6 +64,7 @@ export function parseChatbarCapabilities(
   return {
     runStop: hasAny(raw, STOP_NAMES) || true, // client abort always works
     runSteer: hasAny(raw, STEER_NAMES),
+    runApproval: hasAny(raw, APPROVAL_NAMES),
     models: hasAny(raw, ["models", "model_list", "modelList"]) || true,
     sessions: hasAny(raw, ["sessions", "session"]) || true,
     raw,
@@ -58,6 +75,12 @@ export function canSteerFromFeatures(
   features: readonly string[] | null | undefined,
 ): boolean {
   return parseChatbarCapabilities(features).runSteer;
+}
+
+export function canApproveFromFeatures(
+  features: readonly string[] | null | undefined,
+): boolean {
+  return parseChatbarCapabilities(features).runApproval;
 }
 
 /**
@@ -94,5 +117,73 @@ export async function steerActiveRun(opts: {
         ? `Steer failed (${res.status}): ${detail.slice(0, 200)}`
         : `Steer failed (${res.status})`,
     );
+  }
+}
+
+/**
+ * POST an approval decision into a Hermes run waiting on human gate.
+ * Body shape matches Hermes API server: `{ choice, all? }`.
+ * `choice` accepts once | session | always | deny (aliases: approve → once).
+ */
+export async function approveActiveRun(opts: {
+  baseUrl: string;
+  apiKey?: string;
+  runId: string;
+  choice: HermesApprovalChoice | "approve" | "approved" | "allow" | "deny";
+  /** Resolve all pending approvals for this run's session queue. */
+  resolveAll?: boolean;
+  signal?: AbortSignal;
+}): Promise<{ choice: string; resolved: number }> {
+  const runId = String(opts.runId || "").trim();
+  if (!runId) throw new Error("Active run id is not available yet.");
+
+  const raw = String(opts.choice || "").trim().toLowerCase();
+  const aliases: Record<string, HermesApprovalChoice> = {
+    approve: "once",
+    approved: "once",
+    allow: "once",
+  };
+  const choice = (aliases[raw] || raw) as HermesApprovalChoice;
+  const allowed: HermesApprovalChoice[] = ["once", "session", "always", "deny"];
+  if (!allowed.includes(choice)) {
+    throw new Error(
+      `Invalid approval choice "${opts.choice}"; expected once, session, always, or deny.`,
+    );
+  }
+
+  const base = opts.baseUrl.replace(/\/$/, "");
+  const body: Record<string, unknown> = { choice };
+  if (opts.resolveAll) body.all = true;
+
+  const res = await fetch(
+    `${base}/v1/runs/${encodeURIComponent(runId)}/approval`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(opts.apiKey ? { Authorization: `Bearer ${opts.apiKey}` } : {}),
+      },
+      body: JSON.stringify(body),
+      signal: opts.signal,
+    },
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(
+      detail
+        ? `Approval failed (${res.status}): ${detail.slice(0, 200)}`
+        : `Approval failed (${res.status})`,
+    );
+  }
+
+  try {
+    const json = (await res.json()) as { choice?: string; resolved?: number };
+    return {
+      choice: String(json.choice || choice),
+      resolved: Number(json.resolved ?? 1),
+    };
+  } catch {
+    return { choice, resolved: 1 };
   }
 }
