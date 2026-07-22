@@ -19,6 +19,7 @@ import { ExportMenu } from "@/components/export/ExportMenu";
 import { SplitProcessDialog } from "@/components/workshop/SplitProcessDialog";
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import { consumeDiagramStream } from "@/lib/diagram-sse-client";
+import { parseSseBlocks, parseSseJson } from "@/lib/chatbar/parse-studio-sse";
 import { hermesApiBody } from "@/lib/hermes-models";
 import { useHermesConnection } from "@/components/hermes/HermesConnectionProvider";
 import { analyzeSplitCandidates } from "@/lib/mermaid-graph";
@@ -757,6 +758,8 @@ export function WorkshopSession({
           );
         }
 
+    const tempAssistantId = `temp-asst-${Date.now()}`;
+
     try {
       const res = await apiFetch(`/api/processes/${currentActiveId}/chat`, {
         method: "POST",
@@ -764,7 +767,10 @@ export function WorkshopSession({
         body: JSON.stringify({
           ...(options?.replyOnly ? { replyOnly: true } : { content: outgoingContent }),
           ...(nodeContext ? { nodeContext } : {}),
-          ...(activeConversationIdRef.current ? { conversationId: activeConversationIdRef.current } : {}),
+          ...(activeConversationIdRef.current
+            ? { conversationId: activeConversationIdRef.current }
+            : {}),
+          stream: true,
           ...hermesApiBody(currentHermes),
         }),
       });
@@ -774,34 +780,158 @@ export function WorkshopSession({
         throw new Error(err.error || "Chat failed");
       }
 
-      const data = await res.json();
-      setActiveProcess(data.process);
-      setChatLoading(false);
+      const contentType = res.headers.get("content-type") || "";
 
-      // Clear node selection after the targeted correction message has been sent (3.2)
-      if (nodeContext) {
-        setSelectedNode(null);
+      // Split / legacy JSON responses
+      if (!contentType.includes("text/event-stream")) {
+        const data = await res.json();
+        setActiveProcess(data.process);
+        setChatLoading(false);
+
+        if (nodeContext) setSelectedNode(null);
+
+        if (currentActiveId && businessId) {
+          void loadProcess(currentActiveId, businessId).catch(() => {});
+        }
+
+        if (data.split) {
+          toast.success(
+            `Split complete — created "${data.split.childName}" workflow. Both are in the sidebar.`,
+          );
+          setStreamingDiagram(null);
+          await loadProcessList();
+        } else if (data.approved) {
+          toast.success("Process approved for automation");
+          await loadProcessList();
+        }
+
+        if (data.runBackgroundAgents) {
+          void runBackgroundAgents(currentActiveId);
+        } else if (!data.split) {
+          await loadProcessList();
+        }
+        return;
       }
 
-      // Ensure we have the latest persisted state (e.g. assistant reply) from server
+      // SSE stream (Task 4 — Hermes parity with studio)
+      const optimisticAssistant: ChatMessage = {
+        id: tempAssistantId,
+        processId: currentActiveId,
+        conversationId: activeConversationIdRef.current,
+        role: "assistant",
+        content: "",
+        createdAt: new Date().toISOString(),
+      };
+      setActiveProcess((prev) =>
+        prev
+          ? { ...prev, messages: [...prev.messages, optimisticAssistant] }
+          : prev,
+      );
+
+      if (!res.body) throw new Error("Empty stream from server");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamed = "";
+      let donePayload: {
+        process?: ProcessWithMessages;
+        runBackgroundAgents?: boolean;
+        approved?: boolean;
+        split?: { childName: string };
+        error?: string;
+      } | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parsed = parseSseBlocks(buffer);
+        buffer = parsed.rest;
+
+        for (const block of parsed.blocks) {
+          if (block.event === "delta") {
+            const payload = parseSseJson<{ text?: string }>(block.data);
+            if (payload?.text) {
+              streamed += payload.text;
+              const snapshot = streamed;
+              setActiveProcess((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  messages: prev.messages.map((m) =>
+                    m.id === tempAssistantId
+                      ? { ...m, content: snapshot }
+                      : m,
+                  ),
+                };
+              });
+            }
+          } else if (block.event === "done") {
+            donePayload = parseSseJson(block.data);
+          } else if (block.event === "error") {
+            const payload = parseSseJson<{ error?: string }>(block.data);
+            throw new Error(payload?.error || "Chat failed");
+          }
+        }
+      }
+
+      // Flush trailing buffer
+      if (buffer.trim()) {
+        const parsed = parseSseBlocks(buffer, { flush: true });
+        for (const block of parsed.blocks) {
+          if (block.event === "done") {
+            donePayload = parseSseJson(block.data);
+          } else if (block.event === "error") {
+            const payload = parseSseJson<{ error?: string }>(block.data);
+            throw new Error(payload?.error || "Chat failed");
+          }
+        }
+      }
+
+      if (donePayload?.process) {
+        setActiveProcess(donePayload.process);
+      } else if (streamed) {
+        // Keep streamed assistant if process payload missing
+        setActiveProcess((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            messages: prev.messages.map((m) =>
+              m.id === tempAssistantId
+                ? {
+                    ...m,
+                    id: `asst-${Date.now()}`,
+                    content: streamed,
+                  }
+                : m,
+            ),
+          };
+        });
+      }
+
+      setChatLoading(false);
+
+      if (nodeContext) setSelectedNode(null);
+
       if (currentActiveId && businessId) {
         void loadProcess(currentActiveId, businessId).catch(() => {});
       }
 
-      if (data.split) {
+      if (donePayload?.split) {
         toast.success(
-          `Split complete — created "${data.split.childName}" workflow. Both are in the sidebar.`
+          `Split complete — created "${donePayload.split.childName}" workflow. Both are in the sidebar.`,
         );
         setStreamingDiagram(null);
         await loadProcessList();
-      } else if (data.approved) {
+      } else if (donePayload?.approved) {
         toast.success("Process approved for automation");
         await loadProcessList();
       }
 
-      if (data.runBackgroundAgents) {
+      if (donePayload?.runBackgroundAgents) {
         void runBackgroundAgents(currentActiveId);
-      } else if (!data.split) {
+      } else if (!donePayload?.split) {
         await loadProcessList();
       }
     } catch (error) {

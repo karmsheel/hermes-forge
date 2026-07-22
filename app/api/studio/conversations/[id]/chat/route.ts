@@ -99,7 +99,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const conversation = await prisma.conversation.findFirst({
       where: {
         id,
-        kind: "studio",
+        kind: { in: ["studio", "process"] },
         business: { userId: session.userId },
       },
       include: {
@@ -120,6 +120,167 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (!conversation) {
       return Response.json({ error: "Conversation not found" }, { status: 404 });
+    }
+
+    // Process-kind threads: stream via shared process chat turn (Task 4 / Workshop cutover).
+    if (conversation.kind === "process" && conversation.processId) {
+      const { streamProcessChatTurn } = await import(
+        "@/lib/chatbar/process-chat-turn"
+      );
+      const process = await prisma.process.findFirst({
+        where: {
+          id: conversation.processId,
+          businessId: conversation.business.id,
+        },
+      });
+      if (!process) {
+        return Response.json({ error: "Process not found" }, { status: 404 });
+      }
+
+      const replyOnly = body.replyOnly === true;
+      let messages = conversation.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      if (replyOnly) {
+        const last = messages[messages.length - 1];
+        if (!last || last.role !== "user") {
+          return Response.json(
+            { error: "No user message to reply to" },
+            { status: 400 },
+          );
+        }
+      } else {
+        const content = body.content!.trim();
+        const userMessage = await prisma.chatMessage.create({
+          data: {
+            conversationId: conversation.id,
+            processId: process.id,
+            role: "user",
+            content,
+          },
+        });
+        messages = [
+          ...messages,
+          { role: "user", content: userMessage.content },
+        ];
+      }
+
+      const hermesAbort = new AbortController();
+      request.signal.addEventListener("abort", () => hermesAbort.abort(), {
+        once: true,
+      });
+
+      const hermes = {
+        baseUrl: body.baseUrl,
+        apiKey: body.apiKey ?? "",
+        model: body.model,
+      };
+
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          const send = (event: string, data: unknown) => {
+            try {
+              controller.enqueue(sseEncode(event, data));
+            } catch {
+              /* client gone */
+            }
+          };
+          try {
+            let assistantText = "";
+            for await (const event of streamProcessChatTurn({
+              processId: process.id,
+              userId: session.userId,
+              conversationId: conversation.id,
+              messages,
+              hermes,
+              processStatus: process.status,
+              process: {
+                id: process.id,
+                businessId: process.businessId,
+                name: process.name,
+                description: process.description,
+                nameStatus: process.nameStatus,
+                status: process.status,
+                diagramMermaid: process.diagramMermaid,
+                trigger: process.trigger,
+                inputs: process.inputs,
+                outputs: process.outputs,
+                manualSteps: process.manualSteps,
+                ioShape: process.ioShape,
+              },
+              signal: hermesAbort.signal,
+            })) {
+              if (event.type === "run") {
+                send("run_id", { runId: event.runId });
+                continue;
+              }
+              if (event.type === "tool") {
+                const normalized = normalizeRuntimeEvent(event.event);
+                send("tool", { ...normalized, event: event.event });
+                send("tool_activity", { ...normalized, event: event.event });
+                continue;
+              }
+              if (event.type === "usage") {
+                send("usage", event.usage);
+                continue;
+              }
+              if (event.type === "delta") {
+                assistantText += event.text;
+                send("delta", { text: event.text });
+                continue;
+              }
+              if (event.type === "done") {
+                const assistantMessage = await prisma.chatMessage.create({
+                  data: {
+                    conversationId: conversation.id,
+                    processId: process.id,
+                    role: "assistant",
+                    content: event.assistantContent,
+                  },
+                });
+                send("done", {
+                  message: {
+                    id: assistantMessage.id,
+                    role: "assistant",
+                    content: event.assistantContent,
+                    createdAt: assistantMessage.createdAt.toISOString(),
+                    conversationId: conversation.id,
+                    processId: process.id,
+                  },
+                  usage: event.usage,
+                  runId: event.runId,
+                  kind: "process",
+                  processId: process.id,
+                  runBackgroundAgents: true,
+                });
+              }
+            }
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : "Chat failed";
+            send("error", { error: message });
+          } finally {
+            try {
+              controller.close();
+            } catch {
+              /* closed */
+            }
+          }
+        },
+        cancel() {
+          hermesAbort.abort();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
     }
 
     const route = body.route || "/home";
