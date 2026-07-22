@@ -18,10 +18,10 @@ export function PageName() {
   if (!name) return null;
 
   return (
-    <div className="shell-page-name-strip" aria-hidden={false}>
-      <p id="shell-page-name" className="shell-page-name">
+    <div className="shell-page-name-strip">
+      <h1 id="shell-page-name" className="shell-page-name">
         {name}
-      </p>
+      </h1>
     </div>
   );
 }

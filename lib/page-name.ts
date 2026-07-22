@@ -1,9 +1,13 @@
-// lib/page-name.ts
 import { ROOM_HOME_ROUTES } from "@/lib/forge-stage";
 import { ROOM_HOME_COPY } from "@/lib/room-home";
 
 /** Routes that never show the under-picker shell page name. */
 const EXCLUDED_PREFIXES = ["/business-manager", "/setup", "/login", "/sign-in", "/signup"] as const;
+
+/** Segment-safe prefix match: exact path or path under prefix/. */
+function matchesPrefix(path: string, prefix: string): boolean {
+  return path === prefix || path.startsWith(`${prefix}/`);
+}
 
 /**
  * Canonical page name for shell chrome (under business picker).
@@ -14,7 +18,7 @@ export function pageNameFromPath(pathname: string): string | null {
   const path = raw.length > 1 && raw.endsWith("/") ? raw.slice(0, -1) : raw;
 
   for (const prefix of EXCLUDED_PREFIXES) {
-    if (path === prefix || path.startsWith(`${prefix}/`)) return null;
+    if (matchesPrefix(path, prefix)) return null;
   }
 
   // Room homes — use roomBadge from ROOM_HOME_COPY
@@ -28,24 +32,25 @@ export function pageNameFromPath(pathname: string): string | null {
 
   if (path === "/home-combined") return "Home Combined";
 
-  const prefixRules: { test: (p: string) => boolean; name: string }[] = [
-    { test: (p) => p.startsWith("/foundation"), name: "Foundation" },
-    { test: (p) => p.startsWith("/god-mode"), name: "Plant" },
-    { test: (p) => p === "/functions" || p.startsWith("/functions/"), name: "Functions" },
-    { test: (p) => p.startsWith("/workshop"), name: "Workshop" },
-    { test: (p) => p.startsWith("/personnel"), name: "Personnel" },
-    { test: (p) => p.startsWith("/documents"), name: "Documents" },
-    { test: (p) => p.startsWith("/metrics"), name: "Metrics" },
-    { test: (p) => p.startsWith("/content"), name: "Content" },
-    { test: (p) => p.startsWith("/automations"), name: "Automations" },
-    { test: (p) => p.startsWith("/automation-analysis"), name: "Automation Analysis" },
-    { test: (p) => p.startsWith("/cronalytics"), name: "Cronalytics" },
-    { test: (p) => p.startsWith("/decisions"), name: "Decisions" },
-    { test: (p) => p.startsWith("/log"), name: "Business log" },
+  // Longer prefixes first so e.g. /automation-analysis beats /automations
+  const prefixRules: { prefix: string; name: string }[] = [
+    { prefix: "/foundation", name: "Foundation" },
+    { prefix: "/god-mode", name: "Plant" },
+    { prefix: "/functions", name: "Functions" },
+    { prefix: "/workshop", name: "Workshop" },
+    { prefix: "/personnel", name: "Personnel" },
+    { prefix: "/documents", name: "Documents" },
+    { prefix: "/metrics", name: "Metrics" },
+    { prefix: "/content", name: "Content" },
+    { prefix: "/automation-analysis", name: "Automation Analysis" },
+    { prefix: "/automations", name: "Automations" },
+    { prefix: "/cronalytics", name: "Cronalytics" },
+    { prefix: "/decisions", name: "Decisions" },
+    { prefix: "/log", name: "Business log" },
   ];
 
   for (const rule of prefixRules) {
-    if (rule.test(path)) return rule.name;
+    if (matchesPrefix(path, rule.prefix)) return rule.name;
   }
 
   // Fallback: first segment → readable label

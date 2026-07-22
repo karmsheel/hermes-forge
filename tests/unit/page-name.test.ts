@@ -39,6 +39,18 @@ describe("pageNameFromPath", () => {
     assert.equal(pageNameFromPath("/business-manager"), null);
     assert.equal(pageNameFromPath("/setup/overlord"), null);
     assert.equal(pageNameFromPath("/login"), null);
+    // /login excluded before /log prefix — must not become "Business log"
+    assert.equal(pageNameFromPath("/login/callback"), null);
+  });
+
+  it("uses segment-safe prefix matching (not string prefix)", () => {
+    // /content-hub must not match /content → "Content"
+    assert.equal(pageNameFromPath("/content-hub"), "Content hub");
+    assert.equal(pageNameFromPath("/content"), "Content");
+    assert.equal(pageNameFromPath("/content/posts"), "Content");
+    // /log matches Business log; sibling segments do not
+    assert.equal(pageNameFromPath("/log"), "Business log");
+    assert.equal(pageNameFromPath("/log/entry"), "Business log");
   });
 
   it("strips query strings before matching", () => {
