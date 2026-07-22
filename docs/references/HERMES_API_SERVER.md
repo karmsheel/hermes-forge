@@ -275,7 +275,7 @@ Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {
 1. **Usage plumbing** — parse + forward usage; dual-mode context meter; fix process draft in meter input.  
 2. **Process chat stream parity** — same stream/tool/run_id path as studio.  
 3. **Session-Key header** — business+agent stable memory scope.  
-4. **Responses or Sessions pilot** — one conversation kind (e.g. studio) with `previous_response_id` / named conversation; measure token reduction.  
+4. **Responses or Sessions pilot** — one conversation kind (e.g. studio) with `previous_response_id` / named conversation; measure token reduction. **Implement from:** [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md).  
 5. ~~**Approval UI** — wire `run_approval`.~~ Done (Task 7).  
 6. **Skills/toolsets panel** — Settings / personnel.  
 7. **Watch #15618** — when `context_tokens` + `context_length` land, switch meter primary source.

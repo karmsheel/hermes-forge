@@ -560,7 +560,7 @@ Hermes API research: `docs/references/HERMES_API_SERVER.md`.
 - **Task 6:** Automation design pin
 - **Task 7:** Approval modal + honest model picker copy
 - **Task 9:** Removed dual stacks (`process-session` / `automation-session` / ProcessChat·AutomationChat embeds / `forge.chatbar.unifiedWorkshop` flag)
-- **Optional residual:** Task 8 Responses/Sessions pilot
+- **Optional residual:** Task 8 Responses/Sessions pilot — full agent brief: [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md)
 
 ---
 

@@ -817,7 +817,7 @@ The codebase uses three names for related concepts. **Prefer these in new code a
 - [x] Removed dual stacks (`process-session` / `automation-session` / embed panels / rollback flag)
 
 **Optional residual:**
-- [ ] Responses/Sessions pilot (Task 8) — measure token reduction
+- [ ] Responses/Sessions pilot (Task 8) — measure token reduction. **Agent brief:** [`HERMES_RESPONSES_PILOT.md`](HERMES_RESPONSES_PILOT.md)
 
 **Do not:** Reintroduce a second permanent chat UI next to the shell chatbar.
 

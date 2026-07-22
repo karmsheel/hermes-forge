@@ -42,6 +42,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `BUSINESS_DOCUMENTS.md` | Business knowledge documents: kinds, schema, Hermes injection, Git layout (4.18) | High | When implementing or extending Documents / company knowledge context |
 | `BUSINESS_PLANT_PFD.md` | Phase 6: Forge rooms, soft unlock, plant PFD, Foundation / Overlord, Map promotion of God Mode | High | When implementing rooms, Foundation, Map plant, 6.6/6.7, stage→room IA, or process links |
 | `HERMES_API_SERVER.md` | Hermes Agent OpenAI-compatible API server: capability audit vs Forge, context meter, inefficiencies, adoption plan | High | When wiring Hermes chat/runs/usage/sessions, context meter, or reviewing API efficiency |
+| `HERMES_RESPONSES_PILOT.md` | **Task 8 handoff:** optional Responses/Sessions pilot for studio chat (flag, previous_response_id, measurement) | High | When implementing or reviewing Hermes Responses API / server-side multi-turn (4.19 residual) |
 | `upstream/hermes-api-server.md` | Archived snapshot of upstream API Server docs (do not edit; re-fetch when re-auditing) | Medium | When comparing Forge against the exact upstream wording for a given research date |
 | *(Plan)* Map→Monitor→Automate | Phase 5 operating stages + Content inventory (see PRODUCT_BACKLOG § Phase 5); target IA is rooms in `BUSINESS_PLANT_PFD.md` | High | When working on Content, Metrics, Automate, or legacy stage code |
 | *(Future)* `ARCHITECTURE.md` | System design, data model, key decisions   | Medium   | When touching core systems |
