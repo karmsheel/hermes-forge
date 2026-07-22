@@ -380,7 +380,7 @@ export function FoundationRoom() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="max-w-sm text-center space-y-4">
-          <h1 className="text-xl font-semibold">Foundation</h1>
+          <h2 className="text-xl font-semibold">No business selected</h2>
           <p className="text-sm text-text-muted">
             Create or select a business to sketch its process plant.
           </p>
@@ -401,13 +401,7 @@ export function FoundationRoom() {
     <div className="flex flex-col h-full min-h-0 flex-1">
       <header className="shrink-0 border-b border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-text-muted">
-            Foundation room · Overlord
-          </div>
-          <h1 className="font-semibold text-sm text-text-strong truncate">
-            Business foundations
-          </h1>
-          <p className="text-xs text-text-muted mt-0.5 truncate">
+          <p className="text-xs text-text-muted truncate">
             {overview.stats.processCount} process
             {overview.stats.processCount === 1 ? "" : "es"}
             {" · "}
