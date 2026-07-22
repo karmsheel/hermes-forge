@@ -21,6 +21,7 @@ import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
 import { formatTrainingForPrompt } from "@/lib/personnel/agent-training";
 import { fetchHermesRunUsage, streamHermesEvents } from "@/lib/hermes-stream";
 import type { NormalizedHermesUsage } from "@/lib/chatbar/usage";
+import { hermesSessionCallOptions } from "@/lib/chatbar/session-headers";
 import { normalizeRuntimeEvent } from "@/lib/chatbar/runtime-events";
 import { prisma } from "@/lib/prisma";
 import {
@@ -325,11 +326,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
           model: body.model,
         };
 
+        const sessionOpts = hermesSessionCallOptions({
+          userId: session.userId,
+          businessId: conversation.business.id,
+          agentProfileKey: agent?.profileKey ?? null,
+          conversationId: conversation.id,
+        });
+
         try {
           for await (const event of streamHermesEvents(
             hermesConfig,
             hermesMessages,
-            { signal: hermesAbort.signal },
+            {
+              signal: hermesAbort.signal,
+              sessionKey: sessionOpts.sessionKey,
+              sessionId: sessionOpts.sessionId,
+            },
           )) {
             if (hermesAbort.signal.aborted) {
               aborted = true;
@@ -369,7 +381,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
           // Tier A: if stream omitted usage, try run status poll
           if (!lastUsage && runId && !aborted && !hermesAbort.signal.aborted) {
-            const polled = await fetchHermesRunUsage(hermesConfig, runId);
+            const polled = await fetchHermesRunUsage(hermesConfig, runId, {
+              sessionKey: sessionOpts.sessionKey,
+              sessionId: sessionOpts.sessionId,
+            });
             if (polled) {
               lastUsage = polled;
               send("usage", polled);

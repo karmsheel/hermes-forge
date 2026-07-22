@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
+import { hermesSessionCallOptions } from '@/lib/chatbar/session-headers';
 import { buildChatSystemPrompt } from '@/lib/diagram';
 import { formatDiscoveryContext, pickDiscoveryFields } from '@/lib/process-discovery';
 import { buildProcessMdFromBusiness } from '@/lib/process-md';
@@ -248,6 +249,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       manualSteps: process.manualSteps,
     });
 
+    const sessionOpts = hermesSessionCallOptions({
+      userId: result.session.userId,
+      businessId: process.businessId,
+      agentProfileKey: null,
+      conversationId,
+    });
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey ?? "", model: body.model },
       [
@@ -288,7 +296,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
             .join('\n\n'),
         },
         ...allMessages,
-      ]
+      ],
+      {
+        sessionKey: sessionOpts.sessionKey,
+        sessionId: sessionOpts.sessionId,
+      },
     );
 
     const assistantMessage = assistantContent || 'Thanks — tell me more about the next step.';

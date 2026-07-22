@@ -51,11 +51,11 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 | `POST /v1/runs/{id}/steer` | Steer active run | ✅ Capability-gated |
 | `POST /v1/runs/{id}/approval` | Human approval for gated tools | ❌ Events normalized (`approval.requested`) but no approval UI → dead end if Hermes waits |
 | Jobs `/api/jobs/*` | Cron/scheduled jobs CRUD + pause/run | ✅ Cronalytics / automation job surface |
-| Sessions `/api/sessions/*` | List/create/fork/chat/stream Hermes sessions | ❌ Forge keeps its **own** SQLite conversations; does not map 1:1 to Hermes sessions |
+| Sessions `/api/sessions/*` | List/create/fork/chat/stream Hermes sessions | 🟡 **Foundation → Sessions** (`/sessions`) proxies list/create/get/patch/delete/messages/fork/chat. Forge studio conversations remain separate (no 1:1 runtime map yet). Stream chat not proxied. |
 | `GET /v1/skills` | Enumerate skills metadata | ❌ |
 | `GET /v1/toolsets` | Enumerate toolsets + tools | ❌ |
-| Header `X-Hermes-Session-Id` | Transcript/session continuity | ⚠️ Unclear / not systematically set from Forge conversation ids |
-| Header `X-Hermes-Session-Key` | **Stable long-term memory scope** (Honcho), independent of transcript rotation | ❌ Not set — multi-agent/multi-business memory may bleed or re-scope unpredictably |
+| Header `X-Hermes-Session-Id` | Transcript/session continuity | ✅ Studio + process + automation chat: `forge-conv:{conversationId}` via `lib/chatbar/session-headers.ts` |
+| Header `X-Hermes-Session-Key` | **Stable long-term memory scope** (Honcho), independent of transcript rotation | ✅ `forge:{userId}:{businessId}:{agentProfileKey\|default}` on interactive chat routes |
 | Header `Idempotency-Key` | 5‑min response dedupe | ❌ |
 
 ### Documented response shapes relevant to metering
@@ -304,4 +304,5 @@ Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {
 
 | Date | Note |
 |------|------|
+| 2026-07-22 | Foundation **Sessions** page (`/sessions`) + `/api/hermes/sessions/*` proxy: list/create/get/patch/delete/messages/fork/chat. Stream chat still unused. |
 | 2026-07-21 | Initial research from upstream `api-server.md` + cross-check against Forge clients; archived raw doc; related #15618. |

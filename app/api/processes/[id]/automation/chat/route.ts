@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { callHermes } from '@/lib/hermes';
+import { hermesSessionCallOptions } from '@/lib/chatbar/session-headers';
 import { buildAutomationChatSystemPrompt } from '@/lib/automation-chat';
 import {
   getOrCreateAutomation,
@@ -59,6 +60,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       { role: 'user', content: body.content },
     ];
 
+    const sessionOpts = hermesSessionCallOptions({
+      userId: result.session.userId,
+      businessId: process.businessId,
+      agentProfileKey: automation.hermesAgentProfile?.profileKey ?? null,
+      conversationId: `automation:${automation.id}`,
+    });
+
     const assistantContent = await callHermes(
       { baseUrl: body.baseUrl, apiKey: body.apiKey, model: body.model },
       [
@@ -83,7 +91,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
           content: `Process map: "${process.name}" — ${process.description || 'No description'}`,
         },
         ...allMessages,
-      ]
+      ],
+      {
+        sessionKey: sessionOpts.sessionKey,
+        sessionId: sessionOpts.sessionId,
+      },
     );
 
     const assistantMessage =

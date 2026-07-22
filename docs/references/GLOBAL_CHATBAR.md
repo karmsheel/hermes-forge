@@ -557,7 +557,8 @@ Hermes API research: `docs/references/HERMES_API_SERVER.md`.
 
 - **Task 0 (shipped):** prompt catalog (`lib/chatbar/prompt-catalog.ts`) + Settings → **Agent prompts** (list + live preview via `/api/settings/prompt-catalog` and `/api/settings/prompt-preview`). Same builders as chat; no dual prompt strings.
 - **Task 1 (shipped):** Hermes usage normalize (`lib/chatbar/usage.ts`), stream/non-stream parse, studio SSE `usage`, optional run poll, dual-mode context meter (estimate + last-turn).
-- Remaining: session headers on all paths, unified composer, process stream parity, Workshop cutover, automation cutover, approvals, Responses pilot.
+- **Task 2 (shipped):** `X-Hermes-Session-Key` / `X-Hermes-Session-Id` on studio, process, and automation chat (`lib/chatbar/session-headers.ts`).
+- Remaining: unified composer, process stream parity, Workshop cutover, automation cutover, approvals, Responses pilot.
 
 ---
 
