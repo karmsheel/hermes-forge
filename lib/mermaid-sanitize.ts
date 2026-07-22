@@ -1,6 +1,11 @@
 import { stripMermaidFences } from './hermes';
 
-/** Node IDs that break Mermaid parsers when used as identifiers */
+/**
+ * Identifiers that break Mermaid 11+ flowchart parsers when used as node or
+ * subgraph IDs. Includes grammar keywords (`end`, `subgraph`, …) and lexer
+ * tokens such as `default` (token type DEFAULT) — common when Hermes uses the
+ * default agent profile key as a swimlane id: `subgraph default[Hermes agent]`.
+ */
 const RESERVED_NODE_IDS = new Set([
   'end',
   'subgraph',
@@ -13,7 +18,12 @@ const RESERVED_NODE_IDS = new Set([
   'linkStyle',
   'direction',
   'interpolate',
+  'default',
 ]);
+
+function reservedReplacement(reserved: string): string {
+  return reserved === 'end' ? 'finish' : `${reserved}Node`;
+}
 
 const DIAGRAM_HEADER = /^\s*(flowchart|graph)\s+(TD|TB|BT|RL|LR|td|tb|bt|rl|lr)/i;
 
@@ -54,34 +64,43 @@ function renameReservedNodeIds(source: string): string {
   let result = source;
 
   for (const reserved of RESERVED_NODE_IDS) {
-    const replacement = reserved === 'end' ? 'finish' : `${reserved}Node`;
+    const replacement = reservedReplacement(reserved);
+    // Case-insensitive: LLMs sometimes emit Default / END as ids.
+    // Closing `end` lines (`end` alone) are not matched by these patterns.
+    const id = reserved.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // subgraph default / subgraph default[Title] / subgraph default Title
+    result = result.replace(
+      new RegExp(`(^\\s*subgraph\\s+)${id}\\b`, 'gim'),
+      `$1${replacement}`,
+    );
 
     // Stadium nodes: end([Label]) — must run before simpler bracket patterns
     result = result.replace(
-      new RegExp(`\\b${reserved}\\b(\\s*\\(\\[)`, 'g'),
-      `${replacement}$1`
+      new RegExp(`\\b${id}\\b(\\s*\\(\\[)`, 'gi'),
+      `${replacement}$1`,
     );
 
     // Rectangle, diamond, rounded: end[Label], end{Label}, end(Label)
     result = result.replace(
-      new RegExp(`\\b${reserved}\\b(\\s*[[{])`, 'g'),
-      `${replacement}$1`
+      new RegExp(`\\b${id}\\b(\\s*[[{])`, 'gi'),
+      `${replacement}$1`,
     );
     result = result.replace(
-      new RegExp(`\\b${reserved}\\b(\\s*\\()`, 'g'),
-      `${replacement}$1`
+      new RegExp(`\\b${id}\\b(\\s*\\()`, 'gi'),
+      `${replacement}$1`,
     );
 
     // Edge target: --> end or -->|Yes| end
     result = result.replace(
-      new RegExp(`((?:-->|---|-.->|==>)(?:\\|[^|\\n]+\\|)?\\s*)${reserved}\\b`, 'g'),
-      `$1${replacement}`
+      new RegExp(`((?:-->|---|-.->|==>)(?:\\|[^|\\n]+\\|)?\\s*)${id}\\b`, 'gi'),
+      `$1${replacement}`,
     );
 
     // Edge source: end --> or end -->|label|
     result = result.replace(
-      new RegExp(`\\b${reserved}\\b(\\s*(?:-->|---|-.->|==>))`, 'g'),
-      `${replacement}$1`
+      new RegExp(`\\b${id}\\b(\\s*(?:-->|---|-.->|==>))`, 'gi'),
+      `${replacement}$1`,
     );
   }
 

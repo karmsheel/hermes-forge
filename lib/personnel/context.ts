@@ -139,6 +139,8 @@ export function formatSwimlanePersonnelAddon(roster: PersonnelRoster): string {
     ...uniqueLanes.map((n) => `  - ${n}`),
     "Place each step in the lane of the person/role who performs it. Show handoffs as edges between lanes.",
     "If the conversation names someone not on the roster, you may add a lane for them.",
+    // Mermaid treats `default` as a lexer keyword — never use it as a subgraph/node id.
+    "Subgraph IDs must be safe Mermaid identifiers (letters/numbers/underscores). Never use reserved ids: default, end, graph, class, style. If a lane is the default Hermes agent, use id hermesAgent with a display title, e.g. subgraph hermesAgent[Hermes agent].",
   ].join("\n");
 }
 
