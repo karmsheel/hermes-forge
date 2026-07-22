@@ -19,7 +19,8 @@ import {
 } from "@/lib/chatbar/studio-prompt";
 import { pageBlurbForPath } from "@/lib/chatbar/page-registry";
 import { formatTrainingForPrompt } from "@/lib/personnel/agent-training";
-import { streamHermesEvents } from "@/lib/hermes-stream";
+import { fetchHermesRunUsage, streamHermesEvents } from "@/lib/hermes-stream";
+import type { NormalizedHermesUsage } from "@/lib/chatbar/usage";
 import { normalizeRuntimeEvent } from "@/lib/chatbar/runtime-events";
 import { prisma } from "@/lib/prisma";
 import {
@@ -315,15 +316,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
         let assistantText = "";
         let runId: string | null = null;
+        let lastUsage: NormalizedHermesUsage | null = null;
         let aborted = false;
+
+        const hermesConfig = {
+          baseUrl: body.baseUrl,
+          apiKey: body.apiKey ?? "",
+          model: body.model,
+        };
 
         try {
           for await (const event of streamHermesEvents(
-            {
-              baseUrl: body.baseUrl,
-              apiKey: body.apiKey ?? "",
-              model: body.model,
-            },
+            hermesConfig,
             hermesMessages,
             { signal: hermesAbort.signal },
           )) {
@@ -351,9 +355,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
               continue;
             }
 
+            if (event.type === "usage") {
+              lastUsage = event.usage;
+              send("usage", event.usage);
+              continue;
+            }
+
             if (event.type === "delta") {
               assistantText += event.text;
               send("delta", { text: event.text });
+            }
+          }
+
+          // Tier A: if stream omitted usage, try run status poll
+          if (!lastUsage && runId && !aborted && !hermesAbort.signal.aborted) {
+            const polled = await fetchHermesRunUsage(hermesConfig, runId);
+            if (polled) {
+              lastUsage = polled;
+              send("usage", polled);
             }
           }
 

@@ -20,6 +20,11 @@ export type ContextMeterInput = {
   contextText?: string;
   systemOverheadChars?: number;
   modelContextTokens?: number;
+  /**
+   * Last-turn Hermes-reported prompt tokens (billing usage).
+   * When set, meter shows dual signal: estimate for draft + last-turn label.
+   */
+  lastTurnPromptTokens?: number | null;
 };
 
 export type ContextMeterDisplay = {
@@ -101,11 +106,29 @@ export function contextMeterDisplay(input: ContextMeterInput = {}): ContextMeter
   const usedLabel = formatWholeNumber(meter.estimatedTokens);
   const limitLabel = formatWholeNumber(meter.modelContextTokens);
 
+  const lastTurn =
+    input.lastTurnPromptTokens != null &&
+    Number.isFinite(input.lastTurnPromptTokens) &&
+    input.lastTurnPromptTokens > 0
+      ? Math.round(Number(input.lastTurnPromptTokens))
+      : null;
+  const lastTurnLabel = lastTurn != null ? formatWholeNumber(lastTurn) : null;
+
+  const detail =
+    lastTurnLabel != null
+      ? `${usedLabel} / ${limitLabel} · est · last ${lastTurnLabel}`
+      : `${usedLabel} / ${limitLabel} · ${meter.percentLabel} · estimate`;
+
+  const title =
+    lastTurnLabel != null
+      ? `Draft estimate: ~${usedLabel} of ${limitLabel} tokens (${meter.percentLabel}). Last Hermes turn prompt: ${lastTurnLabel} tokens (billing usage, not remaining window).`
+      : `Next request estimate: ~${usedLabel} tokens of ${limitLabel} (${meter.percentLabel}). Based on history + draft + page context; not live runtime usage.`;
+
   return {
     ...meter,
     usedLabel,
     limitLabel,
-    detail: `${usedLabel} / ${limitLabel} · ${meter.percentLabel} · estimate`,
-    title: `Next request estimate: ~${usedLabel} tokens of ${limitLabel} (${meter.percentLabel}). Based on history + draft + page context; not live runtime usage.`,
+    detail,
+    title,
   };
 }

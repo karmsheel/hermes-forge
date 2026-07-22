@@ -1,4 +1,8 @@
 import { resolveHermesModel } from './hermes-models';
+import {
+  normalizeHermesUsage,
+  type NormalizedHermesUsage,
+} from './chatbar/usage';
 
 export interface HermesConfig {
   baseUrl: string;
@@ -6,19 +10,44 @@ export interface HermesConfig {
   model?: string;
 }
 
-export async function callHermes(
+export type HermesCallResult = {
+  content: string;
+  usage: NormalizedHermesUsage | null;
+};
+
+export type CallHermesOptions = {
+  temperature?: number;
+  /** Optional Hermes memory / transcript scope headers (HERMES_API_SERVER.md). */
+  sessionKey?: string | null;
+  sessionId?: string | null;
+};
+
+function hermesAuthHeaders(
+  config: HermesConfig,
+  options?: CallHermesOptions,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${config.apiKey}`,
+  };
+  const sessionKey = options?.sessionKey?.trim();
+  const sessionId = options?.sessionId?.trim();
+  if (sessionKey) headers['X-Hermes-Session-Key'] = sessionKey;
+  if (sessionId) headers['X-Hermes-Session-Id'] = sessionId;
+  return headers;
+}
+
+/** Non-stream call returning content + usage (preferred for new code). */
+export async function callHermesWithMeta(
   config: HermesConfig,
   messages: { role: string; content: string }[],
-  options?: { temperature?: number }
-): Promise<string> {
+  options?: CallHermesOptions
+): Promise<HermesCallResult> {
   const url = `${config.baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers: hermesAuthHeaders(config, options),
     body: JSON.stringify({
       model: resolveHermesModel(config),
       messages,
@@ -33,8 +62,22 @@ export async function callHermes(
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return {
+    content: data.choices?.[0]?.message?.content || '',
+    usage: normalizeHermesUsage(data),
+  };
 }
+
+export async function callHermes(
+  config: HermesConfig,
+  messages: { role: string; content: string }[],
+  options?: CallHermesOptions
+): Promise<string> {
+  const result = await callHermesWithMeta(config, messages, options);
+  return result.content;
+}
+
+export { hermesAuthHeaders };
 
 export function parseJsonFromLlm(content: string): unknown {
   const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();

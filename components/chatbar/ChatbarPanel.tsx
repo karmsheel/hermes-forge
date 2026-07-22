@@ -42,6 +42,7 @@ import {
   sortChatbarAgentsWithOverlordFirst,
 } from "@/lib/chatbar/agent-label";
 import {
+  clearActiveStudioConversationId,
   loadActiveStudioConversationId,
   saveActiveStudioConversationId,
 } from "@/lib/chatbar/active-conversation";
@@ -93,6 +94,7 @@ import {
   type PlantApplyResult,
 } from "@/lib/plant-apply";
 import { ChatMarkdown } from "@/components/ui/ChatMarkdown";
+import type { NormalizedHermesUsage } from "@/lib/chatbar/usage";
 import { ChatbarContextChip } from "./ChatbarContextChip";
 import { ChatbarDesktopBar, ChatbarModelSelect } from "./ChatbarDesktopBar";
 import { CollapsibleAgentView } from "./CollapsibleAgentView";
@@ -173,6 +175,10 @@ export function ChatbarPanel() {
   const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
   const [toolActivities, setToolActivities] = useState<ToolActivity[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  /** Last Hermes-reported turn usage (prompt tokens) for dual-mode meter. */
+  const [lastTurnUsage, setLastTurnUsage] = useState<NormalizedHermesUsage | null>(
+    null,
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -433,31 +439,61 @@ export function ChatbarPanel() {
     setIntroBanner(null);
   }, [businessId, introBanner]);
 
-  const loadConversationMessages = useCallback(async (conversationId: string) => {
-    setLoadingMessages(true);
-    try {
-      const res = await fetch(`/api/studio/conversations/${conversationId}`);
-      if (!res.ok) throw new Error("Failed to load messages");
-      const data = await res.json();
-      setMessages(
-        (data.messages || []).map(
-          (m: ChatMessage & { createdAt: string | Date }) => ({
-            ...m,
-            processId: m.processId ?? null,
-            createdAt:
-              typeof m.createdAt === "string"
-                ? m.createdAt
-                : new Date(m.createdAt).toISOString(),
-          }),
-        ),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load chat");
-      setMessages([]);
-    } finally {
-      setLoadingMessages(false);
-    }
-  }, []);
+  const loadConversationMessages = useCallback(
+    async (
+      conversationId: string,
+      options?: { quiet?: boolean },
+    ): Promise<boolean> => {
+      setLoadingMessages(true);
+      try {
+        const res = await fetch(`/api/studio/conversations/${conversationId}`);
+        const contentType = res.headers.get("content-type") || "";
+        if (!res.ok) {
+          // Dev routing miss returns HTML 404; missing row returns JSON.
+          if (contentType.includes("text/html")) {
+            throw new Error(
+              "Chat API route unavailable — restart desktop:dev if this persists",
+            );
+          }
+          if (res.status === 404) {
+            throw new Error("Conversation not found");
+          }
+          const err = await res.json().catch(() => ({}));
+          throw new Error(
+            typeof err.error === "string" ? err.error : "Failed to load messages",
+          );
+        }
+        if (!contentType.includes("application/json")) {
+          throw new Error("Failed to load messages (unexpected response)");
+        }
+        const data = await res.json();
+        setMessages(
+          (data.messages || []).map(
+            (m: ChatMessage & { createdAt: string | Date }) => ({
+              ...m,
+              processId: m.processId ?? null,
+              createdAt:
+                typeof m.createdAt === "string"
+                  ? m.createdAt
+                  : new Date(m.createdAt).toISOString(),
+            }),
+          ),
+        );
+        return true;
+      } catch (error) {
+        if (!options?.quiet) {
+          toast.error(
+            error instanceof Error ? error.message : "Could not load chat",
+          );
+        }
+        setMessages([]);
+        return false;
+      } finally {
+        setLoadingMessages(false);
+      }
+    },
+    [],
+  );
 
   const loadConversations = useCallback(
     async (agentIdOverride?: string | null) => {
@@ -619,18 +655,45 @@ export function ChatbarPanel() {
         setConversations(list);
 
         const saved = loadActiveStudioConversationId(businessId);
-        const pick =
-          pendingForBusiness?.conversationId ||
-          (saved && list.find((c) => c.id === saved)?.id) ||
-          list[0]?.id ||
-          null;
+        // Only prefer pending when it exists in the list (verified above) —
+        // never open a dead sessionStorage id that will 404.
+        const pendingId =
+          pendingForBusiness &&
+          list.some((c) => c.id === pendingForBusiness.conversationId)
+            ? pendingForBusiness.conversationId
+            : null;
+        if (pendingForBusiness && !pendingId) {
+          consumePendingStudioReply();
+        }
 
-        setActiveConversationId(pick);
-        if (pick) {
-          saveActiveStudioConversationId(businessId, pick);
-          await loadConversationMessages(pick);
-        } else {
+        const candidates = [
+          pendingId,
+          saved && list.find((c) => c.id === saved)?.id,
+          list[0]?.id,
+        ].filter((id): id is string => Boolean(id));
+
+        // Dedupe while preserving order
+        const uniqueCandidates = [...new Set(candidates)];
+
+        let pick: string | null = null;
+        for (const id of uniqueCandidates) {
+          const ok = await loadConversationMessages(id, { quiet: true });
+          if (ok) {
+            pick = id;
+            break;
+          }
+        }
+
+        if (!pick) {
+          setActiveConversationId(null);
           setMessages([]);
+          if (businessId) clearActiveStudioConversationId(businessId);
+          if (uniqueCandidates.length > 0) {
+            toast.error("Could not load chat messages");
+          }
+        } else {
+          setActiveConversationId(pick);
+          saveActiveStudioConversationId(businessId, pick);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not load studio chat");
@@ -879,6 +942,11 @@ export function ChatbarPanel() {
             } else if (block.event === "run_id") {
               const payload = parseSseJson<{ runId?: string }>(block.data);
               if (payload?.runId) setActiveRunId(payload.runId);
+            } else if (block.event === "usage") {
+              const payload = parseSseJson<NormalizedHermesUsage>(block.data);
+              if (payload && typeof payload.promptTokens === "number") {
+                setLastTurnUsage(payload);
+              }
             } else if (block.event === "tool" || block.event === "tool_activity") {
               const payload = parseSseJson<Record<string, unknown>>(block.data);
               if (payload) {
@@ -1963,6 +2031,7 @@ export function ChatbarPanel() {
             meterInput={{
               messages,
               draftText: draft,
+              lastTurnPromptTokens: lastTurnUsage?.promptTokens ?? null,
               contextText: [
                 contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY ? "" : shellSnapshotText,
                 ...(pageRegistration?.snapshotLines ?? []),

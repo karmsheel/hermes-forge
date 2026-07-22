@@ -35,7 +35,7 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 
 | Endpoint | Upstream purpose | Forge today |
 |----------|------------------|-------------|
-| `POST /v1/chat/completions` | Stateless chat; SSE + `hermes.tool.progress`; **`usage` in non-stream JSON** | ✅ Core path (`lib/hermes.ts`, `lib/hermes-stream.ts`, studio stream). **Does not parse `usage`.** Process/automation chat often **non-streaming** (`callHermes`). |
+| `POST /v1/chat/completions` | Stateless chat; SSE + `hermes.tool.progress`; **`usage` in non-stream JSON** | ✅ Core path. **`callHermesWithMeta` + stream parse `usage`** (`lib/chatbar/usage.ts`); studio SSE emits `usage`; optional `GET /v1/runs/{id}` poll. Process chat still often non-stream until Task 4. |
 | `POST /v1/responses` | Responses API; server-side history via `previous_response_id` / named `conversation`; tool calls in `output[]`; **`usage`** | ❌ Unused. Big opportunity for session continuity + less re-send. |
 | `GET /v1/responses/{id}` | Fetch stored response | ❌ |
 | `DELETE /v1/responses/{id}` | Delete stored response | ❌ |
@@ -45,7 +45,7 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 | `GET /v1/health` | Same under `/v1` | 🟡 unused (alias) |
 | `GET /health/detailed` | Authenticated readiness (counts, not secrets) | ❌ Could power Settings “Hermes health” without scraping logs |
 | `POST /v1/runs` | Async run create (`run_id`) | 🟡 We mostly rely on stream-embedded run ids, not explicit create |
-| `GET /v1/runs/{id}` | Poll status + **`usage`** | ❌ Not polled for usage/status recovery |
+| `GET /v1/runs/{id}` | Poll status + **`usage`** | 🟡 Studio chat polls after stream when usage missing from SSE |
 | `GET /v1/runs/{id}/events` | SSE tool progress / deltas / lifecycle | 🟡 Studio proxies deltas/tools from chat-completions stream instead |
 | `POST /v1/runs/{id}/stop` | Soft-cancel run | ✅ Chatbar stop |
 | `POST /v1/runs/{id}/steer` | Steer active run | ✅ Capability-gated |

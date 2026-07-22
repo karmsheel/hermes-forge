@@ -1,11 +1,17 @@
-import type { HermesConfig } from "./hermes";
+import type { CallHermesOptions, HermesConfig } from "./hermes";
+import { hermesAuthHeaders } from "./hermes";
 import { resolveHermesModel } from "./hermes-models";
 import { toolEventsFromOpenAiChunk } from "./chatbar/runtime-events";
+import {
+  normalizeHermesUsage,
+  type NormalizedHermesUsage,
+} from "./chatbar/usage";
 
 export type HermesStreamEvent =
   | { type: "delta"; text: string }
   | { type: "tool"; event: Record<string, unknown> }
-  | { type: "run"; runId: string };
+  | { type: "run"; runId: string }
+  | { type: "usage"; usage: NormalizedHermesUsage };
 
 /**
  * Drain OpenAI-style SSE lines into text deltas (legacy API).
@@ -66,6 +72,11 @@ export function drainOpenAiSseBufferEvents(
       for (const toolEvent of toolEventsFromOpenAiChunk(parsed)) {
         onEvent({ type: "tool", event: toolEvent });
       }
+
+      const usage = normalizeHermesUsage(parsed);
+      if (usage) {
+        onEvent({ type: "usage", usage });
+      }
     } catch {
       /* ignore malformed SSE lines */
     }
@@ -74,29 +85,56 @@ export function drainOpenAiSseBufferEvents(
   return remainder;
 }
 
+export type StreamHermesOptions = CallHermesOptions & {
+  signal?: AbortSignal;
+};
+
 export async function* streamHermes(
   config: HermesConfig,
   messages: { role: string; content: string }[],
-  options?: { temperature?: number; signal?: AbortSignal },
+  options?: StreamHermesOptions,
 ): AsyncGenerator<string> {
   for await (const event of streamHermesEvents(config, messages, options)) {
     if (event.type === "delta") yield event.text;
   }
 }
 
+/**
+ * Optional post-stream poll for usage when the SSE path did not emit it.
+ * Best-effort — failures return null.
+ */
+export async function fetchHermesRunUsage(
+  config: HermesConfig,
+  runId: string,
+  options?: CallHermesOptions,
+): Promise<NormalizedHermesUsage | null> {
+  const id = runId.trim();
+  if (!id) return null;
+  try {
+    const url = `${config.baseUrl.replace(/\/$/, "")}/v1/runs/${encodeURIComponent(id)}`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: hermesAuthHeaders(config, options),
+      signal: options && "signal" in options ? undefined : undefined,
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return normalizeHermesUsage(data) ?? normalizeHermesUsage(data?.usage);
+  } catch {
+    return null;
+  }
+}
+
 export async function* streamHermesEvents(
   config: HermesConfig,
   messages: { role: string; content: string }[],
-  options?: { temperature?: number; signal?: AbortSignal },
+  options?: StreamHermesOptions,
 ): AsyncGenerator<HermesStreamEvent> {
   const url = `${config.baseUrl.replace(/\/$/, "")}/v1/chat/completions`;
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
+    headers: hermesAuthHeaders(config, options),
     body: JSON.stringify({
       model: resolveHermesModel(config),
       messages,
