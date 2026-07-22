@@ -22,7 +22,8 @@ import {
 } from './personnel/context';
 import { formatSystemsPromptContext } from './systems';
 
-const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
+/** Background diagram subagent system role (also listed in prompt catalog). */
+export const DIAGRAM_SYSTEM_PROMPT = `You are a business process diagrammer for Hermes Forge.
 
 Given a conversation about ONE business process, produce or update a Mermaid flowchart that visualizes the process at the current level of understanding.
 
@@ -34,7 +35,7 @@ Rules:
 - Add new nodes and edges as new information appears; refine labels when the user corrects you.
 - If the process is barely started, show a minimal skeleton (trigger → first step → ?).
 - Use semantic node IDs like trigger, step1, decision1 — not random letters.
-- NEVER use reserved words as node IDs: end, subgraph, graph, class, style. Use finish, done, or complete instead of end.
+- NEVER use reserved words as node or subgraph IDs: end, default, subgraph, graph, class, style. Use finish/done instead of end; use hermesAgent (or similar) instead of default for the default Hermes agent lane.
 - Keep labels simple: letters, numbers, spaces only. No parentheses, quotes, or colons in labels.
 
 Example output:

@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Code, Info, Palette } from "lucide-react";
+import { Code, Info, Palette, ScrollText } from "lucide-react";
 
-export type SettingsViewId = "appearance" | "about" | "developer";
+export type SettingsViewId = "appearance" | "agent-prompts" | "about" | "developer";
 
 export interface SettingsSection {
   id: SettingsViewId;
@@ -15,6 +15,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     id: "appearance",
     label: "Appearance",
     icon: Palette,
+  },
+  {
+    id: "agent-prompts",
+    label: "Agent prompts",
+    icon: ScrollText,
   },
   {
     id: "about",

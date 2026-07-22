@@ -6,6 +6,7 @@ import { SegmentedControl } from "@/components/ui";
 import { getSettingsSections, type SettingsViewId } from "@/lib/settings-views";
 import { useDeveloperSettings } from "./DeveloperSettingsProvider";
 import { SettingsAbout } from "./SettingsAbout";
+import { SettingsAgentPrompts } from "./SettingsAgentPrompts";
 import { SettingsAppearance } from "./SettingsAppearance";
 import { SettingsDeveloper } from "./SettingsDeveloper";
 
@@ -42,6 +43,8 @@ function SettingsPanel({ view }: { view: SettingsViewId }) {
   switch (view) {
     case "appearance":
       return <SettingsAppearance />;
+    case "agent-prompts":
+      return <SettingsAgentPrompts />;
     case "about":
       return <SettingsAbout />;
     case "developer":

@@ -549,6 +549,15 @@ Home hero composer stays: it **creates** a process + seeds chat; chatbar is ongo
 - **Acceptance:** model switchable in dock; meter updates with draft; steer capability-gated
 - **Shipped surface:** `ChatbarDesktopBar`, `context-meter.ts`, `capabilities.ts`, `diagnostics.ts`
 
+### PR-7+ — Unified surface (4.19, in progress)
+
+Design + plan: `docs/superpowers/specs/2026-07-22-unified-global-chatbar-design.md`,  
+`docs/superpowers/plans/2026-07-22-unified-global-chatbar.md`.  
+Hermes API research: `docs/references/HERMES_API_SERVER.md`.
+
+- **Task 0 (shipped):** prompt catalog (`lib/chatbar/prompt-catalog.ts`) + Settings → **Agent prompts** (list + live preview via `/api/settings/prompt-catalog` and `/api/settings/prompt-preview`). Same builders as chat; no dual prompt strings.
+- Remaining: usage/meter, session headers, unified composer, process stream parity, Workshop cutover, automation cutover, approvals, Responses pilot.
+
 ---
 
 ## 12. Acceptance criteria (epic-level)

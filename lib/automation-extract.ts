@@ -1,7 +1,8 @@
 import { callHermes, parseJsonFromLlm, type HermesConfig } from './hermes';
 import type { AutomationExtraction, AutomationPlan, IntegrationRequirement } from './automation-types';
 
-const EXTRACTION_SYSTEM = `You are an automation plan extractor for Hermes Forge.
+/** Background extraction system role (also listed in prompt catalog). */
+export const EXTRACTION_SYSTEM = `You are an automation plan extractor for Hermes Forge.
 
 Given an approved process map and an automation design conversation, extract structured data.
 
