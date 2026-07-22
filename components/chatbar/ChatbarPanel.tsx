@@ -139,6 +139,7 @@ export function ChatbarPanel() {
     isProcessScoped,
     pageModule,
     isProcessPinned,
+    isAutomationPinned,
     automationSession,
     isAutomationScoped,
     composerFocusRequest,
@@ -146,6 +147,10 @@ export function ChatbarPanel() {
   } = useChatbar();
   const processPin =
     isProcessPinned && pageModule?.pin?.type === "process"
+      ? pageModule.pin
+      : null;
+  const automationPin =
+    isAutomationPinned && pageModule?.pin?.type === "automation"
       ? pageModule.pin
       : null;
   const { isConnected, status, config, setModel } = useHermesConnection();
@@ -236,9 +241,11 @@ export function ChatbarPanel() {
 
   const activeConversationTitle =
     conversations.find((c) => c.id === activeConversationId)?.title || null;
-  const activeTitle = processPin
-    ? processPin.label
-    : activeConversationTitle || "Studio chat";
+  const activeTitle = automationPin
+    ? automationPin.label
+    : processPin
+      ? processPin.label
+      : activeConversationTitle || "Studio chat";
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -497,6 +504,104 @@ export function ChatbarPanel() {
       }
     },
     [],
+  );
+
+  /** Task 6: load automation design messages for automation pin. */
+  const loadAutomationScopedThread = useCallback(
+    async (processId: string) => {
+      if (!businessId || !processId) return;
+      setLoadingList(true);
+      setLoadingMessages(true);
+      try {
+        await fetch("/api/overlord/ensure-hired", { method: "POST" });
+        const agentsRes = await fetch("/api/personnel/agents");
+        const agentsData = agentsRes.ok ? await agentsRes.json() : {};
+        const hired: ChatbarAgentOption[] = (agentsData.hired || []).map(
+          (a: ChatbarAgentOption) => ({
+            id: a.id,
+            displayName: a.displayName,
+            description: a.description,
+            model: a.model,
+            profileKey: a.profileKey,
+            iconKey: a.iconKey,
+            isDefault: a.isDefault,
+            hiredAt: a.hiredAt,
+          }),
+        );
+        setHiredAgents(hired);
+        const overlordRes = await fetch("/api/overlord");
+        let overlordKey: string | null = null;
+        if (overlordRes.ok) {
+          const od = await overlordRes.json();
+          overlordKey =
+            typeof od.overlord?.profileKey === "string"
+              ? od.overlord.profileKey
+              : null;
+        }
+        setOverlordProfileKey(overlordKey);
+        const overlordHired =
+          (overlordKey && hired.find((a) => a.profileKey === overlordKey)) ||
+          null;
+        if (overlordHired) {
+          setActiveAgentId(overlordHired.id);
+          saveActiveChatbarAgentId(businessId, overlordHired.id);
+        }
+
+        const res = await fetch(`/api/processes/${processId}/automation`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to load automation chat");
+        }
+        const data = await res.json();
+        const autoId = data.automation?.id || processId;
+        setConversations([
+          {
+            id: `automation:${autoId}`,
+            title: "Automation design",
+            kind: "process",
+            businessId,
+            processId,
+            forkedFromId: null,
+            hermesAgentProfileId: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            _count: {
+              messages: data.automation?.messages?.length ?? 0,
+            },
+          } as unknown as StudioListItem,
+        ]);
+        setActiveConversationId(`automation:${autoId}`);
+        setMessages(
+          (data.automation?.messages || []).map(
+            (m: ChatMessage & { createdAt?: string | Date }) => ({
+              id: m.id,
+              processId,
+              conversationId: null,
+              role: m.role,
+              content: m.content,
+              createdAt:
+                typeof m.createdAt === "string"
+                  ? m.createdAt
+                  : m.createdAt
+                    ? new Date(m.createdAt).toISOString()
+                    : new Date().toISOString(),
+            }),
+          ),
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not load automation chat",
+        );
+        setConversations([]);
+        setMessages([]);
+      } finally {
+        setLoadingList(false);
+        setLoadingMessages(false);
+      }
+    },
+    [businessId],
   );
 
   /** Task 5: load process-kind threads for Workshop pin (unified tree). */
@@ -807,18 +912,28 @@ export function ChatbarPanel() {
     [businessId, loadConversationMessages, pathname],
   );
 
-  // Studio threads OR process-pinned Workshop threads (Task 5 unified tree)
+  // Studio / process pin / automation pin (Tasks 5–6 unified tree)
   useEffect(() => {
+    if (automationPin) {
+      void loadAutomationScopedThread(automationPin.id);
+      return;
+    }
     if (processPin) {
       void loadProcessScopedThreads(processPin.id);
       return;
     }
     void loadConversations();
-  }, [processPin?.id, loadConversations, loadProcessScopedThreads]);
+  }, [
+    processPin?.id,
+    automationPin?.id,
+    loadConversations,
+    loadProcessScopedThreads,
+    loadAutomationScopedThread,
+  ]);
 
   // Home Send opens chat after seeding; re-load so the pending studio thread is selected
   useEffect(() => {
-    if (processPin) return;
+    if (processPin || automationPin) return;
     if (!isOpen || !businessId) return;
     const pending = peekPendingStudioReply();
     if (!pending || pending.businessId !== businessId) return;
@@ -828,7 +943,7 @@ export function ChatbarPanel() {
     void loadConversations(pending.hermesAgentProfileId);
     // Only when dock opens or business changes — avoid loops on every message update
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: open handoff
-  }, [isOpen, businessId, processPin?.id]);
+  }, [isOpen, businessId, processPin?.id, automationPin?.id]);
 
   // Decision redirect: switch agent + conversation when requested
   useEffect(() => {
@@ -899,6 +1014,10 @@ export function ChatbarPanel() {
 
   const createConversation = useCallback(async () => {
     try {
+      if (automationPin) {
+        toast.message("Automation design uses a single design thread");
+        return;
+      }
       if (processPin) {
         const res = await fetch(
           `/api/processes/${processPin.id}/conversations`,
@@ -944,7 +1063,7 @@ export function ChatbarPanel() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create chat");
     }
-  }, [selectConversation, activeAgentId, processPin, businessId]);
+  }, [selectConversation, activeAgentId, processPin, automationPin, businessId]);
 
   const sendMessageNow = useCallback(
     async (text: string, options?: { replyOnly?: boolean; route?: string }) => {
@@ -958,9 +1077,185 @@ export function ChatbarPanel() {
         return;
       }
 
+      // Task 6: automation design pin — dedicated API + SSE
+      if (automationPin && !replyOnly) {
+        const processId = automationPin.id;
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setSending(true);
+        setToolActivities([]);
+        setActiveRunId(null);
+
+        const optimisticUser: ChatMessage = {
+          id: `temp-user-${Date.now()}`,
+          processId,
+          conversationId: null,
+          role: "user",
+          content: text,
+          createdAt: new Date().toISOString(),
+        };
+        const tempAssistantId = `temp-assistant-${Date.now()}`;
+        setMessages((prev) => [
+          ...prev,
+          optimisticUser,
+          {
+            id: tempAssistantId,
+            processId,
+            conversationId: null,
+            role: "assistant",
+            content: "",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setDraft("");
+
+        try {
+          const res = await fetch(
+            `/api/processes/${processId}/automation/chat`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content: text,
+                stream: true,
+                ...hermesApiBody(config),
+              }),
+              signal: controller.signal,
+            },
+          );
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `Chat failed (${res.status})`);
+          }
+          if (!res.body) throw new Error("Empty stream");
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let streamed = "";
+          let doneStudio: unknown = null;
+          let runExtraction = false;
+          let cronLinked = false;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const parsed = parseSseBlocks(buffer);
+            buffer = parsed.rest;
+            for (const block of parsed.blocks) {
+              if (block.event === "delta") {
+                const payload = parseSseJson<{ text?: string }>(block.data);
+                if (payload?.text) {
+                  streamed += payload.text;
+                  const snapshot = streamed;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === tempAssistantId
+                        ? { ...m, content: snapshot }
+                        : m,
+                    ),
+                  );
+                }
+              } else if (block.event === "usage") {
+                const payload = parseSseJson<NormalizedHermesUsage>(block.data);
+                if (payload && typeof payload.promptTokens === "number") {
+                  setLastTurnUsage(payload);
+                }
+              } else if (block.event === "run_id") {
+                const payload = parseSseJson<{ runId?: string }>(block.data);
+                if (payload?.runId) setActiveRunId(payload.runId);
+              } else if (
+                block.event === "tool" ||
+                block.event === "tool_activity"
+              ) {
+                const payload = parseSseJson<Record<string, unknown>>(
+                  block.data,
+                );
+                if (payload) {
+                  setToolActivities((prev) =>
+                    pruneToolActivities(reduceToolActivities(prev, payload)),
+                  );
+                }
+              } else if (block.event === "done") {
+                const payload = parseSseJson<{
+                  message?: { content?: string };
+                  runExtraction?: boolean;
+                  cronLinked?: boolean;
+                  automation?: { messages?: ChatMessage[] };
+                  process?: unknown;
+                }>(block.data);
+                runExtraction = Boolean(payload?.runExtraction);
+                cronLinked = Boolean(payload?.cronLinked);
+                doneStudio = payload;
+                if (payload?.automation?.messages) {
+                  setMessages(
+                    payload.automation.messages.map((m) => ({
+                      id: m.id,
+                      processId,
+                      conversationId: null,
+                      role: m.role,
+                      content: m.content,
+                      createdAt:
+                        typeof m.createdAt === "string"
+                          ? m.createdAt
+                          : new Date().toISOString(),
+                    })),
+                  );
+                } else if (payload?.message?.content) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === tempAssistantId
+                        ? {
+                            ...m,
+                            id: `asst-${Date.now()}`,
+                            content: payload.message!.content!,
+                          }
+                        : m.id === optimisticUser.id
+                          ? m
+                          : m,
+                    ),
+                  );
+                }
+              } else if (block.event === "error") {
+                const payload = parseSseJson<{ error?: string }>(block.data);
+                throw new Error(payload?.error || "Stream error");
+              }
+            }
+          }
+
+          pageModule?.onAutomationTurnComplete?.({
+            processId,
+            runExtraction,
+            cronLinked,
+            studio: doneStudio,
+          });
+          if (cronLinked) {
+            toast.success("Detected existing Hermes cron job for this process");
+          }
+        } catch (error) {
+          if ((error as Error)?.name === "AbortError") {
+            toast.message("Stopped");
+          } else {
+            toast.error(
+              error instanceof Error ? error.message : "Chat failed",
+            );
+            void loadAutomationScopedThread(processId);
+          }
+        } finally {
+          if (abortRef.current === controller) abortRef.current = null;
+          setSending(false);
+          setActiveRunId(null);
+          textareaRef.current?.focus();
+        }
+        return;
+      }
+
       if (!activeConversationId) {
         toast.error(
-          processPin ? "No process conversation open" : "No studio conversation open",
+          processPin
+            ? "No process conversation open"
+            : "No studio conversation open",
         );
         return;
       }
@@ -1336,7 +1631,9 @@ export function ChatbarPanel() {
       blurb.routeKey,
       introBanner,
       processPin,
+      automationPin,
       pageModule,
+      loadAutomationScopedThread,
     ],
   );
 
@@ -1800,15 +2097,20 @@ export function ChatbarPanel() {
             <span
               className="chatbar-panel__session-title"
               title={
-                processPin && activeConversationTitle
-                  ? `${processPin.label} · ${activeConversationTitle}`
-                  : activeTitle
+                automationPin
+                  ? `Automation · ${automationPin.label}`
+                  : processPin && activeConversationTitle
+                    ? `${processPin.label} · ${activeConversationTitle}`
+                    : activeTitle
               }
             >
-              {processPin && activeConversationTitle
-                ? `${processPin.label}`
-                : activeTitle}
+              {activeTitle}
             </span>
+            {automationPin && pageModule?.statusLabel ? (
+              <span className="chatbar-panel__pill chatbar-panel__pill--warn" role="status">
+                {pageModule.statusLabel}
+              </span>
+            ) : null}
             <span className="chatbar-panel__session-caret" aria-hidden>
               ⌄
             </span>
@@ -2090,25 +2392,29 @@ export function ChatbarPanel() {
                 : undefined
             }
             showHelperHints={Boolean(processPin)}
-            ariaLabel={
-              processPin
-                ? `Message Overlord about ${processPin.label}`
-                : activeAgentLabel
-                  ? `Message ${activeAgentLabel}`
-                  : "Message Hermes"
-            }
             placeholder={
               !businessId
                 ? "Select a business to start chatting…"
                 : !isConnected
                   ? "Connect Hermes, then ask about this page…"
-                  : processPin
-                    ? "Describe steps, actors, tools… try / or @"
-                    : sending
-                      ? "Type to queue a follow-up while Hermes replies…"
-                      : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
-                        ? "Chat only — no page snapshot…"
-                        : "Ask about this page or your business…"
+                  : automationPin
+                    ? "Describe what to automate, schedule, tools…"
+                    : processPin
+                      ? "Describe steps, actors, tools… try / or @"
+                      : sending
+                        ? "Type to queue a follow-up while Hermes replies…"
+                        : contextMode === CHATBAR_CONTEXT_MODES.CHAT_ONLY
+                          ? "Chat only — no page snapshot…"
+                          : "Ask about this page or your business…"
+            }
+            ariaLabel={
+              automationPin
+                ? `Design automation for ${automationPin.label}`
+                : processPin
+                  ? `Message Overlord about ${processPin.label}`
+                  : activeAgentLabel
+                    ? `Message ${activeAgentLabel}`
+                    : "Message Hermes"
             }
             selectionPills={
               contextMode !== CHATBAR_CONTEXT_MODES.CHAT_ONLY &&

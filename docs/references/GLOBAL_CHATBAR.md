@@ -561,7 +561,8 @@ Hermes API research: `docs/references/HERMES_API_SERVER.md`.
 - **Task 3 (shipped):** Unified `ChatbarComposer` (studio chrome + optional @ / slash); studio panel + process embed use it.
 - **Task 4 (shipped):** Process chat streams via `streamProcessChatTurn` / SSE (`lib/chatbar/process-chat-turn.ts`); studio route accepts `kind=process`; Workshop client parses deltas.
 - **Task 5 (shipped):** Workshop cutover — `registerPageModule` + process pin; single ChatbarPanel tree; roll back with `localStorage forge.chatbar.unifiedWorkshop=0`.
-- Remaining: automation cutover, approvals, Responses pilot.
+- **Task 6 (shipped):** Automation design pin + streamed automation chat; same unified tree.
+- Remaining: approvals, Responses pilot.
 
 ---
 

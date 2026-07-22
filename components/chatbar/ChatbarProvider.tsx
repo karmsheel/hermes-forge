@@ -23,7 +23,9 @@ import type { AutomationSessionBinding } from "@/lib/chatbar/automation-session"
 import type { ProcessSessionBinding } from "@/lib/chatbar/process-session";
 import type { PageChatModule } from "@/lib/chatbar/page-module";
 import {
+  isAutomationPin,
   isProcessPin,
+  isUnifiedAutomationChatEnabled,
   isUnifiedWorkshopChatEnabled,
 } from "@/lib/chatbar/page-module";
 import { isChatbarHiddenPath } from "@/lib/chatbar/agent-label";
@@ -113,6 +115,8 @@ interface ChatbarContextValue {
   registerPageModule: (module: PageChatModule | null) => void;
   /** Unified process pin mode (single panel tree). */
   isProcessPinned: boolean;
+  /** Unified automation design pin (Task 6). */
+  isAutomationPinned: boolean;
 
   /**
    * When set, chatbar is automation-studio scoped.
@@ -120,6 +124,7 @@ interface ChatbarContextValue {
    */
   automationSession: AutomationSessionBinding | null;
   registerAutomationSession: (session: AutomationSessionBinding | null) => void;
+  /** Legacy embed; false when isAutomationPinned. */
   isAutomationScoped: boolean;
 
   /** Focus process/studio composer; optional prefill */
@@ -281,9 +286,15 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
   const isProcessPinned = Boolean(
     isUnifiedWorkshopChatEnabled() && isProcessPin(pageModule?.pin),
   );
+  const isAutomationPinned = Boolean(
+    isUnifiedAutomationChatEnabled() && isAutomationPin(pageModule?.pin),
+  );
   /** Legacy ProcessChat tree only when not using unified pin mode. */
   const isProcessScoped =
     Boolean(processSession) && !isProcessPinned;
+  /** Legacy AutomationChat tree only when not using unified pin mode. */
+  const isAutomationScopedLegacy =
+    Boolean(automationSession) && !isAutomationPinned;
 
   const requestPageIntro = useCallback((_routeKey?: string) => {
     setIntroRequestKey((k) => k + 1);
@@ -399,9 +410,10 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       pageModule,
       registerPageModule,
       isProcessPinned,
+      isAutomationPinned,
       automationSession,
       registerAutomationSession,
-      isAutomationScoped: Boolean(automationSession),
+      isAutomationScoped: isAutomationScopedLegacy,
       focusComposer,
       composerFocusRequest,
       openDecisionSession,
@@ -433,8 +445,10 @@ export function ChatbarProvider({ children }: { children: ReactNode }) {
       pageModule,
       registerPageModule,
       isProcessPinned,
+      isAutomationPinned,
       automationSession,
       registerAutomationSession,
+      isAutomationScopedLegacy,
       focusComposer,
       composerFocusRequest,
       openDecisionSession,

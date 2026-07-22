@@ -42,6 +42,18 @@ export type PageChatModule = {
     runBackgroundAgents: boolean;
     conversationId?: string | null;
   }) => void;
+  /**
+   * After an automation design turn (Task 6).
+   * Page reloads studio / runs plan extraction.
+   */
+  onAutomationTurnComplete?: (payload: {
+    processId: string;
+    runExtraction: boolean;
+    cronLinked?: boolean;
+    studio?: unknown;
+  }) => void;
+  /** Optional status chip (e.g. "Updating plan…"). */
+  statusLabel?: string | null;
   /** Optional: comment dots / message sync for Workshop diagram. */
   onMessagesSynced?: (messages: ChatMessage[]) => void;
 };
@@ -52,8 +64,26 @@ export function isProcessPin(
   return Boolean(pin && pin.type === "process" && pin.id);
 }
 
+export function isAutomationPin(
+  pin: PageChatPin | null | undefined,
+): pin is PageChatPin & { type: "automation" } {
+  return Boolean(pin && pin.type === "automation" && pin.id);
+}
+
 /** Default on; set localStorage forge.chatbar.unifiedWorkshop=0 to roll back. */
 export function isUnifiedWorkshopChatEnabled(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    const v = window.localStorage.getItem("forge.chatbar.unifiedWorkshop");
+    if (v === "0" || v === "false") return false;
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
+
+/** Same flag for automation design cutover (Task 6). */
+export function isUnifiedAutomationChatEnabled(): boolean {
   if (typeof window === "undefined") return true;
   try {
     const v = window.localStorage.getItem("forge.chatbar.unifiedWorkshop");
