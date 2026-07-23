@@ -7,10 +7,12 @@
 > https://raw.githubusercontent.com/NousResearch/hermes-agent/main/website/docs/user-guide/features/api-server.md  
 >
 > **Local archive (snapshot):** [`upstream/hermes-api-server.md`](./upstream/hermes-api-server.md)  
-> **Researched:** 2026-07-21  
-> **Purpose:** What the Hermes API server actually exposes, how Forge uses it today, what we can wire for the **context window meter**, and other inefficiencies / opportunities.
+> **Researched:** 2026-07-21 · **Forge status reconciled:** 2026-07-23  
+> **Purpose:** What the Hermes API server exposes, how Forge uses it, context-window meter honesty, and residual gaps.
 
 Re-fetch the upstream doc when re-auditing; capabilities move quickly. Keep this analysis updated when Forge adopts or deliberately skips a surface.
+
+**P0 residual status (2026-07-23):** Interactive chat path is **shipped** for usage meter, stream parity, session headers, approvals, and unified chatbar (4.19 Tasks 0–7, 9). The only open **P1 architecture** item from the original sequence is the **Responses/Sessions pilot** (Task 8). Meter polish, skills/toolsets, and `/health/detailed` are **P2**. True remaining-window fill remains **blocked** on Hermes [#15618](https://github.com/NousResearch/hermes-agent/issues/15618).
 
 ---
 
@@ -22,10 +24,10 @@ Important limitations called out by upstream:
 
 | Limitation | Implication for Forge |
 |------------|------------------------|
-| **`model` field is cosmetic** | Request `model` does not switch the underlying LLM. Real model is configured server-side (`config.yaml` / profile). Forge’s model picker can only select **profile-advertised ids** (or confuse users if we imply provider model switching). |
+| **`model` field is cosmetic** | Request `model` does not switch the underlying LLM. Real model is configured server-side (`config.yaml` / profile). Forge picker copy states this (tooltip: Hermes model / profile id). |
 | **No file upload** via API | Images yes (inline `image_url` / `input_image`); arbitrary files/`file_id` → 400. |
 | **Response storage cap** | `previous_response_id` chain: max **100** stored responses (LRU), SQLite-persisted across restarts. |
-| **Chat Completions is stateless** | Client must send full `messages[]` each turn. |
+| **Chat Completions is stateless** | Client must send full `messages[]` each turn (still Forge default for interactive chat). |
 
 ---
 
@@ -35,28 +37,28 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 
 | Endpoint | Upstream purpose | Forge today |
 |----------|------------------|-------------|
-| `POST /v1/chat/completions` | Stateless chat; SSE + `hermes.tool.progress`; **`usage` in non-stream JSON** | ✅ Core path. Studio + **process** chat stream via `streamHermesEvents` (`process-chat-turn.ts`); usage SSE + run poll. |
-| `POST /v1/responses` | Responses API; server-side history via `previous_response_id` / named `conversation`; tool calls in `output[]`; **`usage`** | ❌ Unused. Big opportunity for session continuity + less re-send. |
+| `POST /v1/chat/completions` | Stateless chat; SSE + `hermes.tool.progress`; **`usage` in non-stream JSON** | ✅ Core path. Studio + process + automation chat stream via `streamHermesEvents` and shared runners (`process-chat-turn.ts`, `automation-chat-turn.ts`). Usage from SSE and/or run poll. |
+| `POST /v1/responses` | Responses API; server-side history via `previous_response_id` / named `conversation`; tool calls in `output[]`; **`usage`** | ❌ Unused. Pilot brief: [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md) (Task 8, not started). |
 | `GET /v1/responses/{id}` | Fetch stored response | ❌ |
 | `DELETE /v1/responses/{id}` | Delete stored response | ❌ |
-| `GET /v1/models` | Advertise agent/profile as model id | ✅ Used for picker; only `id` kept — no metadata (and upstream rarely exposes real context length here). |
-| `GET /v1/capabilities` | Feature discovery for UIs | ✅ Probe (`lib/hermes-connection.ts`); chatbar maps subset (`run_stop`, `run_steer`, …). |
+| `GET /v1/models` | Advertise agent/profile as model id | ✅ Used for picker; only `id` kept — no context-length metadata. |
+| `GET /v1/capabilities` | Feature discovery for UIs | ✅ Probe (`lib/hermes-connection.ts`); chatbar maps `run_stop`, `run_steer`, `run_approval`, … |
 | `GET /health` | Liveness | ✅ |
 | `GET /v1/health` | Same under `/v1` | 🟡 unused (alias) |
-| `GET /health/detailed` | Authenticated readiness (counts, not secrets) | ❌ Could power Settings “Hermes health” without scraping logs |
-| `POST /v1/runs` | Async run create (`run_id`) | 🟡 We mostly rely on stream-embedded run ids, not explicit create |
-| `GET /v1/runs/{id}` | Poll status + **`usage`** | 🟡 Studio chat polls after stream when usage missing from SSE |
-| `GET /v1/runs/{id}/events` | SSE tool progress / deltas / lifecycle | 🟡 Studio proxies deltas/tools from chat-completions stream instead |
+| `GET /health/detailed` | Authenticated readiness (counts, not secrets) | ❌ P2 — Settings “Hermes health” candidate |
+| `POST /v1/runs` | Async run create (`run_id`) | 🟡 Stream-embedded run ids preferred; not explicit create |
+| `GET /v1/runs/{id}` | Poll status + **`usage`** | ✅ Post-stream poll when usage missing from SSE (`fetchHermesRunUsage`) |
+| `GET /v1/runs/{id}/events` | SSE tool progress / deltas / lifecycle | 🟡 Forge uses chat-completions stream events instead |
 | `POST /v1/runs/{id}/stop` | Soft-cancel run | ✅ Chatbar stop |
 | `POST /v1/runs/{id}/steer` | Steer active run | ✅ Capability-gated |
-| `POST /v1/runs/{id}/approval` | Human approval for gated tools | ✅ Chatbar modal on `approval.request` → Approve once / session / always / Deny |
+| `POST /v1/runs/{id}/approval` | Human approval for gated tools | ✅ `ChatbarApprovalModal` on `approval.request` → once / session / always / deny |
 | Jobs `/api/jobs/*` | Cron/scheduled jobs CRUD + pause/run | ✅ Cronalytics / automation job surface |
-| Sessions `/api/sessions/*` | List/create/fork/chat/stream Hermes sessions | 🟡 **Foundation → Sessions** (`/sessions`) proxies list/create/get/patch/delete/messages/fork/chat. Forge studio conversations remain separate (no 1:1 runtime map yet). Stream chat not proxied. |
-| `GET /v1/skills` | Enumerate skills metadata | ❌ |
-| `GET /v1/toolsets` | Enumerate toolsets + tools | ❌ |
-| Header `X-Hermes-Session-Id` | Transcript/session continuity | ✅ Studio + process + automation chat: `forge-conv:{conversationId}` via `lib/chatbar/session-headers.ts` |
-| Header `X-Hermes-Session-Key` | **Stable long-term memory scope** (Honcho), independent of transcript rotation | ✅ `forge:{userId}:{businessId}:{agentProfileKey\|default}` on interactive chat routes |
-| Header `Idempotency-Key` | 5‑min response dedupe | ❌ |
+| Sessions `/api/sessions/*` | List/create/fork/chat/stream Hermes sessions | 🟡 **Foundation → Sessions** (`/sessions`) via `/api/hermes/sessions/*` (list/create/get/patch/delete/messages/fork/chat). **Not** 1:1 runtime map for Forge studio conversations. Stream chat not used by global chatbar. |
+| `GET /v1/skills` | Enumerate skills metadata | ❌ P2 |
+| `GET /v1/toolsets` | Enumerate toolsets + tools | ❌ P2 |
+| Header `X-Hermes-Session-Id` | Transcript/session continuity | ✅ Studio + process + automation: `forge-conv:{conversationId}` (`lib/chatbar/session-headers.ts`) |
+| Header `X-Hermes-Session-Key` | **Stable long-term memory scope** (Honcho) | ✅ `forge:{userId}:{businessId}:{agentProfileKey\|default}` on interactive chat routes |
+| Header `Idempotency-Key` | 5‑min response dedupe | ❌ P3 |
 
 ### Documented response shapes relevant to metering
 
@@ -72,42 +74,52 @@ Legend: ✅ used · 🟡 partial · ❌ not used · ⚠️ used differently than
 "usage": { "input_tokens": 50, "output_tokens": 200, "total_tokens": 250 }
 ```
 
-Streaming Chat Completions: standard `chat.completion.chunk` + custom `hermes.tool.progress`. Final usage on streams is **not** clearly guaranteed in this doc; non-stream and `GET /v1/runs/{id}` are the reliable documented usage surfaces.
+Streaming Chat Completions: final usage is **not** always present in SSE; Forge normalizes usage from stream chunks when present, else **`GET /v1/runs/{id}`** after the turn (`lib/hermes-stream.ts` → `fetchHermesRunUsage`).
 
 ---
 
-## 3. Context window meter — what is actually possible
+## 3. Context window meter
 
-### 3.1 Current Forge behavior (reminder)
+### 3.1 Current Forge behavior (shipped — dual-mode)
 
-`lib/chatbar/context-meter.ts`:
+| Layer | Implementation | Honesty |
+|-------|----------------|---------|
+| **Draft estimate (while typing)** | `estimateStudioPromptTokens` — history + draft + page context + fixed ~1200 char system overhead; `chars/4` | Local heuristic; labeled **estimate** |
+| **Last-turn Hermes usage** | SSE `usage` (or run poll) → `NormalizedHermesUsage` → `lastTurnPromptTokens` on meter | **Real** turn `prompt_tokens` / `input_tokens` (billing-style, not remaining window) |
+| **Limit** | `DEFAULT_MODEL_CONTEXT_TOKENS = 128_000` unless `modelContextTokens` passed | Callers **do not** pass a real model window yet |
+| **UI** | Detail like `12k / 128k · est · last 18k`; tooltip distinguishes draft estimate vs last Hermes prompt | |
 
-- **Used:** local `chars/4` over history + draft + page context + fixed ~1200 char overhead  
-- **Limit:** hardcoded **128_000** (`DEFAULT_MODEL_CONTEXT_TOKENS`) unless `modelContextTokens` is passed (callers currently **don’t**)  
-- UI explicitly labels **estimate**, not live runtime usage  
+**Key files:**
+
+- `lib/chatbar/usage.ts` — normalize Chat Completions / Responses / Runs usage  
+- `lib/chatbar/context-meter.ts` — estimate + dual-mode display  
+- `lib/hermes-stream.ts` — stream `usage` events + `fetchHermesRunUsage`  
+- `lib/hermes.ts` — `callHermesWithMeta` returns `{ content, usage }` (string `callHermes` still discards usage for one-shot helpers)  
+- `components/chatbar/ChatbarPanel.tsx` — `lastTurnUsage` state from SSE  
+- Shared runners: `process-chat-turn.ts`, `automation-chat-turn.ts`  
+
+**Still open (meter polish — P2):**
+
+1. **Persist** last-turn usage (reload / thread switch clears client state).  
+2. **Pass `modelContextTokens`** (or align default 128k → Hermes 256k fallback / label).  
+3. **Richer estimate numerator** — fixed 1200 char overhead ≠ full system + docs envelope; optional server `promptChars` on receipt.  
+4. Optionally seed fill bar from `lastTurnPromptTokens` when draft is empty (today last-turn is label-only; %).  
 
 ### 3.2 What the API server *does* give us today
 
 | Signal | Source | Useful for meter? | Caveat |
 |--------|--------|-------------------|--------|
-| Turn `prompt_tokens` / `input_tokens` | Non-stream completion, Responses, `GET /v1/runs/{id}` | **Yes — last-turn prompt size** | Not remaining window; not post-compaction session fill; not live while typing |
-| Turn `completion_tokens` / `output_tokens` | Same | Cost / session totals, not fill | |
-| `total_tokens` | Same | Billing-ish total for the turn | Cumulative across turns ≠ context occupancy |
-| Model id from `/v1/models` or capabilities | `model` field | Label only | Not the underlying LLM context size |
-| Capabilities feature flags | `/v1/capabilities` | Gate UI | Does not include context length |
+| Turn `prompt_tokens` / `input_tokens` | Non-stream completion, Responses, stream chunk, `GET /v1/runs/{id}` | **Yes — last-turn prompt size** (wired) | Not remaining window; not post-compaction fill; not live while typing |
+| Turn `completion_tokens` / `output_tokens` | Same | Cost / session totals | Not wired into dock meter |
+| `total_tokens` | Same | Turn total | Cumulative ≠ context occupancy |
+| Model id from `/v1/models` | `model` field | Label only | Not underlying LLM context size |
+| Capabilities feature flags | `/v1/capabilities` | Gate stop/steer/approval UI | No context length |
 
 ### 3.3 What the API server does *not* give us (yet)
 
-Upstream issue tracking exactly this gap:
+- **[NousResearch/hermes-agent#15618](https://github.com/NousResearch/hermes-agent/issues/15618)** — expose `context_tokens`, `context_length`, compaction metadata on run events (open as of research; P3 upstream).
 
-- **[NousResearch/hermes-agent#15618](https://github.com/NousResearch/hermes-agent/issues/15618)** — *“Expose real prompt context usage and compaction metadata in API run events”* (open as of research date; P3).
-
-That issue states clients currently only have imperfect signals:
-
-1. **Cumulative billing usage** ≠ current context (grows forever; doesn’t shrink after compaction).  
-2. **Client transcript estimation** misses system prompt, memory, skills, tool schemas, hidden formatting, tokenizer differences; goes stale after compaction.
-
-Hermes **internally** tracks better values (`last_prompt_tokens`, compressor, resolved `context_length` via `agent/model_metadata.py`), but those are **not** documented on the public API surface for thin clients.
+Until that ships, clients cannot show a fully honest **remaining context** bar. Cumulative billing usage and local transcript estimates both fail after compaction (Hermes tracks better values internally via compressor / `model_metadata.py`).
 
 **Proposed (not shipped) fields** from #15618:
 
@@ -123,178 +135,139 @@ Hermes **internally** tracks better values (`last_prompt_tokens`, compressor, re
 }
 ```
 
-Until that ships, **no client can show a fully honest “remaining context” bar** without estimating or proxying internal Hermes state.
+### 3.4 Implementation tiers (status)
 
-### 3.4 Recommended Forge implementation tiers
-
-#### Tier A — Wire documented usage (high value, low risk) — **do now**
-
-1. Parse `usage` from:
-   - Non-stream `callHermes` responses (today throws away whole JSON except content).  
-   - Stream end: if a final chunk / run status includes usage, forward it; else after stream, optional `GET /v1/runs/{run_id}` when `run_id` known.  
-2. Emit SSE event e.g. `usage` on studio/process chat routes.  
-3. Context meter dual-mode:
-   - **While composing:** keep improved local estimate (history + draft + *actual system/context strings we inject*).  
-   - **After turn:** show **last prompt tokens** from Hermes (`prompt_tokens` / `input_tokens`) as “Last request: 18.4k tokens” and seed the next estimate baseline.  
-4. Persist last usage on conversation/message row (optional) for re-open.
-
-This is **real Hermes-reported data**, but it is **turn billing usage**, not live remaining context. Label clearly: *“Last turn · Hermes usage”* vs *“Draft estimate”*.
-
-#### Tier B — Better limit + estimate (medium)
-
-1. **Limit:**  
-   - Prefer any future `context_length` from capabilities/run usage (#15618).  
-   - Until then: static/family map (Hermes maintains rich tables in `agent/model_metadata.py` — we should **not** copy thousands of lines; use a small Forge map + override, or read Hermes health/config if ever exposed).  
-   - Note: our default **128k** is *lower* than Hermes’ own default probe tier of **256k** (`DEFAULT_FALLBACK_CONTEXT` in model_metadata) — align or label.  
-2. **Estimate numerator:** feed meter the **same system + page-context + documents + prior messages** the server builds in chat routes (or return a server `promptChars` estimate on a lightweight preflight). Process dock currently passes `draftText: ""` — fix.  
-3. Do **not** pretend chars/4 is provider-true; keep “estimate” badge.
-
-#### Tier C — Server-side session context (architecture; high impact)
-
-If we adopt **Responses API** (`previous_response_id` or named `conversation`) or **Sessions API** (`/api/sessions/{id}/chat/stream`):
-
-- Hermes holds tool-call-inclusive history server-side.  
-- Client sends **delta turns**, not full 80-message rebuilds.  
-- Meter should then **prefer Hermes-reported prompt tokens** after each turn, because local transcript no longer equals prompt.  
-- Still need #15618 for post-compaction honesty.
-
-#### Tier D — Blocked on Hermes
-
-- Live remaining-window meter during a run  
-- Compaction-aware fill %  
-- Authoritative `context_length` for the *active* underlying model via API alone  
-
-**Watch:** re-check #15618 and release notes periodically; when `context_tokens` / `context_length` land on `run.completed` or usage objects, wire them as primary meter source.
+| Tier | Goal | Status |
+|------|------|--------|
+| **A** | Parse/forward usage; dual-mode meter; SSE + run poll | **Done** (4.19 Task 1). Persist last usage still optional. |
+| **B** | Real limit + estimate closer to server prompt | **Open (P2)** — see §3.1 polish list |
+| **C** | Responses / Sessions server-side multi-turn | **Open (P1 optional)** — [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md) |
+| **D** | Live remaining window / compaction-aware fill | **Blocked** on #15618 |
 
 ---
 
 ## 4. Inefficiencies & gaps beyond the meter
 
-### 4.1 Full history re-send every turn (Chat Completions)
+### 4.1 Full history re-send every turn (Chat Completions) — **open P1**
 
-Studio chat loads up to **80** messages, rebuilds large system + page + knowledge envelopes, and posts the **entire** array on every turn via `/v1/chat/completions`.
+Studio (and process/automation) still rebuild large system + page + knowledge envelopes and post the full `messages[]` via `/v1/chat/completions`.
 
-**Cost:** tokens, latency, and risk of silent truncation/compaction inside Hermes that Forge never learns about.
+**Cost:** tokens, latency, silent compaction Forge never learns about.
 
-**Better (API-supported):**
+**Better (API-supported):** Responses (`previous_response_id` / named `conversation`) or Sessions chat/stream. Keep Forge DB as product-of-record; Hermes for runtime continuity. **Handoff:** [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md).
 
-- `POST /v1/responses` + `previous_response_id` or `conversation: "<forge-conversation-id>"`  
-- Or `POST /api/sessions/{id}/chat/stream` with Forge conversation mapped to Hermes session  
+### 4.2 `model` field is cosmetic — **UX done**
 
-Keep Forge DB as product-of-record for UI/history/export; use Hermes session for **runtime** continuity.
+Chatbar model control documents that the request `model` field is cosmetic and the real LLM is server-side (Hermes config / profile). Multi-profile still surfaces profile names as model ids, not OpenRouter-style catalogs.
 
-### 4.2 `model` field is cosmetic
+### 4.3 Process / automation chat streaming — **done**
 
-Upstream: *“the actual LLM model used is configured server-side.”*
+Unified chatbar + shared stream runners (`process-chat-turn.ts`, `automation-chat-turn.ts`). Dual process/automation panel stacks removed (4.19 Task 9). Tool progress, run_id, stop/steer, usage share the studio path.
 
-Forge UI presents a model picker as if it switches backends. With multi-profile Hermes, `/v1/models` returns **profile names** as model ids (alice/bob), not GPT/Claude list.
+### 4.4 Usage on interactive chat — **done**; one-shots partial
 
-**Action:** Clarify UX copy (“Hermes profile / agent model id”), stop implying OpenRouter-style model menus unless we multi-connect profiles (ports) or Hermes expands the models list.
+Interactive routes emit SSE `usage` and update the dock meter. `callHermesWithMeta` can return usage; many one-shot helpers (`diagram`, `naming`, extract, …) still use string-only `callHermes` and discard usage — low priority unless product wants spend tracking there. Cronalytics already accounts **jobs** tokens separately.
 
-### 4.3 Process / automation chat non-streaming
-
-`app/api/processes/[id]/chat` and automation chat use **`callHermes` (stream: false)** while studio uses streaming + tools + run_id.
-
-**Effects:** no token deltas, weak tool progress, harder stop/steer, no mid-run UX parity, longer TTFB.
-
-**Action:** unify on `streamHermesEvents` (or Sessions/Runs SSE).
-
-### 4.4 Usage discarded everywhere
-
-`callHermes` returns only content string. Stream path never extracts usage. Cronalytics already understands token fields for **jobs**, but interactive chat never feeds the same accounting.
-
-**Action:** Tier A above; optional “session token spend” in chat diagnostics.
-
-### 4.5 No `X-Hermes-Session-Key` (memory scoping)
-
-Without a stable key, long-term memory (Honcho) scopes per rotating `session_id`. Multi-business / multi-agent Forge threads may **share or fragment** memory incorrectly.
-
-**Action:** set header per logical scope, e.g.:
+### 4.5 Session headers — **done** (interactive chat)
 
 ```http
-X-Hermes-Session-Key: forge:{userId}:{businessId}:{agentProfileKey}
+X-Hermes-Session-Key: forge:{userId}:{businessId}:{agentProfileKey|default}
+X-Hermes-Session-Id: forge-conv:{conversationId}
 ```
 
-(and optionally `X-Hermes-Session-Id: forge-conv:{conversationId}` for transcript).
+Source: `lib/chatbar/session-headers.ts`. Optional consistency: set the same headers on one-shot `callHermes` paths (extract/diagram).
 
-### 4.6 Skills / toolsets discovery unused
+### 4.6 Skills / toolsets discovery — **open P2**
 
-`GET /v1/skills` and `GET /v1/toolsets` are read-only capability catalogs. Forge cannot show “what this agent can do” without asking the model.
+`GET /v1/skills` and `GET /v1/toolsets` unused. Candidate: Settings / personnel agent card without asking the model.
 
-**Action:** Settings / agent card: list enabled toolsets + skill names; empty-state coaching when tools missing.
+### 4.7 Approvals — **done** (Task 7)
 
-### 4.7 Approvals endpoint — **DONE (Task 7)**
+Runtime maps `approval.request` → modal; `POST /v1/runs/{id}/approval` with `once` | `session` | `always` | `deny`.
 
-Runtime normalizes Hermes `approval.request` → `approval.requested` and `approval.responded` → `approval.resolved`. Chatbar shows `ChatbarApprovalModal` and POSTs `{ choice }` to `/v1/runs/{id}/approval` (`once` | `session` | `always` | `deny`).
+### 4.8 `/health/detailed` — **open P2**
 
-### 4.8 `/health/detailed` unused
+Authenticated readiness (active runs, disk, gateway state) without secrets — better desktop support than binary connected.
 
-Authenticated readiness (active runs, disk, gateway state) without dumping secrets — better than “connected/not” alone for desktop support.
+### 4.9 Stop path — **done for interactive**
 
-### 4.9 Dual client paths (AbortController vs run stop)
+Client abort + `POST .../stop` on active run. Applies to unified streamed chat (not a separate non-stream process path anymore).
 
-Stop uses both client abort and `POST .../stop`. Good. But process non-stream path cannot stop mid-generation cleanly.
+### 4.10 Inline images — **open P3**
 
-### 4.10 Inline images supported; Forge may not send them
+API supports multimodal user content; composer may not send `image_url` parts yet.
 
-API supports multimodal user content. Composer attachments that aren’t wired as `image_url` parts leave vision unused.
+### 4.11 Named conversations / fork — **open P3**
 
-### 4.11 Named conversations / fork
+Hermes sessions fork exists (Foundation Sessions UI can fork Hermes sessions). Not productized as “branch this Forge studio thread.”
 
-Sessions `fork` matches CLI `/branch`. Forge has no “branch this thread” — product opportunity for workshop experiment trees.
+### 4.12 Idempotency-Key — **open P3**
 
-### 4.12 Idempotency-Key
-
-Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {messageId}` for 5‑minute dedupe.
+Double-submit hardening: `Idempotency-Key: {messageId}` (5‑min cache on Hermes).
 
 ---
 
-## 5. Capability matrix (target state)
+## 5. Capability matrix (reconciled 2026-07-23)
 
-| Capability | API support | Forge now | Priority for product |
-|------------|-------------|-----------|----------------------|
-| Context meter from last-turn usage | usage objects | Estimate only | **P0** |
-| Context meter from live `context_tokens` | #15618 (future) | N/A | P0 when shipped |
+| Capability | API support | Forge now | Priority |
+|------------|-------------|-----------|----------|
+| Context meter last-turn usage | usage objects | **Dual-mode (estimate + last Hermes prompt)** | Done (polish P2) |
+| Context meter live `context_tokens` | #15618 (future) | N/A | When shipped |
 | Stream studio chat | chat/completions SSE | Yes | Done |
 | Stream process/automation chat | same | Yes | Done |
-| Tool progress UI | `hermes.tool.progress` | Partial (studio) | P1 process parity |
+| Tool progress UI | `hermes.tool.progress` | Yes (unified chatbar) | Done |
 | Stop run | `/v1/runs/{id}/stop` | Yes | Done |
 | Steer run | `/v1/runs/{id}/steer` | Capability-gated | Done |
-| Approve tools | `/v1/runs/{id}/approval` | Yes (chatbar modal) | Done |
-| Server-side multi-turn | Responses / Sessions | No | **P1** (cost/latency) |
-| Memory scope header | `X-Hermes-Session-Key` | Yes | Done |
+| Approve tools | `/v1/runs/{id}/approval` | Chatbar modal | Done |
+| Server-side multi-turn | Responses / Sessions | No (pilot brief only) | **P1 optional** |
+| Memory scope header | `X-Hermes-Session-Key` | Yes (interactive chat) | Done |
 | Skills/toolsets catalog | GET endpoints | No | P2 |
 | Health detailed | `/health/detailed` | No | P2 |
-| Jobs API | `/api/jobs` | Yes | Done (cron path) |
-| Honest model UX | docs limitation | Label “Hermes model” + tooltip (server profile) | Done |
+| Jobs API | `/api/jobs` | Yes | Done |
+| Honest model UX | docs limitation | Label + tooltip | Done |
+| Unified chatbar (single panel) | — | Yes (4.19) | Done |
 
 ---
 
-## 6. Concrete next steps (suggested PR sequence)
+## 6. Residual work (only open items)
 
-1. **Usage plumbing** — parse + forward usage; dual-mode context meter; fix process draft in meter input.  
-2. **Process chat stream parity** — same stream/tool/run_id path as studio.  
-3. **Session-Key header** — business+agent stable memory scope.  
-4. **Responses or Sessions pilot** — one conversation kind (e.g. studio) with `previous_response_id` / named conversation; measure token reduction. **Implement from:** [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md).  
-5. ~~**Approval UI** — wire `run_approval`.~~ Done (Task 7).  
-6. **Skills/toolsets panel** — Settings / personnel.  
-7. **Watch #15618** — when `context_tokens` + `context_length` land, switch meter primary source.
+Ordered by value. **Do not re-implement Tasks 1–7 / 9.**
+
+1. **Responses / Sessions pilot (P1 optional)** — flag-gated studio turns; measure prompt-token reduction; Chat Completions fallback. → [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md)  
+2. **Meter polish (P2)** — persist last usage; real or labeled context limit; better estimate overhead / optional server prompt size  
+3. **Skills/toolsets panel (P2)** — `GET /v1/skills` + `/v1/toolsets`  
+4. **`/health/detailed` (P2)** — connection details in Settings  
+5. **Watch #15618** — when `context_tokens` + `context_length` land, switch meter primary source  
+6. **P3** — multimodal `image_url`, Idempotency-Key, Forge thread fork UX  
+
+### Shipped checklist (historical — original §6 sequence)
+
+1. ~~Usage plumbing + dual-mode meter~~ Done  
+2. ~~Process/automation stream parity~~ Done  
+3. ~~Session-Key / Session-Id headers~~ Done  
+4. Responses/Sessions pilot — **open**  
+5. ~~Approval UI~~ Done  
+6. Skills/toolsets — open P2  
+7. Watch #15618 — ongoing  
 
 ---
 
 ## 7. Related links
 
-| Resource | URL |
-|----------|-----|
-| API Server docs (this research source) | https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/api-server.md |
-| Local snapshot of that doc | [`docs/references/upstream/hermes-api-server.md`](./upstream/hermes-api-server.md) |
+| Resource | URL / path |
+|----------|------------|
+| API Server docs (upstream) | https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/api-server.md |
+| Local snapshot | [`upstream/hermes-api-server.md`](./upstream/hermes-api-server.md) |
 | Context usage feature request | https://github.com/NousResearch/hermes-agent/issues/15618 |
-| Hermes model metadata / context lengths (internal, not public API) | https://github.com/NousResearch/hermes-agent/blob/main/agent/model_metadata.py |
-| Forge global chatbar design | [`GLOBAL_CHATBAR.md`](./GLOBAL_CHATBAR.md) |
-| Forge context meter impl | `lib/chatbar/context-meter.ts` |
-| Forge stream client | `lib/hermes-stream.ts` |
-| Forge capabilities / steer | `lib/chatbar/capabilities.ts` |
-| Forge connection probe | `lib/hermes-connection.ts` |
+| Hermes model metadata (internal) | https://github.com/NousResearch/hermes-agent/blob/main/agent/model_metadata.py |
+| Responses pilot handoff | [`HERMES_RESPONSES_PILOT.md`](./HERMES_RESPONSES_PILOT.md) |
+| Global chatbar design | [`GLOBAL_CHATBAR.md`](./GLOBAL_CHATBAR.md) |
+| Usage normalize | `lib/chatbar/usage.ts` |
+| Context meter | `lib/chatbar/context-meter.ts` |
+| Session headers | `lib/chatbar/session-headers.ts` |
+| Stream + run usage poll | `lib/hermes-stream.ts` |
+| Capabilities / steer / approval | `lib/chatbar/capabilities.ts` |
+| Connection probe | `lib/hermes-connection.ts` |
 
 ---
 
@@ -302,5 +275,6 @@ Double-submit risk on flaky networks (studio send) could use `Idempotency-Key: {
 
 | Date | Note |
 |------|------|
-| 2026-07-22 | Foundation **Sessions** page (`/sessions`) + `/api/hermes/sessions/*` proxy: list/create/get/patch/delete/messages/fork/chat. Stream chat still unused. |
-| 2026-07-21 | Initial research from upstream `api-server.md` + cross-check against Forge clients; archived raw doc; related #15618. |
+| 2026-07-23 | **Docs reconcile:** mark Tasks 1–7/9 shipped; dual-mode meter truth; process/automation stream done; residual = Task 8 + P2 polish + #15618. Fix stale §3–6 / capability matrix. |
+| 2026-07-22 | Foundation **Sessions** page + `/api/hermes/sessions/*` proxy. Stream chat still unused by chatbar. Responses pilot handoff doc added. |
+| 2026-07-21 | Initial research from upstream `api-server.md` + Forge cross-check; archived raw doc; related #15618. |
