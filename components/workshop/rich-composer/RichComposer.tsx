@@ -397,7 +397,6 @@ export function RichComposer({
           willQueue={willQueue}
           isLoading={isLoading}
           sending={isLoading && !willQueue}
-          showHelperHints
         />
       </div>
     );
