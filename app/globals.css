@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
+/* xyflow after tailwind so plant canvas styles win (see LIVING_BUSINESS_MAP.md) */
+@import "@xyflow/react/dist/style.css";
 
 @theme inline {
   --color-bg: var(--bg);

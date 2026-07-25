@@ -6,11 +6,14 @@ import {
   GitBranch,
   Home,
   Layers,
+  Network,
 } from "lucide-react";
 import type {
   FoundationDocumentSummary,
   FoundationProcessCard,
 } from "@/lib/foundation";
+import type { BusinessGraph } from "@/lib/business-graph";
+import { countDescendantProcesses } from "@/lib/business-graph";
 import { PROCESS_STATUS_LABELS } from "@/lib/process-status";
 import { IoShapeGlyph } from "@/components/process/IoShapeGlyph";
 import { getIoShapeMeta } from "@/lib/io-shape";
@@ -24,6 +27,10 @@ interface FoundationSidebarProps {
   showProcesses: boolean;
   selectedProcessId: string | null;
   onSelectProcess: (id: string) => void;
+  /** Phase 8 — living graph units/capabilities. */
+  graph?: BusinessGraph | null;
+  selectedGraphNodeId?: string | null;
+  onSelectGraphNode?: (id: string | null) => void;
 }
 
 export function FoundationSidebar({
@@ -35,7 +42,16 @@ export function FoundationSidebar({
   showProcesses,
   selectedProcessId,
   onSelectProcess,
+  graph = null,
+  selectedGraphNodeId = null,
+  onSelectGraphNode,
 }: FoundationSidebarProps) {
+  const units =
+    graph?.nodes
+      .filter((n) => n.kind === "unit")
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name)) ?? [];
+
   return (
     <aside className="w-full sm:w-64 shrink-0 border-r border-border bg-bg-panel flex flex-col min-h-0">
       <div className="px-4 py-4 border-b border-border">
@@ -51,7 +67,7 @@ export function FoundationSidebar({
           </p>
         ) : (
           <p className="text-[11px] text-text-faint mt-1 italic">
-            Describe the business in chat to fill Documents.
+            Talk with Overlord — units and docs fill in from conversation.
           </p>
         )}
       </div>
@@ -105,6 +121,44 @@ export function FoundationSidebar({
                 Knowledge docs appear as you capture basics.
               </p>
             ) : null}
+          </div>
+        ) : null}
+
+        {graph && units.length > 0 ? (
+          <div>
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-text-muted px-1 mb-1.5">
+              <Network className="w-3 h-3" />
+              Units
+              <span className="text-text-faint normal-case tracking-normal">
+                ({units.length})
+              </span>
+            </div>
+            <ul className="space-y-0.5">
+              {units.map((unit) => {
+                const active = unit.id === selectedGraphNodeId;
+                const pc = countDescendantProcesses(graph, unit.id);
+                return (
+                  <li key={unit.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectGraphNode?.(unit.id)}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg transition-colors ${
+                        active
+                          ? "bg-bg-muted border border-border-strong"
+                          : "hover:bg-bg-subtle border border-transparent"
+                      }`}
+                    >
+                      <div className="text-sm font-medium truncate">
+                        {unit.name}
+                      </div>
+                      <div className="text-[10px] text-text-muted mt-0.5">
+                        {pc} process{pc === 1 ? "" : "es"}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ) : null}
 

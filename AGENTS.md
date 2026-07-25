@@ -51,9 +51,11 @@ Use the methods above to load them.
 See `docs/references/INDEX.md` for the full list.
 
 Key files:
-- `PRODUCT_BACKLOG.md` — The source of truth for what to build next
+- `PRODUCT_BACKLOG.md` — The source of truth for what to build next (**Phase 8** = business graph OS / living twin)
 - `audit.md` — Canonical project audit (mistakes, gaps, redundancy, remediation status)
 - `BUSINESS_PLANT_PFD.md` — Phase 6 rooms, soft unlock, plant PFD, Foundation / Overlord (read when touching shell IA or Map/Foundation)
+- `PRODUCT_VISION.md` — North-star: business graph, rooms, MVP (Foundation+Map), local-first only
+- `LIVING_BUSINESS_MAP.md` — Graph levels unit→capability→process→step, xyflow, graphJson, Mermaid legacy freeze
 - `HERMES_API_SERVER.md` — Hermes API server capability audit vs Forge (context meter, usage, sessions, inefficiencies); source link + local upstream snapshot
 
 ---

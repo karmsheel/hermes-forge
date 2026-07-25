@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   Loader2,
   MessageSquare,
+  Network,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
@@ -30,14 +31,18 @@ import { useHermesConnection } from "@/components/hermes/HermesConnectionProvide
 import type { WorkflowTemplate } from "@/lib/workflow-templates";
 import { templateToFoundationDrafts } from "@/lib/workflow-templates";
 import { TemplateCards } from "@/components/home/TemplateCards";
+import type { BusinessGraph } from "@/lib/business-graph";
 import { FoundationSidebar } from "./FoundationSidebar";
 import { FoundationCanvas } from "./FoundationCanvas";
+import { FoundationGraphCanvas } from "./FoundationGraphCanvas";
 import { AddDraftDialog } from "./AddDraftDialog";
 import {
   DraftReviewPanel,
   toReviewRows,
   type ReviewDraftRow,
 } from "./DraftReviewPanel";
+
+type CanvasMode = "graph" | "plant";
 
 export function FoundationRoom() {
   const router = useRouter();
@@ -46,8 +51,14 @@ export function FoundationRoom() {
   const { open: openChat } = useChatbar();
   const { config: hermesConfig, isConnected } = useHermesConnection();
   const [loading, setLoading] = useState(true);
+  const [graphLoading, setGraphLoading] = useState(true);
   const [overview, setOverview] = useState<FoundationOverview | null>(null);
+  const [graph, setGraph] = useState<BusinessGraph | null>(null);
   const [selectedProcessId, setSelectedProcessId] = useState<string | null>(null);
+  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(
+    null,
+  );
+  const [canvasMode, setCanvasMode] = useState<CanvasMode>("graph");
   const [addOpen, setAddOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -59,6 +70,40 @@ export function FoundationRoom() {
   const [linkFromId, setLinkFromId] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [seedingTemplate, setSeedingTemplate] = useState(false);
+
+  const loadGraph = useCallback(
+    async (opts?: { reseed?: boolean; quiet?: boolean }) => {
+      setGraphLoading(true);
+      try {
+        const q = opts?.reseed ? "?reseed=1" : "";
+        const res = await fetch(`/api/business-graph${q}`);
+        if (res.status === 401) {
+          router.push("/");
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (!opts?.quiet) {
+            toast.error(data.error || "Failed to load business graph");
+          }
+          setGraph(null);
+          return;
+        }
+        setGraph(data.graph as BusinessGraph | null);
+        if (data.seeded && opts?.reseed) {
+          toast.success("Graph reseeded from functions & processes");
+        } else if (data.seeded && !opts?.quiet) {
+          toast.message("Graph seeded from existing business data");
+        }
+      } catch {
+        if (!opts?.quiet) toast.error("Failed to load business graph");
+        setGraph(null);
+      } finally {
+        setGraphLoading(false);
+      }
+    },
+    [router],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -84,9 +129,13 @@ export function FoundationRoom() {
     }
   }, [router, refreshReadiness]);
 
+  const loadAll = useCallback(async () => {
+    await Promise.all([load(), loadGraph({ quiet: true })]);
+  }, [load, loadGraph]);
+
   useEffect(() => {
-    void load();
-  }, [load, currentBusiness?.id]);
+    void loadAll();
+  }, [loadAll, currentBusiness?.id]);
 
   const openReview = useCallback(
     (drafts: ProposedDraft[], sourceLabel?: string) => {
@@ -129,15 +178,16 @@ export function FoundationRoom() {
     return () => window.removeEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
   }, [openReview, overview?.processes]);
 
-  // 6.2 / 6.5 — server auto-applied plant fences; refresh canvas + links
+  // 6.2 / 6.5 — server auto-applied plant fences; refresh overview + reseed graph
   useEffect(() => {
     function onPlantApplied() {
       void load();
+      void loadGraph({ reseed: true, quiet: true });
     }
     window.addEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
     return () =>
       window.removeEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
-  }, [load]);
+  }, [load, loadGraph]);
 
   function openWorkshop(processId: string) {
     if (currentBusiness?.id) {
@@ -145,6 +195,26 @@ export function FoundationRoom() {
     }
     router.push("/workshop");
   }
+
+  const onGraphPositionCommit = useCallback(
+    async (id: string, x: number, y: number) => {
+      try {
+        const res = await fetch("/api/business-graph", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ops: [{ op: "set_position", id, position: { x, y } }],
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.graph) setGraph(data.graph as BusinessGraph);
+      } catch {
+        /* ignore drag save errors */
+      }
+    },
+    [],
+  );
 
   async function handleSeedDraft(draft: SeedDraftInput) {
     setCreating(true);
@@ -165,6 +235,7 @@ export function FoundationRoom() {
       }
       setAddOpen(false);
       await load();
+      await loadGraph({ reseed: true, quiet: true });
       const createdId = data.created?.[0]?.id as string | undefined;
       if (createdId) setSelectedProcessId(createdId);
     } catch (e) {
@@ -208,6 +279,7 @@ export function FoundationRoom() {
       }
 
       await load();
+      await loadGraph({ reseed: true, quiet: true });
       if (createdId) {
         setSelectedProcessId(createdId);
         if (currentBusiness?.id) {
@@ -305,6 +377,7 @@ export function FoundationRoom() {
       setReviewOpen(false);
       setReviewRows([]);
       await load();
+      await loadGraph({ reseed: true, quiet: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not seed drafts");
     } finally {
@@ -323,6 +396,7 @@ export function FoundationRoom() {
       throw new Error(err.error || "Rename failed");
     }
     await load();
+    await loadGraph({ reseed: true, quiet: true });
     toast.success("Renamed");
   }
 
@@ -338,7 +412,9 @@ export function FoundationRoom() {
     toast.success("Deleted");
     if (selectedProcessId === id) setSelectedProcessId(null);
     if (linkFromId === id) setLinkFromId(null);
+    if (selectedGraphNodeId === id) setSelectedGraphNodeId(null);
     await load();
+    await loadGraph({ reseed: true, quiet: true });
   }
 
   async function createLink(fromId: string, toId: string) {
@@ -354,6 +430,7 @@ export function FoundationRoom() {
     }
     toast.success("Linked processes");
     await load();
+    await loadGraph({ reseed: true, quiet: true });
   }
 
   async function deleteLink(linkId: string) {
@@ -366,6 +443,7 @@ export function FoundationRoom() {
     toast.success("Link removed");
     setSelectedLinkId(null);
     await load();
+    await loadGraph({ reseed: true, quiet: true });
   }
 
   if (loading && !overview) {
@@ -382,7 +460,8 @@ export function FoundationRoom() {
         <div className="max-w-sm text-center space-y-4">
           <h2 className="text-xl font-semibold">No business selected</h2>
           <p className="text-sm text-text-muted">
-            Create or select a business to sketch its process plant.
+            Create or select a business to model units and capabilities with
+            Overlord.
           </p>
           <button type="button" className="btn-primary text-sm" onClick={openNewBusiness}>
             New business
@@ -394,21 +473,43 @@ export function FoundationRoom() {
 
   const processes = overview.processes;
   const documents = overview.documents;
-  const showDocuments = documents.length > 0;
+  const showDocuments = true;
   const showProcesses = true;
+  const graphUnits =
+    graph?.nodes.filter((n) => n.kind === "unit").length ?? 0;
+  const graphCaps =
+    graph?.nodes.filter((n) => n.kind === "capability").length ?? 0;
+
+  const emptyExtra = (
+    <div
+      className={`foundation-template-starters${seedingTemplate ? " is-busy" : ""}`}
+      aria-busy={seedingTemplate}
+    >
+      <TemplateCards
+        selectedId={null}
+        onSelect={(t) => void handleTemplateSeed(t)}
+      />
+      <button
+        type="button"
+        onClick={() => setAddOpen(true)}
+        className="btn-secondary text-sm mt-3"
+      >
+        Add blank process draft
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full min-h-0 flex-1">
       <header className="shrink-0 border-b border-border px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-text-muted truncate">
+            {graphUnits} unit{graphUnits === 1 ? "" : "s"}
+            {" · "}
+            {graphCaps} capabilit{graphCaps === 1 ? "y" : "ies"}
+            {" · "}
             {overview.stats.processCount} process
             {overview.stats.processCount === 1 ? "" : "es"}
-            {" · "}
-            {overview.stats.linkCount ?? overview.links?.length ?? 0} link
-            {(overview.stats.linkCount ?? overview.links?.length ?? 0) === 1
-              ? ""
-              : "s"}
             {" · "}
             {overview.stats.documentCount} document
             {overview.stats.documentCount === 1 ? "" : "s"}
@@ -416,13 +517,46 @@ export function FoundationRoom() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <div
+            className="flex rounded-lg border border-border overflow-hidden text-xs"
+            role="group"
+            aria-label="Foundation canvas mode"
+          >
+            <button
+              type="button"
+              onClick={() => setCanvasMode("graph")}
+              className={`px-2.5 py-1.5 inline-flex items-center gap-1 ${
+                canvasMode === "graph"
+                  ? "bg-bg-muted text-text-strong"
+                  : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
+              }`}
+              title="Unit / capability system graph (Phase 8)"
+            >
+              <Network className="w-3.5 h-3.5" />
+              Graph
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanvasMode("plant")}
+              className={`px-2.5 py-1.5 border-l border-border ${
+                canvasMode === "plant"
+                  ? "bg-bg-muted text-text-strong"
+                  : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
+              }`}
+              title="Legacy process plant sketch"
+            >
+              Process plant
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={() => void loadAll()}
             className="p-2 rounded-lg hover:bg-bg-subtle text-text-muted"
             title="Refresh"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${loading || graphLoading ? "animate-spin" : ""}`}
+            />
           </button>
           <button
             type="button"
@@ -444,7 +578,7 @@ export function FoundationRoom() {
             className="btn-secondary text-xs inline-flex items-center gap-1.5"
           >
             <MessageSquare className="w-3.5 h-3.5" />
-            Chat with Hermes
+            Chat with Overlord
           </button>
         </div>
       </header>
@@ -458,38 +592,56 @@ export function FoundationRoom() {
           showDocuments={showDocuments}
           showProcesses={showProcesses}
           selectedProcessId={selectedProcessId}
-          onSelectProcess={setSelectedProcessId}
+          onSelectProcess={(id) => {
+            setSelectedProcessId(id);
+            setSelectedGraphNodeId(id);
+            if (canvasMode === "graph") {
+              /* keep graph selection in sync when picking process from list */
+            }
+          }}
+          graph={graph}
+          selectedGraphNodeId={selectedGraphNodeId}
+          onSelectGraphNode={setSelectedGraphNodeId}
         />
-        <FoundationCanvas
-          processes={processes}
-          links={overview.links ?? []}
-          businessId={overview.business?.id ?? currentBusiness?.id ?? null}
-          selectedProcessId={selectedProcessId}
-          onSelectProcess={setSelectedProcessId}
-          onOpenWorkshop={openWorkshop}
-          onAddDraft={() => setAddOpen(true)}
-          emptyExtra={
-            <div
-              className={`foundation-template-starters${seedingTemplate ? " is-busy" : ""}`}
-              aria-busy={seedingTemplate}
-            >
-              <TemplateCards
-                selectedId={null}
-                onSelect={(t) => void handleTemplateSeed(t)}
-              />
-            </div>
-          }
-          onRename={renameProcess}
-          onDelete={deleteProcess}
-          linkMode={linkMode}
-          onLinkModeChange={setLinkMode}
-          linkFromId={linkFromId}
-          onLinkFromChange={setLinkFromId}
-          onCreateLink={createLink}
-          onDeleteLink={deleteLink}
-          selectedLinkId={selectedLinkId}
-          onSelectLink={setSelectedLinkId}
-        />
+        {canvasMode === "graph" ? (
+          <FoundationGraphCanvas
+            graph={graph}
+            loading={graphLoading && !graph}
+            selectedNodeId={selectedGraphNodeId}
+            onSelectNode={(id) => {
+              setSelectedGraphNodeId(id);
+              if (id && processes.some((p) => p.id === id)) {
+                setSelectedProcessId(id);
+              }
+            }}
+            onPositionCommit={onGraphPositionCommit}
+            onReseed={() => void loadGraph({ reseed: true })}
+            onOpenChat={() => openChat()}
+            onOpenWorkshop={openWorkshop}
+            emptyExtra={emptyExtra}
+          />
+        ) : (
+          <FoundationCanvas
+            processes={processes}
+            links={overview.links ?? []}
+            businessId={overview.business?.id ?? currentBusiness?.id ?? null}
+            selectedProcessId={selectedProcessId}
+            onSelectProcess={setSelectedProcessId}
+            onOpenWorkshop={openWorkshop}
+            onAddDraft={() => setAddOpen(true)}
+            emptyExtra={emptyExtra}
+            onRename={renameProcess}
+            onDelete={deleteProcess}
+            linkMode={linkMode}
+            onLinkModeChange={setLinkMode}
+            linkFromId={linkFromId}
+            onLinkFromChange={setLinkFromId}
+            onCreateLink={createLink}
+            onDeleteLink={deleteLink}
+            selectedLinkId={selectedLinkId}
+            onSelectLink={setSelectedLinkId}
+          />
+        )}
       </div>
 
       <AddDraftDialog

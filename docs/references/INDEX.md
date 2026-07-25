@@ -30,7 +30,7 @@ Use the git show approach or the helper at startup of any agent session. Conside
 
 | File                        | Purpose                                      | Priority | When to Read |
 |----------------------------|----------------------------------------------|----------|--------------|
-| `PRODUCT_BACKLOG.md`       | Full product backlog, phases, and tasks     | High     | Before choosing or implementing any feature |
+| `PRODUCT_BACKLOG.md`       | Full product backlog, phases, and tasks (**Phase 8** = business graph OS living twin) | High     | Before choosing or implementing any feature |
 | `audit.md`                 | Project audit: mistakes, gaps, redundancy, remediation progress | High | When planning cleanup, assessing repo health, or prioritizing tech debt |
 | `INDEX.md` (this file)     | Manifest of all references                   | High     | At the start of any agent session |
 | `hermes-desktop-design-system.md` | Hermes Desktop tokens, primitives, theme engine reference | Medium | When working on skins, themes, or UI convergence (4.6+) |
@@ -41,6 +41,8 @@ Use the git show approach or the helper at startup of any agent session. Conside
 | `GLOBAL_CHATBAR.md` | Global shell chatbar: extension parity checklist, residency, page context protocol, PR plan (4.17) | High | When implementing or reviewing the elevated in-app Hermes chatbar |
 | `BUSINESS_DOCUMENTS.md` | Business knowledge documents: kinds, schema, Hermes injection, Git layout (4.18) | High | When implementing or extending Documents / company knowledge context |
 | `BUSINESS_PLANT_PFD.md` | Phase 6: Forge rooms, soft unlock, plant PFD, Foundation / Overlord, Map promotion of God Mode | High | When implementing rooms, Foundation, Map plant, 6.6/6.7, stage→room IA, or process links |
+| `PRODUCT_VISION.md` | North-star vision: black box, business graph hierarchy, rooms, MVP boundary, local-first (no cloud SaaS; blockchain later) | High | Before any product/IA decision; agents should read at start of major features |
+| `LIVING_BUSINESS_MAP.md` | Graph levels (unit→capability→process→step), xyflow stack, graphJson, Mermaid legacy freeze | High | When implementing graph core, Foundation/Map canvas, plant projection |
 | `HERMES_API_SERVER.md` | Hermes Agent OpenAI-compatible API server: capability audit vs Forge, context meter, inefficiencies, adoption plan | High | When wiring Hermes chat/runs/usage/sessions, context meter, or reviewing API efficiency |
 | `HERMES_RESPONSES_PILOT.md` | **Task 8 handoff:** optional Responses/Sessions pilot for studio chat (flag, previous_response_id, measurement) | High | When implementing or reviewing Hermes Responses API / server-side multi-turn (4.19 residual) |
 | `upstream/hermes-api-server.md` | Archived snapshot of upstream API Server docs (do not edit; re-fetch when re-auditing) | Medium | When comparing Forge against the exact upstream wording for a given research date |

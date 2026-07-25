@@ -918,7 +918,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** Automate pause/resume + run health is **shipped**. Prefer deferred Phase 4/5 items (4.5, 4.16, 5.5/5.6) or optional plant polish (ports UI, room-home depth). Defer hard Home dissolve (won’t do).
+**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.3 done**; **next is 8.4** Map step graph. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
 
 ---
 
@@ -1215,6 +1215,22 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 6.7 | Entry-flow migration (Home → Foundation) | 6 | **Done** (draft seed + studio chatbar continuity) |
 | 6.8 | Per-room Homes (Map / Monitor / Automate) | 6 | **Done** |
 | 7.1 | Automate pause/resume + run health | 7 | **Done** |
+| 8.0 | Phase vision & graph OS reference | 8 | **Done** — [`PRODUCT_VISION.md`](PRODUCT_VISION.md), [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md) |
+| 8.1 | Graph core (graphJson, patch, seed, API) | 8 | **Done** (foundation) |
+| 8.2 | xyflow spike / graph canvas shell | 8 | **Done** (foundation) — `/plant-spike` |
+| 8.3 | Foundation room → unit/capability graph | 8 | **Done** |
+| 8.4 | Map room → process step graph (SoT) | 8 | Pending |
+| 8.5 | Overlord `forge-graph` propose/apply | 8 | Pending |
+| 8.6 | Soft unlock + IA for graph readiness | 8 | Pending |
+| 8.7 | Legacy Mermaid freeze + export bridge | 8 | Pending |
+| 8.8 | Graph MVP hardening | 8 | Pending |
+| 8.9 | Forge consultant room | 8 | Deferred (post-MVP) |
+| 8.10 | Monitor on graph nodes | 8 | Deferred (post-MVP) |
+| 8.11 | Automate on steps | 8 | Deferred (post-MVP) |
+| 8.12 | Operate living map | 8 | Deferred (post-MVP) |
+| 8.13 | Advisors | 8 | Deferred |
+| 8.14 | Business branching | 8 | Deferred |
+| 8.15 | Storage future (blockchain option) | 8 | Research only |
 
 ---
 
@@ -1237,6 +1253,318 @@ Polish and productize the Map → Monitor → Automate loop after the plant PFD 
 **Depends on:** 5.3 M0, 4.14 Cronalytics (optional enrichment)
 
 **Do not:** Require Cronalytics nav for day-to-day operators; keep Cronalytics as power/dev tooling.
+
+### 7.2 → superseded by Phase 8
+
+Early business-graph notes lived here. **All graph OS work is tracked under [Phase 8](#phase-8--business-graph-os-living-twin).**
+
+---
+
+## Phase 8 — Business graph OS (living twin)
+
+**Canonical references:**
+- [`PRODUCT_VISION.md`](PRODUCT_VISION.md) — north star, principles, MVP boundary, rooms  
+- [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md) — levels, `graphJson`, xyflow, Mermaid freeze  
+- [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) — soft unlock / room chrome baseline (evolve under 8.6)
+
+**Thesis:** Hermes Forge builds **businesses into software** via one **local-first business graph**. Rooms are **views** of that graph. Conversation expands the graph; users review and approve; automation is a later result of understanding—not the starting point.
+
+**Hierarchy (SoT):**
+
+```
+Business → Unit → Capability → Process → Step
+                 (+ later: metrics, automations, SOPs, owners on nodes)
+```
+
+**MVP success (ship before post-MVP rooms):** A real business can be modeled through talk + review into a durable, editable graph (Foundation + Map only)—without Monitor/Automate/Operate.
+
+### Phase 8 design principles
+
+1. **One graph** — no separate automation/monitoring/document models; attachments hang off nodes later.  
+2. **Conversation-first** — never require blank-canvas drawing to start.  
+3. **Local-first only** — SQLite / `Business.graphJson`; **no** Firebase/Supabase/centralized graph SaaS. Blockchain storage = **future option only** (8.15).  
+4. **Evolve in place** — extend Hermes Forge; do not greenfield rewrite.  
+5. **Step graph is process depth SoT** — xyflow nodes/edges; Mermaid **frozen** for legacy Workshop only (optional export later).  
+6. **Closed visual language** — typed node kinds; not freeform whiteboards (tldraw / Excalidraw / draw.io as SoT **out**).  
+7. **AI proposes graph patches** — structured ops (`upsert_node`, edges, positions), not freeform diagram XML as domain SoT.  
+8. **Split work by item** — each 8.x below is independently assignable; respect Depends on.
+
+### Stack (locked)
+
+| Concern | Choice |
+|---------|--------|
+| Graph store | `Business.graphJson` + Prisma/SQLite |
+| Graph lib | `lib/business-graph/*` |
+| API | `/api/business-graph` GET/PATCH |
+| Canvas | `@xyflow/react` |
+| AI | Hermes Agent + studio fences (extend `plant-apply` pattern) |
+| Legacy process depth | Mermaid Workshop (freeze SoT growth) |
+
+**Rejected as primary canvas:** tldraw (commercial), Excalidraw (sketch), next-ai-draw-io / draw.io XML as domain SoT (diagram product, not twin). Optional later: **export** graph → draw.io/SVG for sharing only.
+
+### Relationship to Phase 6
+
+| Phase 6 | Phase 8 evolution |
+|---------|-------------------|
+| Foundation seeds **process** drafts early | Foundation prefers **units + capabilities** first |
+| Map = process plant (God Mode compact) | Map = capability → **process + step graph** |
+| Workshop Mermaid = depth SoT | Steps = depth SoT; Mermaid legacy bridge |
+| Plant fences: drafts/docs/links | Add **`forge-graph`** (and unit-oriented ops) |
+| Soft unlock on process/forged | Unlock criteria may use **graph readiness** (8.6) |
+
+---
+
+### 8.0 Phase vision & references — **DONE**
+
+**Goal:** Agents and humans share one product north star before building graph UI.
+
+**Shipped:**
+- [x] [`PRODUCT_VISION.md`](PRODUCT_VISION.md) — black box, principles, rooms, MVP, storage policy  
+- [x] [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md) — L0–L3, canvas stack, graph document shape  
+- [x] INDEX + AGENTS.md pointers; plant PFD decision log entries  
+
+**Acceptance:** New work cites Phase 8 items; vision docs loadable via `git show main:docs/references/…`.
+
+---
+
+### 8.1 Graph core (storage, patch, seed, API) — **DONE** (foundation)
+
+**Goal:** Local-first property graph document with apply/load/seed.
+
+**Shipped:**
+- [x] Prisma `Business.graphJson` + migration  
+- [x] `lib/business-graph`: types, parse, `applyGraphPatch`, seed-from-legacy, project-xyflow, repository  
+- [x] `GET/PATCH /api/business-graph` (auto-seed, `?reseed=1`, ops validation)  
+- [x] Unit tests (`tests/unit/business-graph.test.ts`)  
+
+**Files:** `lib/business-graph/*`, `app/api/business-graph/route.ts`, `prisma/schema.prisma`
+
+**Acceptance:** Empty graph seeds from functions/processes; PATCH persists positions/nodes; no cloud dependency.
+
+**Follow-ups (can be small PRs under 8.1 residual):**
+- [ ] Graph snapshot history (pre-AI apply) for undo  
+- [ ] Stricter validation (contains acyclicity, kind/parent rules)
+
+**Depends on:** Phase 6 data model baseline  
+
+---
+
+### 8.2 xyflow graph canvas shell — **DONE** (foundation)
+
+**Goal:** Prove projection of graph → interactive xyflow without cutting over production rooms.
+
+**Shipped:**
+- [x] `@xyflow/react` dependency + globals CSS import  
+- [x] `/plant-spike` — Foundation view + process-steps view  
+- [x] `GraphKindNode`, `BusinessGraphCanvas`, drag → `set_position`  
+- [x] Earlier plant process spike (`projectPlantToFlow`) retained as reference  
+
+**Acceptance:** User can open `/plant-spike`, reseed, pan/zoom, drag nodes, switch views.
+
+**Depends on:** 8.1  
+
+**Do not:** Replace Foundation/Map production routes in this item (that is 8.3 / 8.4).
+
+---
+
+### 8.3 Foundation room → unit/capability graph — **DONE**
+
+**Goal:** Foundation’s primary surface is the **high-level system graph** (business, units, capabilities, high-level flows)—not a pile of process cards as the only language.
+
+**Shipped:**
+- [x] Primary surface: `FoundationGraphCanvas` + `projectFoundationGraph` (xyflow)  
+- [x] Load/save via `/api/business-graph`; auto-seed on first open; reseed after draft/plant apply  
+- [x] Select unit/capability; process **count** on nodes + inspector; drill CTA to Map (`/god-mode`)  
+- [x] Empty state: talk with Overlord (not “draw first”); templates + blank draft as secondary  
+- [x] Documents sidebar kept; units list + dual-run **Process plant** tab for legacy sketch  
+- [x] Drag → `set_position` PATCH; `processCount` on projected nodes  
+
+**Files:** `components/foundation/FoundationGraphCanvas.tsx`, `FoundationRoom.tsx`, `FoundationSidebar.tsx`, `lib/business-graph/project-xyflow.ts`, `GraphKindNode.tsx`
+
+**Acceptance:**
+- New or thin business shows units/capabilities after conversation or seed  
+- Refresh restores graph from SQLite  
+- User never required to open Workshop to “have a Foundation model”
+
+**Depends on:** 8.1, 8.2  
+**Estimate:** M (1 focused PR or worktree)
+
+**Do not:** Full step editor in Foundation; Monitor chips; freehand tools.
+
+---
+
+### 8.4 Map room → process step graph (SoT) — **Pending**
+
+**Goal:** Map is where capabilities become **executable process graphs** of **steps** (xyflow SoT).
+
+**Deliverables:**
+- [ ] Map primary surface: pick capability → list/select process → **step graph** editor  
+- [ ] Create/rename/delete **step** nodes; `flows_to` between steps; contains process→step  
+- [ ] Manual edit + layout; positions in graphJson  
+- [ ] Optional: full-plant process overview (L2 nodes) as secondary layout  
+- [ ] Feature flag or progressive cutover off pure `GodModeCanvas` for new maps  
+- [ ] Double-click process still can open legacy Workshop when `diagramMermaid` exists  
+
+**Acceptance:**
+- New process depth is step graph, not Mermaid source  
+- Graph survives reload; edges are first-class  
+- Existing Mermaid processes remain openable (bridge)
+
+**Depends on:** 8.1, 8.2; ideally 8.3 for unit drill-in  
+**Estimate:** L  
+
+**Do not:** Reintroduce Mermaid as SoT for new processes; multiplayer.
+
+---
+
+### 8.5 Overlord / studio `forge-graph` propose/apply — **Pending**
+
+**Goal:** Conversation expands the graph via structured patches (same spirit as `forge-drafts` / `forge-links`).
+
+**Deliverables:**
+- [ ] Fence e.g. ` ```forge-graph` ` JSON ops (or typed proposals)  
+- [ ] Server apply path (extend `lib/plant-apply.ts` or `lib/business-graph` apply) + SSE refresh  
+- [ ] Prompt pack: Overlord extracts units, capabilities, dependencies, I/O first  
+- [ ] Optional UI: pending proposal banner (approve/reject) before apply—v1 may auto-apply like plant fences if safer for MVP  
+- [ ] Studio page context includes graph snapshot summary for Hermes  
+
+**Acceptance:**
+- User describes business → units/capabilities appear without manual node authoring  
+- Bad patches fail validation with visible errors  
+- Works on Foundation route (and Map when expanding steps)
+
+**Depends on:** 8.1; 8.3 for UX value  
+**Estimate:** M–L  
+
+**Do not:** Multi-provider Vercel AI SDK stack; draw.io XML generation as domain path.
+
+---
+
+### 8.6 Soft unlock + room IA for graph readiness — **Pending**
+
+**Goal:** Room switcher / soft locks reflect graph maturity, not only legacy process count.
+
+**Deliverables:**
+- [ ] Map unlock: ≥1 unit or capability or process **in graph** (define rule; document)  
+- [ ] Keep Monitor/Automate on **forged** process until 8.10/8.11 redefine  
+- [ ] SoftRoomLock copy updated for graph language  
+- [ ] Optional: hide `/plant-spike` once Foundation/Map cutover complete (or keep as dev tool)  
+
+**Depends on:** 8.3  
+**Estimate:** S  
+
+---
+
+### 8.7 Legacy Mermaid freeze + export bridge — **Pending**
+
+**Goal:** Freeze Mermaid as process SoT; provide bridges so old work is not stranded.
+
+**Deliverables:**
+- [ ] Doc + product: no new features that deepen Mermaid-as-SoT  
+- [ ] Workshop remains for processes with `diagramMermaid`  
+- [ ] Optional: export step graph → Mermaid string for share  
+- [ ] Optional later: one-shot import Mermaid → steps (best-effort, not blocking MVP)  
+- [ ] Stop treating Map “full Mermaid tiles” as primary (demote/remove when 8.4 ships)  
+
+**Depends on:** 8.4 for export direction  
+**Estimate:** S–M  
+
+---
+
+### 8.8 Graph MVP hardening — **Pending**
+
+**Goal:** Ship-quality Foundation + Map graph loop.
+
+**Deliverables:**
+- [ ] Empty/error states, loading, reseed affordance in product UI (not only spike)  
+- [ ] Basic undo (last patch or snapshot)  
+- [ ] Export graph JSON from UI  
+- [ ] Business log events for graph apply (optional but preferred)  
+- [ ] Desktop smoke: graph loads offline after seed  
+- [ ] `npm run build` + unit tests green  
+
+**Depends on:** 8.3, 8.4, 8.5  
+**Estimate:** M  
+
+**MVP gate:** After 8.3–8.8, Phase 8 MVP is **done**. Post-MVP items below do not block that claim.
+
+---
+
+## Phase 8 post-MVP (do not start until MVP gate)
+
+### 8.9 Forge consultant room — **Deferred**
+
+**Goal:** Dedicated **improve** room: bottlenecks, SOPs, KPI suggestions, alternatives, capacity—AI as consultant over the graph.
+
+**Note:** Distinct from lifecycle status “forged” and product name. May need lifecycle rename later (“approved/ready”).
+
+**Depends on:** 8.8  
+
+---
+
+### 8.10 Monitor — metrics on graph nodes — **Deferred**
+
+**Goal:** Metrics bind to process/step nodes; badges on graph (not only business-level list).
+
+**Reuse:** `BusinessMetric.processId` / `mermaidNodeId` prep; extend to `graphNodeId`.
+
+**Depends on:** 8.8; existing 5.2 metrics  
+
+---
+
+### 8.11 Automate — execution on steps — **Deferred**
+
+**Goal:** Attach Hermes skills/cron, n8n, MCP, human tasks to **steps** (not only whole process).
+
+**Depends on:** 8.8, 8.4; existing Automate/n8n foundations  
+
+---
+
+### 8.12 Operate — living operational map — **Deferred**
+
+**Goal:** Peer room (or strong mode): unit/capability health (🟢🟡🔴), drill to metrics, automations, logs, failures.
+
+**Depends on:** 8.10, 8.11  
+
+---
+
+### 8.13 Advisors — **Deferred**
+
+**Goal:** Specialized advisors (CEO, Ops, Marketing, Finance, Automation, Product) reason over graph history and goals.
+
+**Depends on:** 8.8+  
+
+---
+
+### 8.14 Business branching / experiments — **Deferred**
+
+**Goal:** Branch graph for experiments (e.g. newsletter cadence A/B); compare; merge.
+
+**Depends on:** 8.8; git/business log may help  
+
+---
+
+### 8.15 Storage future (blockchain option) — **Research only**
+
+**Goal:** Explore optional blockchain-backed persistence of graph snapshots. **Not** MVP. **Do not** introduce centralized cloud graph SaaS.
+
+**Depends on:** Stable graph schema (8.8)  
+
+---
+
+### Phase 8 work split cheatsheet
+
+| Want to work on… | Start item |
+|------------------|------------|
+| Foundation UX cutover | **8.3** Done |
+| Step editor / Map SoT | **8.4** |
+| AI graph generation | **8.5** |
+| Unlock / chrome | **8.6** |
+| Mermaid policy / export | **8.7** |
+| Polish / ship MVP | **8.8** |
+| Consultant / metrics / automate / live | **8.9–8.12** (after MVP) |
+
+**Suggested parallelization:** 8.3 and 8.4 can use separate worktrees once 8.1/8.2 are on `main`. 8.5 after 8.3 for best demo path. 8.6 after 8.3. 8.7 alongside 8.4.
 
 ---
 
@@ -1308,6 +1636,14 @@ When picking up a backlog item:
 
 **Phase 7:**
 - **7.1** Automate pause/resume + owner-facing run health — **Done**
+- **7.2** superseded by Phase 8
+
+**Phase 8 (primary track):**
+- Canonical: [`PRODUCT_VISION.md`](PRODUCT_VISION.md), [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md)
+- **8.0–8.2 done** (vision, graphJson core, `/plant-spike`)
+- **8.3** Foundation unit/capability graph — **Done** (dual-run plant sketch retained)
+- **Next:** **8.4** Map step SoT → **8.5** forge-graph AI → **8.6–8.8** IA + Mermaid freeze + harden
+- **Post-MVP:** 8.9–8.15 (Forge room, Monitor, Automate-on-steps, Operate, advisors, branching, blockchain research)
 
 **Still open / deferred:**
 - 2.4 function status badges (deferred)
@@ -1315,3 +1651,4 @@ When picking up a backlog item:
 - 5.5 n8n productization (M1); 5.6 external connectors (M2)
 - Deeper unique room-home content; ports UI on plant edges
 - Optional HTTP API smoke tests (AUDIT-8 residual)
+- Phase 8 post-MVP rooms (8.9+)

@@ -295,6 +295,9 @@ Monitor + Automate soft-unlock
 | 2026-07-16 | Prioritize 6.6 + 6.7 wow; defer integrations and code signing |
 | 2026-07-18 | Foundation co-pilot renamed **Underlord → Overlord** (Forge Overlord) |
 | 2026-07-18 | App-wide Forge Overlord setup (spawn or existing Hermes profile) before Business Manager; remove forced per-business first hire; changeable later via profile |
+| 2026-07-25 | Multi-level twin: unit → capability → process → step; living overlays. Canonical: [`PRODUCT_VISION.md`](PRODUCT_VISION.md), [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md) |
+| 2026-07-25 | Plant canvas: **xyflow** structural maps; Mermaid **legacy freeze**; tldraw/Excalidraw not primary |
+| 2026-07-25 | Storage: local-first SQLite graphJson only; no centralized SaaS; blockchain storage option later |
 
 
 ---
