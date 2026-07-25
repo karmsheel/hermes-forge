@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
@@ -8,19 +7,42 @@ import {
   setActiveBusinessCookie,
   setSessionCookie,
 } from '@/lib/auth';
-import { isLocalUserEmail } from '@/lib/local-user-email';
+import { shouldUseSecureCookies } from '@/lib/auth-secret';
+import { isLocalUserEmail, LOCAL_USER_EMAIL } from '@/lib/local-user-email';
+import {
+  DEFAULT_POST_LOGIN,
+  GITHUB_OAUTH_REDIRECT_COOKIE,
+  GITHUB_OAUTH_SCOPES,
+  GITHUB_OAUTH_STATE_COOKIE,
+  STATE_MAX_AGE,
+  createOAuthNonce,
+  createOAuthState,
+  decodeOAuthState,
+  encodeOAuthState,
+  isRichLocalPlaceholder,
+  sanitizeRedirectPath,
+  type OAuthStatePayload,
+} from '@/lib/github-oauth-state';
 
-export const GITHUB_OAUTH_STATE_COOKIE = 'forge_github_oauth_state';
-export const GITHUB_OAUTH_REDIRECT_COOKIE = 'forge_github_oauth_redirect';
-export const GITHUB_OAUTH_SCOPES = 'read:user user:email';
-
-const STATE_MAX_AGE = 60 * 10; // 10 minutes
-const DEFAULT_POST_LOGIN = '/business-manager';
+export {
+  DEFAULT_POST_LOGIN,
+  GITHUB_OAUTH_REDIRECT_COOKIE,
+  GITHUB_OAUTH_SCOPES,
+  GITHUB_OAUTH_STATE_COOKIE,
+  STATE_MAX_AGE,
+  createOAuthNonce,
+  createOAuthState,
+  decodeOAuthState,
+  encodeOAuthState,
+  isRichLocalPlaceholder,
+  sanitizeRedirectPath,
+};
+export type { OAuthStatePayload };
 
 export type GithubOAuthConfig = {
   clientId: string;
   clientSecret: string;
-  /** Absolute callback URL, e.g. http://localhost:3000/api/auth/github/callback */
+  /** Absolute callback URL, e.g. http://127.0.0.1:3847/api/auth/github/callback */
   redirectUri: string;
 };
 
@@ -30,6 +52,9 @@ export function getGithubOAuthConfig(request: NextRequest): GithubOAuthConfig | 
   if (!clientId || !clientSecret) return null;
 
   const override = process.env.GITHUB_REDIRECT_URI?.trim();
+  // Prefer request origin so desktop (127.0.0.1:3847) and web (localhost:3000)
+  // both emit a callback that matches the host the browser already uses.
+  // Do not hardcode localhost — cookies are host-scoped; 127.0.0.1 ≠ localhost.
   const redirectUri =
     override ||
     new URL('/api/auth/github/callback', request.nextUrl.origin).toString();
@@ -43,28 +68,13 @@ export function isGithubOAuthConfigured(): boolean {
   );
 }
 
-export function createOAuthState(): string {
-  return randomBytes(24).toString('hex');
-}
-
-export function sanitizeRedirectPath(raw: string | null | undefined): string {
-  if (!raw) return DEFAULT_POST_LOGIN;
-  const value = raw.trim();
-  // Only allow same-origin relative paths (no protocol-relative //evil.com).
-  if (!value.startsWith('/') || value.startsWith('//')) return DEFAULT_POST_LOGIN;
-  if (value.includes('\\') || value.includes('\n') || value.includes('\r')) {
-    return DEFAULT_POST_LOGIN;
-  }
-  return value;
-}
-
 export function setOAuthCookies(
   response: NextResponse,
-  state: string,
+  nonce: string,
   redirectTo: string
 ) {
-  const secure = process.env.NODE_ENV === 'production';
-  response.cookies.set(GITHUB_OAUTH_STATE_COOKIE, state, {
+  const secure = shouldUseSecureCookies();
+  response.cookies.set(GITHUB_OAUTH_STATE_COOKIE, nonce, {
     httpOnly: true,
     secure,
     sameSite: 'lax',
@@ -81,7 +91,7 @@ export function setOAuthCookies(
 }
 
 export function clearOAuthCookies(response: NextResponse) {
-  const secure = process.env.NODE_ENV === 'production';
+  const secure = shouldUseSecureCookies();
   for (const name of [GITHUB_OAUTH_STATE_COOKIE, GITHUB_OAUTH_REDIRECT_COOKIE]) {
     response.cookies.set(name, '', {
       httpOnly: true,
@@ -218,82 +228,216 @@ export class GithubLinkConflictError extends Error {
   }
 }
 
+type UserWithBusiness = {
+  id: string;
+  email: string;
+  name: string | null;
+  githubId: string | null;
+  githubLogin: string | null;
+  forgeOverlordProfileKey: string | null;
+  businesses: { id: string }[];
+  _count?: { businesses: number };
+};
+
+const userInclude = {
+  businesses: { orderBy: { updatedAt: 'desc' as const }, take: 1 },
+};
+
+/** Empty shell: no businesses and no overlord — safe to absorb when re-homing githubId. */
+export function isEmptyGithubShell(user: {
+  forgeOverlordProfileKey?: string | null;
+  businesses: { id: string }[];
+  _count?: { businesses: number };
+}): boolean {
+  const count =
+    user._count?.businesses ??
+    user.businesses?.length ??
+    0;
+  return count === 0 && !user.forgeOverlordProfileKey?.trim();
+}
+
+/**
+ * Link GitHub identity onto an existing Forge user row (upgrade path).
+ * Does not merge two distinct rich accounts.
+ *
+ * If `githubId` is already on an empty shell user (no businesses/overlord),
+ * that shell is deleted so the identity can move onto `current` (desktop
+ * split-user recovery).
+ */
+async function linkGithubToUser(
+  current: UserWithBusiness,
+  profile: GithubProfile,
+  options?: { emptyShellToAbsorb?: UserWithBusiness | null }
+): Promise<UserWithBusiness> {
+  const githubId = profile.id;
+  const githubLogin = profile.login;
+  const email = profile.email.toLowerCase().trim();
+  const shell = options?.emptyShellToAbsorb;
+
+  // Update email from GitHub when safe: local placeholder, or same email, or free.
+  let nextEmail = current.email;
+  if (isLocalUserEmail(current.email)) {
+    const emailTaken = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    // Email owned by the empty shell we are about to delete is also free.
+    if (
+      !emailTaken ||
+      emailTaken.id === current.id ||
+      (shell && emailTaken.id === shell.id)
+    ) {
+      nextEmail = email;
+    }
+  } else if (current.email.toLowerCase() !== email) {
+    const emailTaken = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (!emailTaken || (shell && emailTaken.id === shell.id)) {
+      nextEmail = email;
+    }
+    // If email is taken by another user, keep current email (still link github).
+  }
+
+  if (shell && shell.id !== current.id) {
+    return prisma.$transaction(async (tx) => {
+      // Free unique constraints on the empty shell, then upgrade current, delete shell.
+      await tx.user.update({
+        where: { id: shell.id },
+        data: {
+          githubId: null,
+          githubLogin: null,
+          email: `recovered-deleted-${shell.id}@hermes-forge.invalid`,
+        },
+      });
+      const updated = await tx.user.update({
+        where: { id: current.id },
+        data: {
+          githubId,
+          githubLogin,
+          email: nextEmail,
+          name: current.name || profile.name,
+        },
+        include: userInclude,
+      });
+      await tx.user.delete({ where: { id: shell.id } });
+      return updated;
+    });
+  }
+
+  return prisma.user.update({
+    where: { id: current.id },
+    data: {
+      githubId,
+      githubLogin,
+      email: nextEmail,
+      name: current.name || profile.name,
+    },
+    include: userInclude,
+  });
+}
+
+/**
+ * When session/linkUserId is missing, find at most one rich local placeholder
+ * that is safe to upgrade. Never merges two rich accounts; never claims a
+ * local user that already has a different githubId.
+ */
+export async function findSoleRichLocalPlaceholder(): Promise<UserWithBusiness | null> {
+  const locals = await prisma.user.findMany({
+    where: {
+      email: LOCAL_USER_EMAIL,
+      githubId: null,
+    },
+    include: {
+      businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
+      _count: { select: { businesses: true } },
+    },
+  });
+
+  const rich = locals.filter((u) =>
+    isRichLocalPlaceholder({
+      email: u.email,
+      githubId: u.githubId,
+      forgeOverlordProfileKey: u.forgeOverlordProfileKey,
+      businessCount: u._count.businesses,
+    })
+  );
+
+  if (rich.length !== 1) return null;
+  return rich[0]!;
+}
+
 /**
  * Upsert or link a GitHub identity.
- * - Logged-in session → attach githubId to that user (upgrade local / email).
- * - Logged-out → find by githubId, else verified email, else create.
+ * Priority:
+ * 1. Session cookie user (or signed OAuth `linkUserId`) → upgrade that row
+ * 2. Existing githubId
+ * 3. Verified email match
+ * 4. Sole rich local placeholder (desktop session-loss recovery)
+ * 5. Create new user
+ *
+ * Never silently merges two rich accounts. Throws GithubLinkConflictError when
+ * GitHub is already linked to a different user.
  */
 export async function resolveGithubUser(
   request: NextRequest,
-  profile: GithubProfile
+  profile: GithubProfile,
+  options?: { linkUserId?: string | null }
 ) {
   const session = await getSessionFromRequest(request);
   const githubId = profile.id;
   const githubLogin = profile.login;
   const email = profile.email.toLowerCase().trim();
 
+  // Prefer live session; fall back to linkUserId captured at authorize time.
+  const upgradeUserId = session?.userId || options?.linkUserId || null;
+
   const existingByGithub = await prisma.user.findUnique({
     where: { githubId },
-    include: {
-      businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-    },
+    include: userInclude,
   });
 
-  if (session) {
+  if (upgradeUserId) {
     // Upgrade / link path — keep the same user row and businesses.
-    if (existingByGithub && existingByGithub.id !== session.userId) {
-      throw new GithubLinkConflictError(
-        'This GitHub account is already linked to a different Hermes Forge user. Sign in with that account, or use a different GitHub identity.'
-      );
+    if (existingByGithub && existingByGithub.id !== upgradeUserId) {
+      // Allow re-homing only when the other row is an empty shell (prior bug).
+      if (!isEmptyGithubShell(existingByGithub)) {
+        throw new GithubLinkConflictError(
+          'This GitHub account is already linked to a different Hermes Forge user. Sign in with that account, or use a different GitHub identity.'
+        );
+      }
     }
 
     const current = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: {
-        businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-      },
+      where: { id: upgradeUserId },
+      include: userInclude,
     });
     if (!current) {
-      throw new Error('Session user not found');
+      // Stale linkUserId / deleted user — fall through to logged-out paths.
+    } else {
+      const shell =
+        existingByGithub &&
+        existingByGithub.id !== current.id &&
+        isEmptyGithubShell(existingByGithub)
+          ? existingByGithub
+          : null;
+      return linkGithubToUser(current, profile, { emptyShellToAbsorb: shell });
     }
-
-    // Update email from GitHub when safe: local placeholder, or same email, or free.
-    let nextEmail = current.email;
-    if (isLocalUserEmail(current.email)) {
-      const emailTaken = await prisma.user.findUnique({
-        where: { email },
-        select: { id: true },
-      });
-      if (!emailTaken || emailTaken.id === current.id) {
-        nextEmail = email;
-      }
-    } else if (current.email.toLowerCase() !== email) {
-      const emailTaken = await prisma.user.findUnique({
-        where: { email },
-        select: { id: true },
-      });
-      if (!emailTaken) {
-        nextEmail = email;
-      }
-      // If email is taken by another user, keep current email (still link github).
-    }
-
-    return prisma.user.update({
-      where: { id: current.id },
-      data: {
-        githubId,
-        githubLogin,
-        email: nextEmail,
-        name: current.name || profile.name,
-      },
-      include: {
-        businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-      },
-    });
   }
 
   // Logged-out: existing GitHub user
   if (existingByGithub) {
+    // If this githubId sits on an empty shell and a sole rich local exists,
+    // re-home onto local (recovery for earlier session-loss creates).
+    if (isEmptyGithubShell(existingByGithub)) {
+      const soleLocal = await findSoleRichLocalPlaceholder();
+      if (soleLocal && soleLocal.id !== existingByGithub.id) {
+        return linkGithubToUser(soleLocal, profile, {
+          emptyShellToAbsorb: existingByGithub,
+        });
+      }
+    }
     return prisma.user.update({
       where: { id: existingByGithub.id },
       data: {
@@ -301,18 +445,14 @@ export async function resolveGithubUser(
         // Refresh name if empty
         name: existingByGithub.name || profile.name,
       },
-      include: {
-        businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-      },
+      include: userInclude,
     });
   }
 
   // Match by email (verified GitHub email)
   const existingByEmail = await prisma.user.findUnique({
     where: { email },
-    include: {
-      businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-    },
+    include: userInclude,
   });
 
   if (existingByEmail) {
@@ -328,10 +468,15 @@ export async function resolveGithubUser(
         githubLogin,
         name: existingByEmail.name || profile.name,
       },
-      include: {
-        businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-      },
+      include: userInclude,
     });
+  }
+
+  // Desktop recovery: sole rich local@hermes-forge.local with businesses/overlord
+  // and no githubId — upgrade instead of creating an empty second user.
+  const soleLocal = await findSoleRichLocalPlaceholder();
+  if (soleLocal) {
+    return linkGithubToUser(soleLocal, profile);
   }
 
   // Brand-new OAuth user
@@ -343,9 +488,7 @@ export async function resolveGithubUser(
       githubId,
       githubLogin,
     },
-    include: {
-      businesses: { orderBy: { updatedAt: 'desc' }, take: 1 },
-    },
+    include: userInclude,
   });
 }
 

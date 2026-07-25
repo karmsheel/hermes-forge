@@ -2,8 +2,13 @@ import { SignJWT, jwtVerify } from 'jose';
 import { NextResponse } from 'next/server';
 
 import { BUSINESS_HEADER } from '@/lib/business-header';
+import {
+  getAuthSecretString,
+  shouldUseSecureCookies,
+} from '@/lib/auth-secret';
 
 export { BUSINESS_HEADER };
+export { getAuthSecretString, shouldUseSecureCookies } from '@/lib/auth-secret';
 
 export const SESSION_COOKIE = 'forge_session';
 export const BUSINESS_COOKIE = 'forge_business';
@@ -15,11 +20,7 @@ export interface SessionPayload {
 }
 
 function getAuthSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    throw new Error('AUTH_SECRET is not configured');
-  }
-  return new TextEncoder().encode(secret);
+  return new TextEncoder().encode(getAuthSecretString());
 }
 
 export async function createSessionToken(payload: SessionPayload): Promise<string> {
@@ -46,7 +47,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 export function setSessionCookie(response: NextResponse, token: string) {
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(),
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE,
@@ -54,16 +55,17 @@ export function setSessionCookie(response: NextResponse, token: string) {
 }
 
 export function clearSessionCookie(response: NextResponse) {
+  const secure = shouldUseSecureCookies();
   response.cookies.set(SESSION_COOKIE, '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
   });
   response.cookies.set(BUSINESS_COOKIE, '', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure,
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
@@ -73,7 +75,7 @@ export function clearSessionCookie(response: NextResponse) {
 export function setActiveBusinessCookie(response: NextResponse, businessId: string) {
   response.cookies.set(BUSINESS_COOKIE, businessId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(),
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_MAX_AGE,
