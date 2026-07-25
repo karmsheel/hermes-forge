@@ -25,7 +25,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
+    // OAuth-only users have null passwordHash — never call bcrypt with null.
+    if (!user?.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
 

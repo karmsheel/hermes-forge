@@ -56,6 +56,8 @@ export async function getCurrentUser() {
       id: true,
       email: true,
       name: true,
+      githubId: true,
+      githubLogin: true,
       createdAt: true,
       updatedAt: true,
       forgeOverlordProfileKey: true,

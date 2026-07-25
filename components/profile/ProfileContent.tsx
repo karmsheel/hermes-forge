@@ -78,9 +78,11 @@ export function ProfileContent() {
     );
   }
 
-  const authLabel = isLocalUserEmail(user?.email)
-    ? "Local mode (no account)"
-    : user?.email || "Signed in";
+  const authLabel = user?.githubLogin
+    ? `GitHub @${user.githubLogin}`
+    : isLocalUserEmail(user?.email)
+      ? "Local mode (no account)"
+      : user?.email || "Signed in";
 
   const overlordLabel =
     user?.forgeOverlordDisplayName?.trim() ||
@@ -169,6 +171,7 @@ export function ProfileContent() {
         <SignInOptions
           variant="profile"
           currentEmail={user?.email}
+          githubLogin={user?.githubLogin}
           redirectTo="/profile"
           showBrand={false}
         />

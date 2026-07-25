@@ -4,6 +4,10 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string | null;
+  /** GitHub numeric id as string when linked. */
+  githubId?: string | null;
+  /** GitHub login/handle when linked. */
+  githubLogin?: string | null;
   createdAt: string;
   updatedAt: string;
   /** Forge Overlord snapshot (user-scoped Hermes profile). */
