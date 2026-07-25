@@ -6,6 +6,7 @@ import {
   GITHUB_OAUTH_STATE_COOKIE,
   GithubLinkConflictError,
   attachSessionAndRedirect,
+  decodeOAuthState,
   exchangeCodeForToken,
   fetchGithubProfile,
   getGithubOAuthConfig,
@@ -16,7 +17,8 @@ import {
 
 /**
  * GET /api/auth/github/callback
- * Validate OAuth state, exchange code, upsert/link user, set session, redirect.
+ * Validate OAuth state (signed payload + CSRF nonce cookie), exchange code,
+ * upsert/link user, set session, redirect.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -36,11 +38,12 @@ export async function GET(request: NextRequest) {
     }
 
     const code = params.get('code');
-    const state = params.get('state');
-    const cookieState = request.cookies.get(GITHUB_OAUTH_STATE_COOKIE)?.value;
+    const stateParam = params.get('state');
+    const cookieNonce = request.cookies.get(GITHUB_OAUTH_STATE_COOKIE)?.value;
     const redirectCookie = request.cookies.get(GITHUB_OAUTH_REDIRECT_COOKIE)?.value;
 
-    if (!code || !state || !cookieState || state !== cookieState) {
+    const decoded = decodeOAuthState(stateParam);
+    if (!code || !decoded || !cookieNonce || decoded.nonce !== cookieNonce) {
       return redirectWithError(
         request,
         'GitHub sign-in could not be verified (invalid or expired state). Try again.'
@@ -49,7 +52,9 @@ export async function GET(request: NextRequest) {
 
     const accessToken = await exchangeCodeForToken(config, code);
     const profile = await fetchGithubProfile(accessToken);
-    const user = await resolveGithubUser(request, profile);
+    const user = await resolveGithubUser(request, profile, {
+      linkUserId: decoded.linkUserId,
+    });
 
     const hasOverlord = Boolean(
       (
@@ -60,7 +65,8 @@ export async function GET(request: NextRequest) {
       )?.forgeOverlordProfileKey
     );
 
-    const redirectPath = sanitizeRedirectPath(redirectCookie);
+    // Prefer signed-state redirect; cookie is a fallback for older in-flight flows.
+    const redirectPath = sanitizeRedirectPath(decoded.redirectTo || redirectCookie);
     return attachSessionAndRedirect(request, user, redirectPath, hasOverlord);
   } catch (error) {
     if (error instanceof GithubLinkConflictError) {

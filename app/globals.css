@@ -5316,7 +5316,8 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   overflow: hidden;
 }
 
-.app-shell-layout--business-manager {
+.app-shell-layout--business-manager,
+.app-shell-layout--setup {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
@@ -5324,12 +5325,14 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   background: var(--bg);
 }
 
-.app-shell-layout--business-manager .app-shell-layout__main {
+.app-shell-layout--business-manager .app-shell-layout__main,
+.app-shell-layout--setup .app-shell-layout__main {
   min-height: 0;
   background: var(--bg);
 }
 
-.app-shell-layout--business-manager .app-shell-layout__body {
+.app-shell-layout--business-manager .app-shell-layout__body,
+.app-shell-layout--setup .app-shell-layout__body {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -5342,6 +5345,21 @@ a.forge-tab-bar__home:focus-visible .forge-tab-bar__home-mark {
   min-height: 0;
   /* BM fills this pane; only .business-manager scrolls when content is long */
   overflow: hidden;
+}
+
+/*
+ * Overlord /setup is full-bleed like BM but has no inner scroller.
+ * Scroll the content pane so long setup forms (e.g. "Use an existing agent")
+ * remain reachable below the fold.
+ */
+.app-shell-layout--setup .app-shell-layout__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /*

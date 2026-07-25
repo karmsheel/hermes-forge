@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getSessionFromRequest } from '@/lib/auth';
 import {
   buildGithubAuthorizeUrl,
-  createOAuthState,
+  createOAuthNonce,
+  encodeOAuthState,
   getGithubOAuthConfig,
   sanitizeRedirectPath,
   setOAuthCookies,
@@ -14,6 +16,10 @@ import {
  *
  * Query:
  *   - redirect: post-login path (default /business-manager)
+ *
+ * When a session is present, its userId is sealed into the signed OAuth `state`
+ * so Local → GitHub still upgrades the same row if the session cookie is lost
+ * on the GitHub round-trip (common on desktop HTTP).
  */
 export async function GET(request: NextRequest) {
   const config = getGithubOAuthConfig(request);
@@ -29,10 +35,17 @@ export async function GET(request: NextRequest) {
   const redirectTo = sanitizeRedirectPath(
     request.nextUrl.searchParams.get('redirect')
   );
-  const state = createOAuthState();
+  const session = await getSessionFromRequest(request);
+  const nonce = createOAuthNonce();
+  const state = encodeOAuthState({
+    nonce,
+    redirectTo,
+    linkUserId: session?.userId ?? null,
+  });
   const authorizeUrl = buildGithubAuthorizeUrl(config, state);
 
   const response = NextResponse.redirect(authorizeUrl);
-  setOAuthCookies(response, state, redirectTo);
+  // Cookie holds CSRF nonce only; full payload (incl. linkUserId) is in `state`.
+  setOAuthCookies(response, nonce, redirectTo);
   return response;
 }

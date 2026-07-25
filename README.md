@@ -50,15 +50,38 @@ Local / no-account sign-in works without GitHub env vars. The GitHub button show
 
 Identity-only login (scopes: `read:user`, `user:email`). No repo scopes.
 
+**Host matters:** cookies are host-scoped. Desktop Electron serves `http://127.0.0.1:3847` (not `localhost`). Register **both** hosts if you switch between them, or stick to one consistently. Prefer `127.0.0.1` for desktop so it matches the Electron window.
+
 1. Open [GitHub Developer Settings → OAuth Apps](https://github.com/settings/developers) → **New OAuth App**.
 2. **Homepage URL**
-   - Web dev: `http://localhost:3000`
-   - Desktop Electron: `http://localhost:3847` (default `FORGE_PORT`)
-3. **Authorization callback URL** (add one app per origin, or use the same app and register the URL you will hit):
+   - Web dev: `http://localhost:3000` (or `http://127.0.0.1:3000`)
+   - Desktop Electron: `http://127.0.0.1:3847` (default `FORGE_PORT`)
+3. **Authorization callback URL** — register every origin you actually open in the browser/Electron:
    - `http://localhost:3000/api/auth/github/callback`
-   - `http://localhost:3847/api/auth/github/callback`
-4. Create the app, generate a **Client secret**, put id + secret in `.env`, restart `npm run dev`.
-5. On `/sign-in` or Profile, choose **GitHub**. If you already have a local session, GitHub **links to that same user** (businesses preserved).
+   - `http://127.0.0.1:3000/api/auth/github/callback`
+   - `http://127.0.0.1:3847/api/auth/github/callback`
+   - `http://localhost:3847/api/auth/github/callback` (only if you browse via localhost)
+4. Create the app, generate a **Client secret**, put id + secret in `.env`, restart `npm run dev` / desktop.
+5. On `/sign-in` or Profile, choose **GitHub**. Local → GitHub **upgrades the same user row** (businesses + Overlord preserved) when a local session started the OAuth flow, or when the only rich `local@hermes-forge.local` account has no `githubId` yet.
+
+#### Local → GitHub upgrade (how it works)
+
+1. Authorize step seals the current session `userId` into a signed OAuth `state` (survives session-cookie loss on the GitHub round-trip).
+2. Callback prefers session cookie, then signed `linkUserId`, then existing `githubId` / email match, then a **sole rich local** placeholder (`local@hermes-forge.local` with businesses or Overlord and no `githubId`).
+3. If that GitHub identity is already linked to a **different** user, you get a clear error on `/sign-in` — no silent merge of two rich accounts.
+
+#### Recover a previously split local + empty GitHub user
+
+If an older build created a second empty GitHub user while leaving data on `local@hermes-forge.local`:
+
+```powershell
+# Desktop DB (quit Hermes Forge first)
+$env:DATABASE_URL = "file:$env:APPDATA\hermes-forge\forge.db"
+node scripts/recover-github-local-link.mjs          # dry-run plan
+node scripts/recover-github-local-link.mjs --apply  # execute
+```
+
+Optional: `--github-email=you@gmail.com` if more than one empty GitHub user exists.
 
 ## Hermes connection
 

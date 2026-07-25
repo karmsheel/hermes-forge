@@ -32,6 +32,7 @@ function AppShellFrame({ children }: { children: ReactNode }) {
   const isSetup = pathname.startsWith("/setup");
   /** Overlord / first-run setup: introduce the product without the chat surface. */
   const hideChatbar = isSetup;
+  /** Full-bleed chrome (no nav rail / tab strip). BM and setup share structure; scroll differs. */
   const isFullBleed = isBusinessManager || isSetup;
   const isWorkshop = pathname.startsWith("/workshop");
   const isAutomation = pathname.startsWith("/automations");
@@ -54,7 +55,8 @@ function AppShellFrame({ children }: { children: ReactNode }) {
     chatOpen && "app-shell-layout--chat-open",
     !chatOpen && "app-shell-layout--chat-collapsed",
     `app-shell-layout--chat-side-${side}`,
-    isFullBleed && "app-shell-layout--business-manager",
+    isBusinessManager && "app-shell-layout--business-manager",
+    isSetup && "app-shell-layout--setup",
     (isWorkshop || isAutomation || isGodMode || isFoundation) &&
       "app-shell-layout--full",
     isHome && "app-shell-layout--home",
