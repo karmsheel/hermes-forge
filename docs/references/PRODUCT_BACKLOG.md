@@ -918,7 +918,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.3 done**; **next is 8.4** Map step graph. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
+**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.4 done**; **next is 8.5** forge-graph AI. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
 
 ---
 
@@ -1219,7 +1219,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 8.1 | Graph core (graphJson, patch, seed, API) | 8 | **Done** (foundation) |
 | 8.2 | xyflow spike / graph canvas shell | 8 | **Done** (foundation) — `/plant-spike` |
 | 8.3 | Foundation room → unit/capability graph | 8 | **Done** |
-| 8.4 | Map room → process step graph (SoT) | 8 | Pending |
+| 8.4 | Map room → process step graph (SoT) | 8 | **Done** |
 | 8.5 | Overlord `forge-graph` propose/apply | 8 | Pending |
 | 8.6 | Soft unlock + IA for graph readiness | 8 | Pending |
 | 8.7 | Legacy Mermaid freeze + export bridge | 8 | Pending |
@@ -1393,17 +1393,18 @@ Business → Unit → Capability → Process → Step
 
 ---
 
-### 8.4 Map room → process step graph (SoT) — **Pending**
+### 8.4 Map room → process step graph (SoT) — **DONE**
 
 **Goal:** Map is where capabilities become **executable process graphs** of **steps** (xyflow SoT).
 
-**Deliverables:**
-- [ ] Map primary surface: pick capability → list/select process → **step graph** editor  
-- [ ] Create/rename/delete **step** nodes; `flows_to` between steps; contains process→step  
-- [ ] Manual edit + layout; positions in graphJson  
-- [ ] Optional: full-plant process overview (L2 nodes) as secondary layout  
-- [ ] Feature flag or progressive cutover off pure `GodModeCanvas` for new maps  
-- [ ] Double-click process still can open legacy Workshop when `diagramMermaid` exists  
+**Shipped:**
+- [x] Map primary surface (`/god-mode` → `MapRoom`): process select → **step graph** editor  
+- [x] Create/rename/delete **step** nodes; `flows_to` between steps; contains process→step  
+- [x] Manual drag layout; positions via graphJson PATCH  
+- [x] Dual-run **Plant** tab = legacy `GodModeCanvas` overview  
+- [x] Workshop bridge when `diagramMermaid` exists (toolbar + inspector)  
+
+**Files:** `components/map/MapRoom.tsx`, `MapStepGraphCanvas.tsx`, `app/(shell)/god-mode/page.tsx`
 
 **Acceptance:**
 - New process depth is step graph, not Mermaid source  
@@ -1557,7 +1558,7 @@ Business → Unit → Capability → Process → Step
 | Want to work on… | Start item |
 |------------------|------------|
 | Foundation UX cutover | **8.3** Done |
-| Step editor / Map SoT | **8.4** |
+| Step editor / Map SoT | **8.4** Done |
 | AI graph generation | **8.5** |
 | Unlock / chrome | **8.6** |
 | Mermaid policy / export | **8.7** |
@@ -1642,7 +1643,8 @@ When picking up a backlog item:
 - Canonical: [`PRODUCT_VISION.md`](PRODUCT_VISION.md), [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md)
 - **8.0–8.2 done** (vision, graphJson core, `/plant-spike`)
 - **8.3** Foundation unit/capability graph — **Done** (dual-run plant sketch retained)
-- **Next:** **8.4** Map step SoT → **8.5** forge-graph AI → **8.6–8.8** IA + Mermaid freeze + harden
+- **8.4** Map step graph SoT — **Done** (dual-run Plant tab retained)
+- **Next:** **8.5** forge-graph AI → **8.6–8.8** IA + Mermaid freeze + harden
 - **Post-MVP:** 8.9–8.15 (Forge room, Monitor, Automate-on-steps, Operate, advisors, branching, blockchain research)
 
 **Still open / deferred:**

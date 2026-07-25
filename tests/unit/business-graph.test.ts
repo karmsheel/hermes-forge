@@ -5,6 +5,7 @@ import {
   emptyBusinessGraph,
   parseBusinessGraph,
   projectFoundationGraph,
+  projectProcessStepGraph,
   seedGraphFromLegacy,
   serializeBusinessGraph,
 } from "../../lib/business-graph/index.ts";
@@ -108,5 +109,82 @@ describe("business-graph", () => {
     const cap = nodes.find((n) => n.data.kind === "capability");
     assert.ok(cap);
     assert.equal(cap!.data.processCount, 1);
+  });
+
+  it("projectProcessStepGraph and step patch ops", () => {
+    let g = seedGraphFromLegacy({
+      businessId: "b1",
+      businessName: "Acme",
+      functions: [{ id: "f1", name: "Ops" }],
+      processes: [{ id: "p1", name: "Fulfill", department: "Ops" }],
+    });
+    const r = applyGraphPatch(g, {
+      ops: [
+        {
+          op: "upsert_node",
+          node: {
+            id: "s1",
+            kind: "step",
+            name: "Receive",
+            parentId: "p1",
+            position: { x: 10, y: 20 },
+          },
+        },
+        {
+          op: "upsert_node",
+          node: {
+            id: "s2",
+            kind: "step",
+            name: "Ship",
+            parentId: "p1",
+          },
+        },
+        {
+          op: "upsert_edge",
+          edge: {
+            id: "contains_p1_s1",
+            kind: "contains",
+            fromId: "p1",
+            toId: "s1",
+          },
+        },
+        {
+          op: "upsert_edge",
+          edge: {
+            id: "contains_p1_s2",
+            kind: "contains",
+            fromId: "p1",
+            toId: "s2",
+          },
+        },
+        {
+          op: "upsert_edge",
+          edge: {
+            id: "flow_s1_s2",
+            kind: "flows_to",
+            fromId: "s1",
+            toId: "s2",
+          },
+        },
+      ],
+    });
+    assert.equal(r.applied, 5);
+    g = r.graph;
+    const projected = projectProcessStepGraph(g, "p1");
+    assert.ok(projected.nodes.some((n) => n.data.kind === "process"));
+    assert.equal(
+      projected.nodes.filter((n) => n.data.kind === "step").length,
+      2,
+    );
+    assert.ok(projected.edges.some((e) => e.id === "flow_s1_s2"));
+
+    const del = applyGraphPatch(g, {
+      ops: [{ op: "delete_node", id: "s1" }],
+    });
+    assert.equal(
+      del.graph.nodes.filter((n) => n.kind === "step").length,
+      1,
+    );
+    assert.ok(!del.graph.edges.some((e) => e.id === "flow_s1_s2"));
   });
 });

@@ -1,57 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import {
-  GodModeCanvas,
-  type GodModeStats,
-} from "@/components/god-mode/GodModeCanvas";
-import { SoftRoomLock } from "@/components/shell/SoftRoomLock";
-import { useForgeStage } from "@/components/shell/StageProvider";
+import { MapRoom } from "@/components/map/MapRoom";
 
 /**
- * Map room primary surface — plant PFD (promoted from dev-gated God Mode).
+ * Map room primary surface — step graph SoT (Phase 8.4) with dual-run plant.
  * Route stays /god-mode for compatibility; chrome labels it Plant / Map.
  */
 export default function GodModePage() {
-  const { isRoomUnlocked } = useForgeStage();
-  const [stats, setStats] = useState<GodModeStats>({
-    total: 0,
-    withDiagrams: 0,
-    viewMode: "compact",
-  });
-
-  const mapReady = isRoomUnlocked("map");
-
-  return (
-    <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
-      {stats.total > 0 ? (
-        <header className="shrink-0 border-b border-border px-6 py-2 flex items-center justify-between bg-bg">
-          <p className="text-xs text-text-muted">
-            {stats.total} process{stats.total !== 1 ? "es" : ""}
-            {stats.viewMode === "compact" ? (
-              <> · plant shapes</>
-            ) : stats.withDiagrams > 0 ? (
-              <>
-                {" "}
-                · {stats.withDiagrams} with diagram
-                {stats.withDiagrams !== 1 ? "s" : ""}
-              </>
-            ) : null}
-          </p>
-        </header>
-      ) : null}
-
-      {!mapReady ? (
-        <div className="p-6">
-          <SoftRoomLock
-            room="map"
-            title="Map fills as processes appear"
-            description="Talk with Overlord in Foundation to seed draft process shapes. The plant map soft-unlocks when the first process exists."
-          />
-        </div>
-      ) : (
-        <GodModeCanvas onStatsChange={setStats} />
-      )}
-    </div>
-  );
+  return <MapRoom />;
 }
