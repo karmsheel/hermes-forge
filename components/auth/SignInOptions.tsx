@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GitBranch, Loader2, Lock, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import iconImage from "@/assets/icon.jpg";
@@ -17,6 +17,8 @@ interface SignInOptionsProps {
   redirectTo?: string;
   /** Current session email — used on profile to mark the active method. */
   currentEmail?: string | null;
+  /** When set, marks GitHub as the active linked identity. */
+  githubLogin?: string | null;
   /** Hide the brand header (profile embeds its own section title). */
   showBrand?: boolean;
 }
@@ -25,14 +27,32 @@ export function SignInOptions({
   variant = "page",
   redirectTo = "/business-manager",
   currentEmail = null,
+  githubLogin = null,
   showBrand,
 }: SignInOptionsProps) {
   const router = useRouter();
   const [localLoading, setLocalLoading] = useState(false);
+  const [githubConfigured, setGithubConfigured] = useState<boolean | null>(null);
   const isPage = variant === "page";
   const brandVisible = showBrand ?? isPage;
   const localActive = isLocalUserEmail(currentEmail);
+  const githubActive = Boolean(githubLogin);
   const hasRemoteIdentity = Boolean(currentEmail && !localActive);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/github/status", { credentials: "same-origin" })
+      .then((r) => r.json())
+      .then((data: { configured?: boolean }) => {
+        if (!cancelled) setGithubConfigured(Boolean(data?.configured));
+      })
+      .catch(() => {
+        if (!cancelled) setGithubConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleLocalSignIn() {
     if (localActive && !isPage) {
@@ -70,6 +90,28 @@ export function SignInOptions({
       description:
         "You can keep building locally and enable this later from Profile once your business is further along.",
     });
+  }
+
+  function handleGithubSignIn() {
+    if (githubActive && !isPage) {
+      toast.message("GitHub is already linked", {
+        description: githubLogin ? `Signed in as @${githubLogin}` : undefined,
+      });
+      return;
+    }
+
+    if (githubConfigured === false) {
+      toast.error("GitHub sign-in is not configured", {
+        description:
+          "Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET (see README), then restart the app.",
+      });
+      return;
+    }
+
+    const params = new URLSearchParams();
+    if (redirectTo) params.set("redirect", redirectTo);
+    // Full navigation so Set-Cookie state + Location redirect both apply.
+    window.location.href = `/api/auth/github?${params.toString()}`;
   }
 
   const optionPad = isPage ? "p-4" : "p-2.5";
@@ -155,7 +197,7 @@ export function SignInOptions({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={titleClass}>{isPage ? "Create email sign-in" : "Email"}</span>
-                {hasRemoteIdentity ? (
+                {hasRemoteIdentity && !githubActive ? (
                   <span className="rounded-full bg-green-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green">
                     Active
                   </span>
@@ -177,25 +219,45 @@ export function SignInOptions({
 
         <button
           type="button"
-          onClick={() => handleComingSoon("GitHub sign-in")}
-          className={`card w-full ${optionPad} text-left opacity-90 transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected`}
+          onClick={handleGithubSignIn}
+          className={`card w-full ${optionPad} text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-selected ${
+            githubConfigured === false ? "opacity-90" : ""
+          }`}
         >
           <div className={`flex ${isPage ? "items-start gap-3" : "items-center gap-2.5"}`}>
-            <div className={`${iconBox} bg-bg-muted text-text-muted`}>
+            <div
+              className={`${iconBox} ${
+                githubActive || githubConfigured !== false
+                  ? "bg-accent-soft text-accent"
+                  : "bg-bg-muted text-text-muted"
+              }`}
+            >
               <GitBranch className={isPage ? "h-4 w-4" : "h-3.5 w-3.5"} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={titleClass}>GitHub</span>
-                <span className="rounded-full bg-amber-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber">
-                  Soon
-                </span>
+                {githubActive ? (
+                  <span className="rounded-full bg-green-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green">
+                    Active
+                  </span>
+                ) : githubConfigured === false ? (
+                  <span className="rounded-full bg-amber-bg px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-amber">
+                    Setup needed
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-accent">
+                    Available
+                  </span>
+                )}
               </div>
               {isPage ? (
                 <p className="text-sm text-text-muted mt-1 leading-relaxed">
-                  Sign in with GitHub to back up and sync businesses to a repo — pick up work on other
-                  machines, collaborate, and keep a full history over time.
+                  Sign in with GitHub to identify yourself across sessions. Identity only for now —
+                  no repo access is requested.
                 </p>
+              ) : githubActive && githubLogin ? (
+                <p className="text-xs text-text-muted mt-0.5">@{githubLogin}</p>
               ) : null}
             </div>
           </div>
@@ -204,9 +266,8 @@ export function SignInOptions({
 
       {isPage ? (
         <p className="text-xs text-text-soft mt-5 leading-relaxed text-center sm:text-left">
-          Email and GitHub are optional. You can come back and sign in with those credentials later
-          from Profile once your business is more developed — then lock data or push it to a GitHub
-          repo for backup and traceability.
+          Local mode is always available. GitHub is optional identity — you can link it later from
+          Profile without losing businesses on this machine.
         </p>
       ) : null}
     </div>
