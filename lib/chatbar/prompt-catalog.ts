@@ -79,7 +79,7 @@ const CATALOG: PromptCatalogMeta[] = [
     surface: "chatbar",
     routes: ["/foundation"],
     description:
-      "Studio co-pilot plus Overlord plant guidance (forge-drafts / forge-docs / forge-links fences).",
+      "Studio co-pilot plus Overlord plant/graph guidance (forge-drafts / forge-docs / forge-links / forge-graph fences).",
   },
   {
     id: "map-plant",

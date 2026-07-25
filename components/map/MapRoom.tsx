@@ -18,6 +18,7 @@ import { useForgeStage } from "@/components/shell/StageProvider";
 import { useShell } from "@/components/shell/ShellContext";
 import { setActiveProcessId } from "@/lib/workshop-storage";
 import type { BusinessGraph, GraphPatchOp } from "@/lib/business-graph";
+import { PLANT_APPLIED_EVENT } from "@/lib/plant-apply";
 import {
   MapStepGraphCanvas,
   type ProcessMeta,
@@ -121,6 +122,17 @@ export function MapRoom() {
     void loadGraph({ quiet: true });
     void loadProcessMeta();
   }, [mapReady, loadGraph, loadProcessMeta, currentBusiness?.id]);
+
+  // Studio forge-graph / plant fences → refresh Map graph (no full reseed unless empty seed)
+  useEffect(() => {
+    function onPlantApplied() {
+      void loadGraph({ quiet: true });
+      void loadProcessMeta();
+    }
+    window.addEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+    return () =>
+      window.removeEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
+  }, [loadGraph, loadProcessMeta]);
 
   const graphProcesses = useMemo((): ProcessMeta[] => {
     if (!graph) return [];

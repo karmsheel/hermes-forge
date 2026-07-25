@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { pageBlurbForPath } from "./page-registry";
 import { clampSnapshotText, SNAPSHOT_MAX_CHARS } from "./context-protocol";
 import { redactSecrets } from "./redaction";
+import { parseBusinessGraph, summarizeGraphForContext } from "@/lib/business-graph";
 
 export type PageSnapshotResult = {
   route: string;
@@ -92,7 +93,14 @@ export async function buildServerPageSnapshot(options: {
     }
     case "foundation": {
       lines.push(
-        "Foundation room: low-fidelity plant sketch (I/O shape blocks). Workshop is for deep maps.",
+        "Foundation room: system graph (units/capabilities) + dual-run process plant. Step depth is on Map.",
+      );
+      const bizGraphRow = await prisma.business.findUnique({
+        where: { id: options.businessId },
+        select: { graphJson: true },
+      });
+      lines.push(
+        ...summarizeGraphForContext(parseBusinessGraph(bizGraphRow?.graphJson)),
       );
       if (processes.length) {
         lines.push("Draft / process blocks:");
@@ -102,7 +110,9 @@ export async function buildServerPageSnapshot(options: {
           );
         }
       } else {
-        lines.push("No process blocks yet — propose drafts from the user's description.");
+        lines.push(
+          "No process blocks yet — use forge-graph for units/capabilities or forge-drafts for plant blocks.",
+        );
       }
       const docs = await prisma.businessDocument.findMany({
         where: { businessId: options.businessId },
@@ -131,10 +141,10 @@ export async function buildServerPageSnapshot(options: {
         );
       }
       lines.push(
-        "Hint: User can Add draft on the canvas or open a block in Workshop to refine.",
+        "Hint: Prefer forge-graph fences for structure; user can also edit the graph canvas.",
       );
       lines.push(
-        "Hint: Link mode on Foundation: click source process, then target, to create a plant edge.",
+        "Hint: forge-drafts / Link mode still write Process table plant blocks when needed.",
       );
       break;
     }
@@ -342,6 +352,41 @@ export async function buildServerPageSnapshot(options: {
       });
       lines.push(`User business count: ${count || 1}`);
       lines.push(`Active business: ${options.businessName}`);
+      break;
+    }
+    case "god-mode": {
+      lines.push(
+        "Map room: step graph SoT (Steps tab) + legacy plant overview (Plant tab).",
+      );
+      const mapGraphRow = await prisma.business.findUnique({
+        where: { id: options.businessId },
+        select: { graphJson: true },
+      });
+      const mapGraph = parseBusinessGraph(mapGraphRow?.graphJson);
+      lines.push(...summarizeGraphForContext(mapGraph));
+      const steps = mapGraph.nodes.filter((n) => n.kind === "step");
+      if (steps.length) {
+        lines.push(`Step nodes: ${steps.length} (sample):`);
+        for (const s of steps.slice(0, 12)) {
+          lines.push(
+            `- ${s.name} id=${s.id}` +
+              (s.parentId ? ` process=${s.parentId}` : ""),
+          );
+        }
+      } else {
+        lines.push(
+          "No step nodes yet — describe a process path and emit forge-graph step ops.",
+        );
+      }
+      if (processes.length) {
+        lines.push("Processes (table + Mermaid bridge):");
+        for (const p of processes.slice(0, 12)) {
+          lines.push(`- ${p.name} [${p.status}] id=${p.id}`);
+        }
+      }
+      lines.push(
+        "Hint: forge-graph for steps/flows_to; Workshop only for legacy Mermaid.",
+      );
       break;
     }
     default: {

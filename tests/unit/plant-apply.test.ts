@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   hasPlantApplyFences,
   parseForgeDocsFence,
+  parseForgeGraphFence,
   parseForgeLinksFence,
   shouldAutoApplyPlant,
   summarizePlantApply,
@@ -37,6 +38,42 @@ describe("plant-apply parse + helpers", () => {
       hasPlantApplyFences("```forge-docs\n[]\n```"),
       true
     );
+    assert.equal(
+      hasPlantApplyFences('```forge-graph\n[{"op":"delete_node","id":"x"}]\n```'),
+      true
+    );
+  });
+
+  it("parses forge-graph fence ops", () => {
+    const text = `
+\`\`\`forge-graph
+[
+  {"op":"upsert_node","node":{"id":"u1","kind":"unit","name":"Sales","parentId":null}},
+  {"op":"upsert_edge","edge":{"id":"e1","kind":"contains","fromId":"u1","toId":"c1"}},
+  {"op":"set_position","id":"u1","position":{"x":10,"y":20}}
+]
+\`\`\`
+`;
+    const ops = parseForgeGraphFence(text);
+    assert.equal(ops.length, 3);
+    assert.equal(ops[0]!.op, "upsert_node");
+    if (ops[0]!.op === "upsert_node") {
+      assert.equal(ops[0]!.node.name, "Sales");
+      assert.equal(ops[0]!.node.kind, "unit");
+    }
+    assert.equal(ops[2]!.op, "set_position");
+  });
+
+  it("rejects invalid forge-graph ops", () => {
+    const text = `\`\`\`forge-graph
+[
+  {"op":"upsert_node","node":{"id":"x","kind":"nope","name":"Bad"}},
+  {"op":"delete_node","id":"ok"}
+]
+\`\`\``;
+    const ops = parseForgeGraphFence(text);
+    assert.equal(ops.length, 1);
+    assert.equal(ops[0]!.op, "delete_node");
   });
 
   it("parses forge-links fence by from/to names", () => {
@@ -124,11 +161,17 @@ Here are handoffs:
         errors: [],
         createdCount: 1,
       },
+      graph: {
+        appliedOps: 4,
+        opCount: 5,
+        errors: [],
+      },
       errors: [],
     };
     const summary = summarizePlantApply(result);
     assert.match(summary, /3 draft/);
     assert.match(summary, /document/);
     assert.match(summary, /link/);
+    assert.match(summary, /4 graph op/);
   });
 });

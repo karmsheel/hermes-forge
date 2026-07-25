@@ -1,5 +1,5 @@
 /**
- * Plant auto-apply from Hermes studio chat (Phase 6.2 / 6.5).
+ * Plant auto-apply from Hermes studio chat (Phase 6.2 / 6.5 / 8.5).
  *
  * Hermes emits structured fences in assistant text; the server applies them
  * after the stream finishes (no separate OpenAI tools round-trip required).
@@ -8,6 +8,7 @@
  * - ```forge-drafts``` — seed/upsert Foundation draft processes
  * - ```forge-docs``` — upsert knowledge documents (or propose if forged)
  * - ```forge-links``` — create process-to-process plant edges by name
+ * - ```forge-graph``` — living business graph ops (units/capabilities/steps)
  */
 
 import { parseJsonFromLlm } from "@/lib/hermes";
@@ -28,9 +29,16 @@ import { liveOccurredNow, recordBusinessEvent, truncatePreview } from "@/lib/bus
 import { BUSINESS_EVENT_TYPES } from "@/lib/business-log-types";
 import { prisma } from "@/lib/prisma";
 import type { FoundationProcessCard } from "@/lib/foundation";
+import {
+  hasForgeGraphFence,
+  parseForgeGraphFence,
+  type GraphPatchOp,
+} from "@/lib/business-graph";
+import { applyAndSaveGraphPatch } from "@/lib/business-graph/repository";
 
 export const FORGE_LINKS_FENCE = "forge-links";
 export const FORGE_DOCS_FENCE = "forge-docs";
+export const FORGE_GRAPH_FENCE = "forge-graph";
 
 export type PlantDocInput = {
   /** Prefer matching seeded kinds by slug (basics, market, …). */
@@ -60,11 +68,19 @@ export type PlantApplyDocResult = {
   reason?: string;
 };
 
+export type PlantApplyGraphResult = {
+  appliedOps: number;
+  opCount: number;
+  errors: string[];
+};
+
 export type PlantApplyResult = {
   applied: boolean;
   drafts: PlantApplyDraftsResult | null;
   documents: PlantApplyDocResult[];
   links: CreateLinksByNamesResult | null;
+  /** Phase 8.5 — forge-graph patch result */
+  graph: PlantApplyGraphResult | null;
   errors: string[];
 };
 
@@ -91,9 +107,12 @@ export function hasPlantApplyFences(text: string | null | undefined): boolean {
   return (
     /```forge-drafts/i.test(text) ||
     /```forge-links/i.test(text) ||
-    /```forge-docs/i.test(text)
+    /```forge-docs/i.test(text) ||
+    hasForgeGraphFence(text)
   );
 }
+
+export { parseForgeGraphFence, hasForgeGraphFence };
 
 export function parseForgeLinksFence(
   text: string | null | undefined
@@ -252,8 +271,9 @@ function itemToDoc(item: unknown): PlantDocInput | null {
 }
 
 /**
- * Apply plant fences from assistant text. Order: drafts → docs → links
- * so links can target processes just seeded in the same turn.
+ * Apply plant fences from assistant text.
+ * Order: drafts → docs → links → graph so links can target seeded processes
+ * and forge-graph can refine the twin after legacy plant writes.
  */
 export async function applyPlantFromAssistantText(options: {
   businessId: string;
@@ -268,17 +288,20 @@ export async function applyPlantFromAssistantText(options: {
   const draftInputs = parseForgeDraftsFence(text);
   const docInputs = parseForgeDocsFence(text);
   const linkInputs = parseForgeLinksFence(text);
+  const graphOps: GraphPatchOp[] = parseForgeGraphFence(text);
 
   if (
     draftInputs.length === 0 &&
     docInputs.length === 0 &&
-    linkInputs.length === 0
+    linkInputs.length === 0 &&
+    graphOps.length === 0
   ) {
     return {
       applied: false,
       drafts: null,
       documents: [],
       links: null,
+      graph: null,
       errors: [],
     };
   }
@@ -345,11 +368,61 @@ export async function applyPlantFromAssistantText(options: {
     }
   }
 
+  let graph: PlantApplyGraphResult | null = null;
+  if (graphOps.length > 0) {
+    try {
+      const result = await applyAndSaveGraphPatch(options.businessId, {
+        ops: graphOps,
+      });
+      graph = {
+        appliedOps: result.applied,
+        opCount: graphOps.length,
+        errors: result.errors,
+      };
+      if (result.errors.length) {
+        errors.push(...result.errors);
+      }
+      if (result.applied > 0) {
+        await recordBusinessEvent({
+          businessId: options.businessId,
+          userId: options.userId,
+          type: BUSINESS_EVENT_TYPES.BUSINESS_UPDATED,
+          entityType: "business",
+          entityId: options.businessId,
+          entityName: "Business graph",
+          summary: `Hermes applied ${result.applied} forge-graph op${result.applied === 1 ? "" : "s"}`,
+          metadata: {
+            preview: truncatePreview(
+              `forge-graph:${result.applied}/${graphOps.length}`,
+              120,
+            ),
+            count: result.applied,
+          },
+          ...liveOccurredNow(),
+        }).catch(() => {
+          /* log non-fatal */
+        });
+      }
+    } catch (err) {
+      errors.push(
+        err instanceof Error ? err.message : "Failed to apply forge-graph patch"
+      );
+      graph = {
+        appliedOps: 0,
+        opCount: graphOps.length,
+        errors: [
+          err instanceof Error ? err.message : "Failed to apply forge-graph",
+        ],
+      };
+    }
+  }
+
   return {
     applied: true,
     drafts,
     documents,
     links,
+    graph,
     errors,
   };
 }
@@ -565,6 +638,11 @@ export function summarizePlantApply(result: PlantApplyResult): string {
   if (result.links && result.links.createdCount > 0) {
     parts.push(
       `${result.links.createdCount} link${result.links.createdCount === 1 ? "" : "s"}`
+    );
+  }
+  if (result.graph && result.graph.appliedOps > 0) {
+    parts.push(
+      `${result.graph.appliedOps} graph op${result.graph.appliedOps === 1 ? "" : "s"}`
     );
   }
   if (parts.length === 0 && result.errors.length > 0) {

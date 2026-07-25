@@ -178,11 +178,17 @@ export function FoundationRoom() {
     return () => window.removeEventListener(FOUNDATION_DRAFTS_EVENT, onDrafts);
   }, [openReview, overview?.processes]);
 
-  // 6.2 / 6.5 — server auto-applied plant fences; refresh overview + reseed graph
+  // 6.2 / 6.5 / 8.5 — plant fences applied; refresh overview + graph
+  // Prefer load (not reseed) when forge-graph ops ran so AI layout/nodes stay intact.
   useEffect(() => {
-    function onPlantApplied() {
+    function onPlantApplied(ev: Event) {
+      const detail = (ev as CustomEvent<{ result?: { graph?: { appliedOps?: number } | null } }>).detail;
       void load();
-      void loadGraph({ reseed: true, quiet: true });
+      const graphOps = detail?.result?.graph?.appliedOps ?? 0;
+      void loadGraph({
+        reseed: graphOps <= 0,
+        quiet: true,
+      });
     }
     window.addEventListener(PLANT_APPLIED_EVENT, onPlantApplied);
     return () =>
