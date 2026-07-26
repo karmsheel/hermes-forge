@@ -918,7 +918,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.6 done**; **next is 8.7** Mermaid freeze. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
+**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.7 done**; **next is 8.8** Graph MVP hardening. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
 
 ---
 
@@ -1222,7 +1222,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 8.4 | Map room → process step graph (SoT) | 8 | **Done** |
 | 8.5 | Overlord `forge-graph` propose/apply | 8 | **Done** |
 | 8.6 | Soft unlock + IA for graph readiness | 8 | **Done** |
-| 8.7 | Legacy Mermaid freeze + export bridge | 8 | Pending |
+| 8.7 | Legacy Mermaid freeze + export bridge | 8 | **Done** |
 | 8.8 | Graph MVP hardening | 8 | Pending |
 | 8.9 | Forge consultant room | 8 | Deferred (post-MVP) |
 | 8.10 | Monitor on graph nodes | 8 | Deferred (post-MVP) |
@@ -1463,16 +1463,19 @@ Business → Unit → Capability → Process → Step
 
 ---
 
-### 8.7 Legacy Mermaid freeze + export bridge — **Pending**
+### 8.7 Legacy Mermaid freeze + export bridge — **DONE**
 
 **Goal:** Freeze Mermaid as process SoT; provide bridges so old work is not stranded.
 
 **Deliverables:**
-- [ ] Doc + product: no new features that deepen Mermaid-as-SoT  
-- [ ] Workshop remains for processes with `diagramMermaid`  
-- [ ] Optional: export step graph → Mermaid string for share  
-- [ ] Optional later: one-shot import Mermaid → steps (best-effort, not blocking MVP)  
-- [ ] Stop treating Map “full Mermaid tiles” as primary (demote/remove when 8.4 ships)  
+- [x] Doc + product: no new features that deepen Mermaid-as-SoT  
+  - Policy: `lib/mermaid-policy.ts`; freeze section in [`LIVING_BUSINESS_MAP.md`](LIVING_BUSINESS_MAP.md)  
+- [x] Workshop remains for processes with `diagramMermaid` (Map Steps toolbar + inspector)  
+- [x] Optional: export step graph → Mermaid string for share  
+  - `exportProcessStepsToMermaid` + Map **Copy Mermaid**  
+- [x] Optional later: one-shot import Mermaid → steps (best-effort, not blocking MVP) — **deferred**  
+- [x] Stop treating Map “full Mermaid tiles” as primary  
+  - Plant default remains compact; “Diagrams” renamed **Mermaid tiles** (legacy title)  
 
 **Depends on:** 8.4 for export direction  
 **Estimate:** S–M  
@@ -1653,7 +1656,8 @@ When picking up a backlog item:
 - **8.4** Map step graph SoT — **Done** (dual-run Plant tab retained)
 - **8.5** forge-graph propose/apply — **Done** (auto-apply via plant SSE)
 - **8.6** soft unlock / graph readiness — **Done**
-- **Next:** **8.7** Mermaid freeze → **8.8** harden
+- **8.7** Mermaid freeze + export bridge — **Done**
+- **Next:** **8.8** Graph MVP hardening
 - **Post-MVP:** 8.9–8.15 (Forge room, Monitor, Automate-on-steps, Operate, advisors, branching, blockchain research)
 
 **Still open / deferred:**

@@ -1,16 +1,29 @@
 /**
- * God Mode canvas view mode (Phase 6.4).
- * Compact = uniform I/O-shape plant cards; diagrams = full Mermaid tiles (4.13).
+ * God Mode / Map plant view mode (Phase 6.4; demoted Mermaid tiles in 8.7).
+ * Compact = uniform I/O-shape plant cards (product default).
+ * Diagrams = full Mermaid tiles — **legacy only** (not process depth SoT).
  */
+
+import {
+  MERMAID_TILES_LABEL,
+  MERMAID_TILES_TITLE,
+} from "@/lib/mermaid-policy";
 
 export type GodModeViewMode = "compact" | "diagrams";
 
 export const GOD_MODE_VIEW_STORAGE_KEY = "forge:god-mode-view";
 
+/** Re-export for plant chrome (Phase 8.7 demote). */
+export { MERMAID_TILES_LABEL, MERMAID_TILES_TITLE };
+
 export function isGodModeViewMode(value: unknown): value is GodModeViewMode {
   return value === "compact" || value === "diagrams";
 }
 
+/**
+ * Load plant view mode. Defaults to compact; stored "diagrams" is still
+ * honored so power users keep preference, but chrome labels it as legacy.
+ */
 export function loadGodModeViewMode(): GodModeViewMode {
   if (typeof window === "undefined") return "compact";
   try {

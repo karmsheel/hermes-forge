@@ -313,8 +313,8 @@ export function MapRoom() {
         <div className="p-6">
           <SoftRoomLock
             room="map"
-            title="Map fills as processes appear"
-            description="Talk with Overlord in Foundation to seed draft process shapes. The plant map soft-unlocks when the first process exists."
+            title="Map opens once the business graph has structure"
+            description="Talk with Overlord in Foundation until units, capabilities, or processes appear on the graph. Step graph is the depth source of truth; Mermaid is legacy / export only."
           />
         </div>
       </div>
@@ -383,7 +383,7 @@ export function MapRoom() {
                   ? "bg-bg-muted text-text-strong"
                   : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
               }`}
-              title="Legacy process plant overview"
+              title="Process plant overview (compact shapes). Mermaid tiles mode is legacy only."
             >
               <Network className="w-3.5 h-3.5" />
               Plant

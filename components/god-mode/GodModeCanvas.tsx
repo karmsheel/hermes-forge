@@ -38,6 +38,8 @@ import { getIoShapeMeta, normalizeIoShape } from "@/lib/io-shape";
 import type { PlantExportInput } from "@/lib/export-plant";
 import {
   loadGodModeViewMode,
+  MERMAID_TILES_LABEL,
+  MERMAID_TILES_TITLE,
   saveGodModeViewMode,
   type GodModeViewMode,
 } from "@/lib/god-mode-view";
@@ -1375,9 +1377,10 @@ function GodModeToolbar({
                 ? "bg-bg-muted text-text-strong"
                 : "bg-bg-panel text-text-muted hover:bg-bg-subtle"
             }`}
+            title={MERMAID_TILES_TITLE}
           >
             <GitBranch className="w-3.5 h-3.5" />
-            Diagrams
+            {MERMAID_TILES_LABEL}
           </button>
         </div>
         {!isDiagrams && onLayoutModeChange ? (

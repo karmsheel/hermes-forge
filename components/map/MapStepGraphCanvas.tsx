@@ -23,6 +23,7 @@ import {
   type OnSelectionChangeFunc,
 } from "@xyflow/react";
 import {
+  FileCode2,
   GitBranch,
   Hammer,
   Link2,
@@ -31,13 +32,16 @@ import {
   Trash2,
   Unlink,
 } from "lucide-react";
+import { toast } from "sonner";
 import { GraphKindNode } from "@/components/plant/spike/GraphKindNode";
 import {
+  exportProcessStepsToMermaid,
   projectProcessStepGraph,
   type BusinessGraph,
   type GraphFlowNodeData,
   type GraphNode,
 } from "@/lib/business-graph";
+import { MERMAID_LEGACY_HINT } from "@/lib/mermaid-policy";
 
 const nodeTypes: NodeTypes = {
   graphNode: GraphKindNode,
@@ -406,6 +410,26 @@ function MapStepGraphCanvasInner({
     );
   }
 
+  const copyStepsMermaid = async () => {
+    if (!graph || !processId) return;
+    const mermaid = exportProcessStepsToMermaid(graph, processId);
+    if (!mermaid) {
+      toast.error("Could not export steps to Mermaid");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(mermaid);
+      toast.success("Step graph copied as Mermaid", {
+        description: MERMAID_LEGACY_HINT,
+      });
+    } catch {
+      toast.error("Clipboard unavailable", {
+        description: "Select and copy from the browser console if needed.",
+      });
+      console.info("[export-mermaid]\n" + mermaid);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="shrink-0 px-4 sm:px-6 pt-3 pb-2 flex items-center justify-between gap-3 flex-wrap border-b border-border">
@@ -482,11 +506,21 @@ function MapStepGraphCanvasInner({
               Add step
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => void copyStepsMermaid()}
+            className="btn-secondary text-xs inline-flex items-center gap-1.5"
+            title={`Copy step graph as Mermaid flowchart. ${MERMAID_LEGACY_HINT}`}
+          >
+            <FileCode2 className="w-3.5 h-3.5" />
+            Copy Mermaid
+          </button>
           {processMeta?.hasDiagram && onOpenWorkshop ? (
             <button
               type="button"
               onClick={() => onOpenWorkshop(processId)}
               className="btn-secondary text-xs inline-flex items-center gap-1.5"
+              title="Open legacy Mermaid Workshop for this process"
             >
               <Hammer className="w-3.5 h-3.5" />
               Workshop

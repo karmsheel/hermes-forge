@@ -41,6 +41,19 @@ Legacy mapping:
 
 Workshop Mermaid: **frozen** for legacy processes only.
 
+### Mermaid freeze (Phase 8.7)
+
+| Concern | Policy |
+|---------|--------|
+| Process depth SoT | **Step graph** on `graphJson` (Map → Steps) |
+| Workshop | Remains for processes with existing `diagramMermaid` |
+| Plant “Mermaid tiles” view | **Legacy only** — demoted label; compact plant is default |
+| Export bridge | `exportProcessStepsToMermaid` — Copy Mermaid from Map Steps (share, not authoring) |
+| Import Mermaid → steps | Optional later; **not** MVP |
+| New Mermaid-as-SoT features | **Do not** ship |
+
+Code markers: `lib/mermaid-policy.ts`, `lib/business-graph/export-mermaid.ts`.
+
 ---
 
 ## 3. Canvas stack
@@ -50,6 +63,7 @@ Workshop Mermaid: **frozen** for legacy processes only.
 | Foundation + Map structural views | `@xyflow/react` |
 | Process internals (new) | Step graph on xyflow |
 | Process internals (legacy) | Mermaid Workshop (no new SoT features) |
+| Mermaid export | Step graph → flowchart string (bridge only) |
 | Freeform whiteboards | Out (tldraw paid; Excalidraw sketch-first) |
 
 Closed node types only — standard maps across businesses.
@@ -100,6 +114,7 @@ Agent fences (direction): `forge-graph` ops for units/capabilities/processes/ste
 | 2026-07-25 | graphJson local-first; blockchain later; no centralized SaaS store |
 | 2026-07-25 | Step graph SoT; Mermaid legacy freeze |
 | 2026-07-25 | xyflow for structural maps |
+| 2026-07-26 | 8.7: demote plant Mermaid tiles; step→Mermaid export bridge; policy module |
 
 ---
 
