@@ -10,6 +10,8 @@ import {
 } from "@/lib/foundation";
 import { isProcessForged } from "@/lib/process-status";
 import { toProcessLinkDto } from "@/lib/process-links";
+import { parseBusinessGraph } from "@/lib/business-graph/parse";
+import { countGraphStructure } from "@/lib/business-graph/readiness";
 
 /** GET — Foundation room overview for the active business. */
 export async function GET(request: NextRequest) {
@@ -31,6 +33,9 @@ export async function GET(request: NextRequest) {
           forgedCount: 0,
           withDiagramCount: 0,
           linkCount: 0,
+          unitCount: 0,
+          capabilityCount: 0,
+          graphProcessCount: 0,
         },
         isThin: true,
       };
@@ -69,7 +74,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.business.findUnique({
         where: { id: business.id },
-        select: { id: true, name: true, description: true },
+        select: { id: true, name: true, description: true, graphJson: true },
       }),
     ]);
 
@@ -94,6 +99,9 @@ export async function GET(request: NextRequest) {
     const forgedCount = countForged(processes);
     const draftCount = processes.filter((p) => !isProcessForged(p.status)).length;
     const withDiagramCount = processes.filter((p) => p.diagramMermaid?.trim()).length;
+    const graphCounts = countGraphStructure(
+      parseBusinessGraph(biz?.graphJson ?? null),
+    );
 
     const overview: FoundationOverview = {
       business: biz
@@ -120,6 +128,9 @@ export async function GET(request: NextRequest) {
         forgedCount,
         withDiagramCount,
         linkCount: linkDtos.length,
+        unitCount: graphCounts.unitCount,
+        capabilityCount: graphCounts.capabilityCount,
+        graphProcessCount: graphCounts.graphProcessCount,
       },
       isThin: isThinBusiness({
         processCount: processes.length,

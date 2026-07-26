@@ -83,7 +83,7 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 | Room | Soft-unlock when | Chrome + locked behavior |
 |------|------------------|--------------------------|
 | **Foundation** | Business exists | Always in switcher; **default for new / thin businesses** |
-| **Map** | ≥1 process (draft stub counts) | Hidden until ready; then appears after Foundation. Deep link: empty state → “Talk in Foundation to seed processes” |
+| **Map** | **Graph maturity (8.6):** ≥1 `unit`, `capability`, or `process` node in `Business.graphJson` — **or** legacy fallback ≥1 Prisma `Process` row | Hidden until ready; then appears after Foundation. Deep link: SoftRoomLock → talk in Foundation to grow the graph |
 | **Monitor** | ≥1 process with `lifecycleStatus === "forged"` | Hidden until forged; then appears with Map. Deep link: SoftRoomLock + “Forge a process in Map / Workshop” |
 | **Automate** | ≥1 **forged** process | Same as Monitor for chrome + deep-link soft lock |
 
@@ -93,8 +93,9 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 
 ### Unlock detection (implementation hint)
 
-- Map ready: `Process` count for active business ≥ 1  
-- Monitor / Automate ready: exists process where `lifecycleStatus === "forged"` (or `approvedAt` set if legacy compat)  
+- Map ready (Phase **8.6**): `unitCount + capabilityCount + graphProcessCount ≥ 1` from `graphJson` **or** legacy `Process` count ≥ 1 (`lib/forge-room-readiness.ts`, `/api/foundation` stats)  
+- Bare root `business` node alone does **not** unlock Map  
+- Monitor / Automate ready: exists process where `lifecycleStatus === "forged"` (or `approvedAt` set if legacy compat) — unchanged until 8.10/8.11  
 - Prefer server-backed readiness (API / foundation overview) over client-only guesses when gates affect chrome  
 
 ---
@@ -105,7 +106,7 @@ Org / department view of the **same map**, not a separate philosophy. Secondary 
 New business
   → Foundation (Overlord + chat)
   → shapes / draft processes / docs appear
-  → Map soft-unlocks when first process exists
+  → Map soft-unlocks when graph has unit/capability/process (or legacy process row)
 
 Map
   → plant canvas (promoted God Mode compact + process links)

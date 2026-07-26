@@ -20,6 +20,13 @@ type SoftRoomLockProps = {
   children?: ReactNode;
 };
 
+function defaultTitle(room: ForgeStage, label: string): string {
+  if (room === "map") {
+    return `${label} opens once the business graph has structure`;
+  }
+  return `${label} opens after you forge a process`;
+}
+
 /**
  * Soft-lock empty state for Monitor / Automate (and empty Map if desired).
  * Does not block the route — shows guidance when the room is not ready.
@@ -37,7 +44,7 @@ export function SoftRoomLock({
   const label = FORGE_STAGE_LABELS[room];
   const ctaHref = room === "map" ? "/foundation" : "/god-mode";
   const ctaLabel =
-    room === "map" ? "Open Foundation" : "Open Map plant";
+    room === "map" ? "Open Foundation" : "Open Map";
 
   return (
     <div
@@ -53,15 +60,23 @@ export function SoftRoomLock({
             {label} · soft lock
           </div>
           <h2 className="text-base font-semibold text-text">
-            {title ?? `${label} opens after you forge a process`}
+            {title ?? defaultTitle(room, label)}
           </h2>
           <p className="mt-2 text-sm text-text-muted">
             {description ?? hint}
           </p>
           {readiness && (
             <p className="mt-2 text-xs text-text-faint">
-              {readiness.processCount} process
-              {readiness.processCount !== 1 ? "es" : ""}
+              {readiness.unitCount} unit{readiness.unitCount !== 1 ? "s" : ""}
+              {" · "}
+              {readiness.capabilityCount} capabilit
+              {readiness.capabilityCount !== 1 ? "ies" : "y"}
+              {" · "}
+              {readiness.graphProcessCount} graph process
+              {readiness.graphProcessCount !== 1 ? "es" : ""}
+              {" · "}
+              {readiness.processCount} process row
+              {readiness.processCount !== 1 ? "s" : ""}
               {" · "}
               {readiness.forgedCount} forged
             </p>

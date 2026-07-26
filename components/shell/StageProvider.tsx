@@ -65,12 +65,21 @@ export function StageProvider({ children }: { children: ReactNode }) {
         return;
       }
       const data = (await res.json()) as {
-        stats?: { processCount?: number; forgedCount?: number };
+        stats?: {
+          processCount?: number;
+          forgedCount?: number;
+          unitCount?: number;
+          capabilityCount?: number;
+          graphProcessCount?: number;
+        };
       };
       setReadiness(
         computeRoomReadiness({
           processCount: data.stats?.processCount ?? 0,
           forgedCount: data.stats?.forgedCount ?? 0,
+          unitCount: data.stats?.unitCount ?? 0,
+          capabilityCount: data.stats?.capabilityCount ?? 0,
+          graphProcessCount: data.stats?.graphProcessCount ?? 0,
         }),
       );
     } catch {

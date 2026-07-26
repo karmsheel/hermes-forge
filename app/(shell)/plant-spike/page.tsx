@@ -78,10 +78,14 @@ export default function PlantSpikePage() {
     <div className="h-full min-h-0 flex flex-col bg-bg text-text overflow-hidden">
       <header className="shrink-0 border-b border-border px-4 py-2 bg-bg-panel">
         <p className="text-xs text-text-muted">
-          <span className="text-amber font-medium">Graph MVP</span>
+          <span className="text-amber font-medium">Dev tool</span>
+          {" · "}
+          <span className="text-text-faint">
+            Product path is Foundation + Map (8.3/8.4). This spike is not in the room switcher.
+          </span>
           {businessName ? ` · ${businessName}` : ""}
           {" · "}
-          local graphJson · step graph SoT · Mermaid legacy freeze ·{" "}
+          local graphJson ·{" "}
           <code className="text-[11px]">PRODUCT_VISION.md</code>
         </p>
       </header>

@@ -48,9 +48,9 @@ export const FORGE_STAGE_LABELS: Record<ForgeStage, string> = {
 };
 
 export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
-  foundation: "Talk with Overlord — plant sketch, drafts, and documents",
+  foundation: "Talk with Overlord — grow the business graph (units, capabilities)",
   inventory: "Digital assets and objects the business uses or ships",
-  map: "See the business as a plant; open processes in Workshop",
+  map: "Process and step graph of the business; Workshop for deep work",
   monitor: "Track metrics and health of forged work (unlocks after a forged process)",
   automate: "Assign agents and run jobs (unlocks after a forged process)",
 };
@@ -59,11 +59,14 @@ export const FORGE_STAGE_DESCRIPTIONS: Record<ForgeStage, string> = {
  * Soft-lock copy when a room is not ready yet.
  * Locked rooms are hidden from the center room switcher; these strings still
  * power SoftRoomLock empty states if the user deep-links into a locked room.
+ *
+ * Map (8.6): graph maturity — ≥1 unit, capability, or process node in graphJson
+ * (legacy Process rows still unlock as fallback). Monitor/Automate stay forged-gated.
  */
 export const FORGE_ROOM_LOCK_HINTS: Record<ForgeStage, string | null> = {
   foundation: null,
   inventory: null,
-  map: "Seed at least one process in Foundation to fill the plant map.",
+  map: "Talk with Overlord in Foundation until units, capabilities, or processes appear on the graph.",
   monitor: "Forge a process in Map / Workshop to open Monitor.",
   automate: "Forge a process in Map / Workshop to open Automate.",
 };

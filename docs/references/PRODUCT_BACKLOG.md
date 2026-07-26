@@ -918,7 +918,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 5. **Plant PFD is the milestone** — process-to-process links + Map as plant, not a side experiment.
 6. **Rooms of the Forge** — place metaphor over stage pipeline; see reference doc.
 
-**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.5 done**; **next is 8.6** soft unlock / room IA. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
+**Next implementation priority:** Phase 6 planned scope is **shipped**; **7.1** is **shipped**. **Primary product track:** [Phase 8 — Business graph OS](#phase-8--business-graph-os-living-twin) — **8.0–8.6 done**; **next is 8.7** Mermaid freeze. Optional residual: 4.5, 4.16, 5.5/5.6, plant ports UI, room-home depth. Hard Home dissolve won’t do.
 
 ---
 
@@ -1221,7 +1221,7 @@ Phase 2 jumps Home composer → Workshop for a single process. That is right for
 | 8.3 | Foundation room → unit/capability graph | 8 | **Done** |
 | 8.4 | Map room → process step graph (SoT) | 8 | **Done** |
 | 8.5 | Overlord `forge-graph` propose/apply | 8 | **Done** |
-| 8.6 | Soft unlock + IA for graph readiness | 8 | Pending |
+| 8.6 | Soft unlock + IA for graph readiness | 8 | **Done** |
 | 8.7 | Legacy Mermaid freeze + export bridge | 8 | Pending |
 | 8.8 | Graph MVP hardening | 8 | Pending |
 | 8.9 | Forge consultant room | 8 | Deferred (post-MVP) |
@@ -1445,15 +1445,18 @@ Business → Unit → Capability → Process → Step
 
 ---
 
-### 8.6 Soft unlock + room IA for graph readiness — **Pending**
+### 8.6 Soft unlock + room IA for graph readiness — **DONE**
 
 **Goal:** Room switcher / soft locks reflect graph maturity, not only legacy process count.
 
 **Deliverables:**
-- [ ] Map unlock: ≥1 unit or capability or process **in graph** (define rule; document)  
-- [ ] Keep Monitor/Automate on **forged** process until 8.10/8.11 redefine  
-- [ ] SoftRoomLock copy updated for graph language  
-- [ ] Optional: hide `/plant-spike` once Foundation/Map cutover complete (or keep as dev tool)  
+- [x] Map unlock: ≥1 unit or capability or process **in graph** (define rule; document)  
+  - Rule: `unitCount + capabilityCount + graphProcessCount ≥ 1` from `graphJson`, **or** legacy Prisma process count ≥ 1 (`lib/forge-room-readiness.ts`, `lib/business-graph/readiness.ts`)  
+  - Documented in [`BUSINESS_PLANT_PFD.md`](BUSINESS_PLANT_PFD.md) §4  
+- [x] Keep Monitor/Automate on **forged** process until 8.10/8.11 redefine  
+- [x] SoftRoomLock copy updated for graph language  
+- [x] Optional: hide `/plant-spike` once Foundation/Map cutover complete (or keep as dev tool)  
+  - Kept as **dev tool** route (not in room switcher); banner points product path to Foundation + Map  
 
 **Depends on:** 8.3  
 **Estimate:** S  
@@ -1649,7 +1652,8 @@ When picking up a backlog item:
 - **8.3** Foundation unit/capability graph — **Done** (dual-run plant sketch retained)
 - **8.4** Map step graph SoT — **Done** (dual-run Plant tab retained)
 - **8.5** forge-graph propose/apply — **Done** (auto-apply via plant SSE)
-- **Next:** **8.6** soft unlock / room IA → **8.7** Mermaid freeze → **8.8** harden
+- **8.6** soft unlock / graph readiness — **Done**
+- **Next:** **8.7** Mermaid freeze → **8.8** harden
 - **Post-MVP:** 8.9–8.15 (Forge room, Monitor, Automate-on-steps, Operate, advisors, branching, blockchain research)
 
 **Still open / deferred:**

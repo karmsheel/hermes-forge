@@ -41,6 +41,10 @@ export type FoundationOverview = {
     forgedCount: number;
     withDiagramCount: number;
     linkCount: number;
+    /** Phase 8.6 — graph structure for Map soft-unlock. */
+    unitCount: number;
+    capabilityCount: number;
+    graphProcessCount: number;
   };
   /** True when the business is early / thin — prefer Foundation as home. */
   isThin: boolean;
